@@ -1,0 +1,1141 @@
+{
+  "sourceFile": "C:/A_WallPaper/Blender/Heroine/Heroine.blend",
+  "objects": {
+    "DeformRig-rig_Heroine": {
+      "materialSlots": []
+    },
+    "NurbsPath": {
+      "materialSlots": []
+    },
+    "Cube": {
+      "materialSlots": [
+        ""
+      ]
+    },
+    "Under": {
+      "materialSlots": [
+        "Tshirt"
+      ]
+    },
+    "Head": {
+      "materialSlots": [
+        "Head",
+        "Eye",
+        "Eyelashes",
+        "Eyebrows",
+        "Eyelid",
+        "Tooth",
+        "Tongue",
+        "EyeWhite"
+      ]
+    },
+    "Body": {
+      "materialSlots": [
+        "Body"
+      ]
+    },
+    "cloth_01a.002": {
+      "materialSlots": []
+    },
+    "RetopoFlow": {
+      "materialSlots": []
+    },
+    "Cube.003": {
+      "materialSlots": []
+    }
+  },
+  "materials": {
+    "Body": {
+      "name": "Body",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Diffuse BSDF",
+        "label": "",
+        "type": "BSDF_DIFFUSE"
+      },
+      "inputs": {
+        "Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//../../Substance/Export/Heroine_Body/Body_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        }
+      }
+    },
+    "Eyebrows": {
+      "name": "Eyebrows",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Principled BSDF",
+        "label": "",
+        "type": "BSDF_PRINCIPLED"
+      },
+      "inputs": {
+        "Base Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Head_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Metallic": {
+          "value": 0.0
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "IOR": {
+          "value": 1.5
+        },
+        "Alpha": {
+          "value": 1.0
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        },
+        "Subsurface Weight": {
+          "value": 0.0
+        },
+        "Subsurface Radius": {
+          "value": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        "Subsurface Scale": {
+          "value": 0.05000000074505806
+        },
+        "Subsurface IOR": {
+          "value": 1.399999976158142
+        },
+        "Subsurface Anisotropy": {
+          "value": 0.0
+        },
+        "Specular IOR Level": {
+          "value": 0.5
+        },
+        "Specular Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Anisotropic": {
+          "value": 0.0
+        },
+        "Anisotropic Rotation": {
+          "value": 0.0
+        },
+        "Tangent": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Transmission Weight": {
+          "value": 0.0
+        },
+        "Coat Weight": {
+          "value": 0.0
+        },
+        "Coat Roughness": {
+          "value": 0.029999999329447746
+        },
+        "Coat IOR": {
+          "value": 1.5
+        },
+        "Coat Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Coat Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Sheen Weight": {
+          "value": 0.0
+        },
+        "Sheen Roughness": {
+          "value": 0.5
+        },
+        "Sheen Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Color": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Strength": {
+          "value": 0.0
+        },
+        "Thin Film Thickness": {
+          "value": 0.0
+        },
+        "Thin Film IOR": {
+          "value": 1.3300000429153442
+        }
+      }
+    },
+    "Eyelashes": {
+      "name": "Eyelashes",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Principled BSDF",
+        "label": "",
+        "type": "BSDF_PRINCIPLED"
+      },
+      "inputs": {
+        "Base Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Head_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Metallic": {
+          "value": 0.0
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "IOR": {
+          "value": 1.5
+        },
+        "Alpha": {
+          "value": 1.0
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        },
+        "Subsurface Weight": {
+          "value": 0.0
+        },
+        "Subsurface Radius": {
+          "value": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        "Subsurface Scale": {
+          "value": 0.05000000074505806
+        },
+        "Subsurface IOR": {
+          "value": 1.399999976158142
+        },
+        "Subsurface Anisotropy": {
+          "value": 0.0
+        },
+        "Specular IOR Level": {
+          "value": 0.5
+        },
+        "Specular Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Anisotropic": {
+          "value": 0.0
+        },
+        "Anisotropic Rotation": {
+          "value": 0.0
+        },
+        "Tangent": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Transmission Weight": {
+          "value": 0.0
+        },
+        "Coat Weight": {
+          "value": 0.0
+        },
+        "Coat Roughness": {
+          "value": 0.029999999329447746
+        },
+        "Coat IOR": {
+          "value": 1.5
+        },
+        "Coat Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Coat Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Sheen Weight": {
+          "value": 0.0
+        },
+        "Sheen Roughness": {
+          "value": 0.5
+        },
+        "Sheen Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Color": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Strength": {
+          "value": 0.0
+        },
+        "Thin Film Thickness": {
+          "value": 0.0
+        },
+        "Thin Film IOR": {
+          "value": 1.3300000429153442
+        }
+      }
+    },
+    "Tshirt": {
+      "name": "Tshirt",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Diffuse BSDF",
+        "label": "",
+        "type": "BSDF_DIFFUSE"
+      },
+      "inputs": {
+        "Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Tshirt/Tshirt_BaseColor.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        }
+      }
+    },
+    "Eyelid": {
+      "name": "Eyelid",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Principled BSDF",
+        "label": "",
+        "type": "BSDF_PRINCIPLED"
+      },
+      "inputs": {
+        "Base Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Head_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Metallic": {
+          "value": 0.0
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "IOR": {
+          "value": 1.5
+        },
+        "Alpha": {
+          "value": 1.0
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        },
+        "Subsurface Weight": {
+          "value": 0.0
+        },
+        "Subsurface Radius": {
+          "value": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        "Subsurface Scale": {
+          "value": 0.05000000074505806
+        },
+        "Subsurface IOR": {
+          "value": 1.399999976158142
+        },
+        "Subsurface Anisotropy": {
+          "value": 0.0
+        },
+        "Specular IOR Level": {
+          "value": 0.5
+        },
+        "Specular Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Anisotropic": {
+          "value": 0.0
+        },
+        "Anisotropic Rotation": {
+          "value": 0.0
+        },
+        "Tangent": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Transmission Weight": {
+          "value": 0.0
+        },
+        "Coat Weight": {
+          "value": 0.0
+        },
+        "Coat Roughness": {
+          "value": 0.029999999329447746
+        },
+        "Coat IOR": {
+          "value": 1.5
+        },
+        "Coat Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Coat Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Sheen Weight": {
+          "value": 0.0
+        },
+        "Sheen Roughness": {
+          "value": 0.5
+        },
+        "Sheen Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Color": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Strength": {
+          "value": 0.0
+        },
+        "Thin Film Thickness": {
+          "value": 0.0
+        },
+        "Thin Film IOR": {
+          "value": 1.3300000429153442
+        }
+      }
+    },
+    "Tooth": {
+      "name": "Tooth",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Principled BSDF",
+        "label": "",
+        "type": "BSDF_PRINCIPLED"
+      },
+      "inputs": {
+        "Base Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Head_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Metallic": {
+          "value": 0.0
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "IOR": {
+          "value": 1.5
+        },
+        "Alpha": {
+          "value": 1.0
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        },
+        "Subsurface Weight": {
+          "value": 0.0
+        },
+        "Subsurface Radius": {
+          "value": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        "Subsurface Scale": {
+          "value": 0.05000000074505806
+        },
+        "Subsurface IOR": {
+          "value": 1.399999976158142
+        },
+        "Subsurface Anisotropy": {
+          "value": 0.0
+        },
+        "Specular IOR Level": {
+          "value": 0.5
+        },
+        "Specular Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Anisotropic": {
+          "value": 0.0
+        },
+        "Anisotropic Rotation": {
+          "value": 0.0
+        },
+        "Tangent": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Transmission Weight": {
+          "value": 0.0
+        },
+        "Coat Weight": {
+          "value": 0.0
+        },
+        "Coat Roughness": {
+          "value": 0.029999999329447746
+        },
+        "Coat IOR": {
+          "value": 1.5
+        },
+        "Coat Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Coat Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Sheen Weight": {
+          "value": 0.0
+        },
+        "Sheen Roughness": {
+          "value": 0.5
+        },
+        "Sheen Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Color": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Strength": {
+          "value": 0.0
+        },
+        "Thin Film Thickness": {
+          "value": 0.0
+        },
+        "Thin Film IOR": {
+          "value": 1.3300000429153442
+        }
+      }
+    },
+    "Tongue": {
+      "name": "Tongue",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Principled BSDF",
+        "label": "",
+        "type": "BSDF_PRINCIPLED"
+      },
+      "inputs": {
+        "Base Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Head_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Metallic": {
+          "value": 0.0
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "IOR": {
+          "value": 1.5
+        },
+        "Alpha": {
+          "value": 1.0
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        },
+        "Subsurface Weight": {
+          "value": 0.0
+        },
+        "Subsurface Radius": {
+          "value": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        "Subsurface Scale": {
+          "value": 0.05000000074505806
+        },
+        "Subsurface IOR": {
+          "value": 1.399999976158142
+        },
+        "Subsurface Anisotropy": {
+          "value": 0.0
+        },
+        "Specular IOR Level": {
+          "value": 0.5
+        },
+        "Specular Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Anisotropic": {
+          "value": 0.0
+        },
+        "Anisotropic Rotation": {
+          "value": 0.0
+        },
+        "Tangent": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Transmission Weight": {
+          "value": 0.0
+        },
+        "Coat Weight": {
+          "value": 0.0
+        },
+        "Coat Roughness": {
+          "value": 0.029999999329447746
+        },
+        "Coat IOR": {
+          "value": 1.5
+        },
+        "Coat Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Coat Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Sheen Weight": {
+          "value": 0.0
+        },
+        "Sheen Roughness": {
+          "value": 0.5
+        },
+        "Sheen Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Color": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Strength": {
+          "value": 0.0
+        },
+        "Thin Film Thickness": {
+          "value": 0.0
+        },
+        "Thin Film IOR": {
+          "value": 1.3300000429153442
+        }
+      }
+    },
+    "EyeWhite": {
+      "name": "EyeWhite",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Principled BSDF",
+        "label": "",
+        "type": "BSDF_PRINCIPLED"
+      },
+      "inputs": {
+        "Base Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Head_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Metallic": {
+          "value": 0.0
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "IOR": {
+          "value": 1.5
+        },
+        "Alpha": {
+          "value": 1.0
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        },
+        "Subsurface Weight": {
+          "value": 0.0
+        },
+        "Subsurface Radius": {
+          "value": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        "Subsurface Scale": {
+          "value": 0.05000000074505806
+        },
+        "Subsurface IOR": {
+          "value": 1.399999976158142
+        },
+        "Subsurface Anisotropy": {
+          "value": 0.0
+        },
+        "Specular IOR Level": {
+          "value": 0.5
+        },
+        "Specular Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Anisotropic": {
+          "value": 0.0
+        },
+        "Anisotropic Rotation": {
+          "value": 0.0
+        },
+        "Tangent": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Transmission Weight": {
+          "value": 0.0
+        },
+        "Coat Weight": {
+          "value": 0.0
+        },
+        "Coat Roughness": {
+          "value": 0.029999999329447746
+        },
+        "Coat IOR": {
+          "value": 1.5
+        },
+        "Coat Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Coat Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Sheen Weight": {
+          "value": 0.0
+        },
+        "Sheen Roughness": {
+          "value": 0.5
+        },
+        "Sheen Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Color": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Strength": {
+          "value": 0.0
+        },
+        "Thin Film Thickness": {
+          "value": 0.0
+        },
+        "Thin Film IOR": {
+          "value": 1.3300000429153442
+        }
+      }
+    },
+    "Eye": {
+      "name": "Eye",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Principled BSDF",
+        "label": "",
+        "type": "BSDF_PRINCIPLED"
+      },
+      "inputs": {
+        "Base Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Eye_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Metallic": {
+          "value": 0.0
+        },
+        "Roughness": {
+          "value": 0.4000000059604645
+        },
+        "IOR": {
+          "value": 1.5
+        },
+        "Alpha": {
+          "value": 1.0
+        },
+        "Normal": {},
+        "Weight": {
+          "value": 0.0
+        },
+        "Subsurface Weight": {
+          "value": 0.0
+        },
+        "Subsurface Radius": {
+          "value": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        "Subsurface Scale": {
+          "value": 0.05000000074505806
+        },
+        "Subsurface IOR": {
+          "value": 1.399999976158142
+        },
+        "Subsurface Anisotropy": {
+          "value": 0.0
+        },
+        "Specular IOR Level": {
+          "value": 0.5
+        },
+        "Specular Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Anisotropic": {
+          "value": 0.0
+        },
+        "Anisotropic Rotation": {
+          "value": 0.0
+        },
+        "Tangent": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Transmission Weight": {
+          "value": 0.0
+        },
+        "Coat Weight": {
+          "value": 0.0
+        },
+        "Coat Roughness": {
+          "value": 0.029999999329447746
+        },
+        "Coat IOR": {
+          "value": 1.5
+        },
+        "Coat Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Coat Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Sheen Weight": {
+          "value": 0.0
+        },
+        "Sheen Roughness": {
+          "value": 0.5
+        },
+        "Sheen Tint": {
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "Emission Color": {
+          "value": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "Emission Strength": {
+          "value": 1.0
+        },
+        "Thin Film Thickness": {
+          "value": 0.0
+        },
+        "Thin Film IOR": {
+          "value": 1.3300000429153442
+        }
+      }
+    },
+    "Head": {
+      "name": "Head",
+      "jxProps": {},
+      "matSurface": {
+        "name": "Diffuse BSDF",
+        "label": "",
+        "type": "BSDF_DIFFUSE"
+      },
+      "inputs": {
+        "Color": {
+          "texture": {
+            "name": "Image Texture",
+            "path": "//Texture/Heroine_Body/Head_Base_color.png",
+            "colorspace": "sRGB",
+            "alpha_mode": "STRAIGHT"
+          }
+        },
+        "Roughness": {
+          "value": 0.5
+        },
+        "Normal": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "Weight": {
+          "value": 0.0
+        }
+      }
+    }
+  },
+  "textures": {
+    "Image Texture": {
+      "name": "Image Texture",
+      "path": "//Texture/Heroine_Body/Head_Base_color.png",
+      "colorspace": "sRGB",
+      "alpha_mode": "STRAIGHT"
+    }
+  }
+}

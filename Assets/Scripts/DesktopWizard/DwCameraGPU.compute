@@ -1,0 +1,415 @@
+#pragma kernel DwCameraGPUKernel
+#pragma assumeuniformscaling procedural:ConfigureProcedural
+#pragma editor_sync_compilation
+#pragma multi_compile_local _ GAMMA_BLENDING
+#pragma multi_compile_local _ LOW_QUALITY
+#pragma multi_compile_local _ FXAA_DEBUG
+#pragma multi_compile_local _ BOOM_DEBUG
+#pragma target 4.5
+
+#include "HLSLSupport.cginc"
+#include "UnityCG.cginc"
+// https://docs.unity3d.com/Manual/SL-SamplerStates.html
+
+// assume a RenderTexture with enableRandomWrite
+Texture2D<float4> _InputTex;
+SamplerState sampler_InputTex;
+float4 _InputTex_TexelSize;
+//UNITY_DECLARE_TEX2D(_InputTex);
+RWTexture2D<float4> _ResultTex;
+uint _width, _height;
+float4 _boomParams01; // iteration, intensity, 0, 0
+float4 _boomParams02; // (threshold), (threshold-knee), (2 knee), (factor)
+float4 _fxaaParams01; // contrastThreshold, relativeThreshold, subpixelBlending
+// Effect
+float _lod, _invert;
+
+half4 PS_Multiply   (half4 tex1, half4 tex2) { return tex1 * tex2; }
+half4 PS_Screen     (half4 tex1, half4 tex2) { return 1 - (1 - tex1) * (1 - tex2); }
+half4 PS_Overlay    (half4 tex1, half4 tex2) { return tex2 < 0.5 ? (2 * tex1 * tex2) : (1 - 2 * (1 - tex1) * (1 - tex2)); }
+half4 PS_Darken     (half4 tex1, half4 tex2) { return min(tex1, tex2); }
+half4 PS_Lighten    (half4 tex1, half4 tex2) { return max(tex1, tex2); }
+half4 PS_Difference (half4 tex1, half4 tex2) { return abs(tex1 - tex2); }
+half4 PS_Add        (half4 tex1, half4 tex2) { return tex1 + tex2; }
+half4 PS_Subtract   (half4 tex1, half4 tex2) { return tex1 - tex2; }
+half4 PS_Dodge      (half4 tex1, half4 tex2) { return tex1 / (1 - tex2); }
+
+half4 MySample(float2 uv, float lod)
+{
+	half4 tex = _InputTex.SampleLevel(sampler_InputTex, saturate(uv), lod);
+#if defined(GAMMA_BLENDING)
+    // RGB Linear to gamma space
+    // use gamma for FXAA calculation.
+    tex.rgb = LinearToGammaSpace(saturate(tex.rgb));
+#endif
+	return tex;
+}
+
+// Get current pixel's uv position
+float2 UV(uint3 dispatchThreadId)
+{
+    return dispatchThreadId.xy / float2(_width, _height);
+}
+
+int ClosestPowerOfTwo(int value)
+{
+    int power = 1;
+    while (power < value)
+    {
+        power <<= 1;
+    }
+
+    // Check which of the two powers of 2 is closer
+    int lowerPower = power >> 1;
+    if ((value - lowerPower) < (power - value))
+    {
+        power = lowerPower;
+    }
+
+    return power;
+}
+
+uint2 CalculateLODSize(uint w, uint h, uint lod)
+{
+    int tw = max(1, w >> lod);
+    int th = max(1, h >> lod);
+    int lodw = ClosestPowerOfTwo(tw);
+    int lodh = ClosestPowerOfTwo(th);
+    return uint2(lodw, lodh);
+}
+
+// Quick Booming iteration : read color based on lower LOD sample offset (a quarter 1/4).
+half4 QQSample(uint2 coord, int lod, float offset)
+{
+    half2 size = float2(_width,_height); // actually texture size;
+    half2 uv = coord / size; // normalize x,y into 0 ~ 1 value. (since image are 1:1 output)
+    
+    // Since LOD handle image's size, we need to scale the texel sampling offset.
+    // found out the scale of pixel based on LOD depth,
+    // bias of downsampleing distance on U3D texture process.
+    half2 texelSize = (1 << lod) / size;
+    half4 o = texelSize.xyxy * float2(-offset,offset).xxyy;
+    
+
+    half4 rst =
+        MySample(uv + o.xy, lod) + MySample(uv + o.zy, lod) +
+        MySample(uv + o.xw, lod) + MySample(uv + o.zw, lod);
+    return rst;
+}
+
+// Calculate the contribution area based on pixel's brightness
+// apply kness & soft curve
+// https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/
+half BoomMask(half4 tex)
+{
+    half threshold  = _boomParams02.x;
+    half brightness = max(tex.r, max(tex.g, tex.b));
+    half soft       = brightness - _boomParams02.y;
+    soft            = clamp(soft, 0.0, _boomParams02.z);
+    soft            = soft * soft * _boomParams02.w;
+    half contribution = max(soft, brightness - threshold);
+    contribution    /= max(brightness, 0.0001f);
+    return contribution;
+}
+
+// generate booming result based on giving params.
+half4 GenBooming(uint2 coord)
+{
+    // Booming
+    int iteration       = _boomParams01.x;
+    half intensity      = _boomParams01.y;
+    half sampleOffset   = _boomParams01.z;
+    half boomBias       = _boomParams01.w;
+    
+    half4 boom = half4(1,1,1,0); // White & alpha 0
+    
+    //UNITY_UNROLL
+    for (int i = 1; i < iteration; ++i)
+    {
+        half4 tex = QQSample(coord, i, sampleOffset);
+        half contribut = BoomMask(tex);
+        half f = 1.0 / half(1 << i + 2); // 0.25, 0.125, 0.0625...
+        
+        //boom += tex * contribut * f * intensity;
+        tex *= contribut * f * intensity;
+        boom += tex;
+    }
+    
+    // since first lod1 = 1/4 = 0.25
+    boom = saturate(boom * boomBias * 0.25);
+    return boom;
+}
+
+
+// https://catlikecoding.com/unity/tutorials/advanced-rendering/fxaa/
+half SampleLuminance(half2 uv)
+{
+    half4 tex = MySample(uv, _lod);
+    return LinearRgbToLuminance(saturate(tex.ggg));
+}
+
+half SampleLuminance(half2 uv, half uOffset, half vOffset)
+{
+    half2 texelSize = 1 / half2(_width, _height);
+    uv += texelSize * float2(uOffset, vOffset);
+    return SampleLuminance(uv);
+}
+
+struct LuminanceData
+{
+    float m, n, e, s, w, ne, nw, se, sw;
+    float highest, lowest, contrast;
+};
+
+LuminanceData GenLuminanceData(half2 uv)
+{
+    LuminanceData l;
+    l.m = SampleLuminance(uv);
+    l.n = SampleLuminance(uv, 0,  1);
+    l.e = SampleLuminance(uv, 1,  0);
+    l.s = SampleLuminance(uv, 0, -1);
+    l.w = SampleLuminance(uv,-1,  0);
+
+    l.ne = SampleLuminance(uv,  1,  1);
+    l.nw = SampleLuminance(uv, -1,  1);
+    l.se = SampleLuminance(uv,  1, -1);
+    l.sw = SampleLuminance(uv, -1, -1);
+
+    l.highest = max(max(max(max(l.n, l.e), l.s), l.w), l.m);
+    l.lowest = min(min(min(min(l.n, l.e), l.s), l.w), l.m);
+    l.contrast = l.highest - l.lowest;
+    return l;
+}
+
+half DeterminePixelBlendFactor(LuminanceData l)
+{
+    half contrastThreshold = _fxaaParams01.x;
+    half relativeThreshold = _fxaaParams01.y;
+    half subpixelBlending = _fxaaParams01.z;
+    //half reserve = _fxaaParams01.w;
+    half filter = 2 * (l.n + l.e + l.s + l.w);
+    filter += l.ne + l.nw + l.se + l.sw;
+    filter *= 1.0 / 12;
+    filter = abs(filter - l.m);
+    filter = saturate(filter / l.contrast);
+    half blendFactor = smoothstep(0, 1, filter);
+    half o = blendFactor * blendFactor * subpixelBlending;
+    return o;
+}
+
+struct EdgeData
+{
+    bool isHorizontal;
+    half pixelStep;
+    half oppositeLuminance, gradient;
+};
+
+EdgeData DetermineEdge(LuminanceData l)
+{
+    half2 texelSize = (1 << (int)_lod) / half2(_width, _height);
+    EdgeData e;
+    float horizontal =
+        abs(l.n  + l.s  - 2 * l.m) * 2 +
+        abs(l.ne + l.se - 2 * l.e) +
+        abs(l.nw + l.sw - 2 * l.w);
+    float vertical =
+        abs(l.e  + l.w  - 2 * l.m) * 2 +
+        abs(l.ne + l.nw - 2 * l.n) +
+        abs(l.se + l.sw - 2 * l.s);
+    e.isHorizontal = horizontal >= vertical;
+
+    half pLuminance = e.isHorizontal ? l.n : l.e;
+	half nLuminance = e.isHorizontal ? l.s : l.w;
+    half pGradient = abs(pLuminance - l.m);
+	half nGradient = abs(nLuminance - l.m);
+
+    e.pixelStep = e.isHorizontal ? texelSize.y : texelSize.x;
+    if (pGradient < nGradient)
+    {
+        e.pixelStep = -e.pixelStep;
+        e.oppositeLuminance = nLuminance;
+        e.gradient = nGradient;
+    }
+    else
+    {
+        e.oppositeLuminance = pLuminance;
+        e.gradient = pGradient;
+    }
+    return e;
+}
+
+#if LOW_QUALITY
+	#define EDGE_STEP_COUNT 4
+	#define EDGE_STEPS 1, 1.5, 2, 4
+	#define EDGE_GUESS 12
+#else
+    #define EDGE_STEP_COUNT 10
+    #define EDGE_STEPS 1, 1.5, 2, 2, 2, 2, 2, 2, 2, 4
+    #define EDGE_GUESS 8
+#endif
+
+static const float edgeSteps[EDGE_STEP_COUNT] = { EDGE_STEPS };
+float DetermineEdgeBlendFactor (LuminanceData l, EdgeData e, float2 uv)
+{
+    half2 uvEdge = uv;
+    half2 texelSize = (1 << (int)_lod) / half2(_width, _height);
+    half2 edgeStep;
+    if (e.isHorizontal)
+    {
+        uvEdge.y += e.pixelStep * 0.5;
+        edgeStep = half2(texelSize.x, 0);
+    }
+    else
+    {
+        uvEdge.x += e.pixelStep * 0.5;
+        edgeStep = half2(0, texelSize.y);
+    }
+    float edgeLuminance = (l.m + e.oppositeLuminance) * 0.5;
+	float gradientThreshold = e.gradient * 0.25;
+	int i = 0;
+
+    // P
+	float2 puv = uvEdge + edgeStep * edgeSteps[0];
+	float pLuminanceDelta = SampleLuminance(puv) - edgeLuminance;
+	bool pAtEnd = abs(pLuminanceDelta) >= gradientThreshold;
+    
+    UNITY_UNROLL
+    for (i = 1; i < EDGE_STEP_COUNT && !pAtEnd; i++)
+    {
+        puv += edgeStep * edgeSteps[i];
+        pLuminanceDelta = SampleLuminance(puv) - edgeLuminance;
+        pAtEnd = abs(pLuminanceDelta) >= gradientThreshold;
+    }
+    if (!pAtEnd)
+    {
+        puv += edgeStep * EDGE_GUESS;
+    }
+
+    // N
+    half2 nuv = uvEdge - edgeStep * edgeSteps[0];
+    half nLuminanceDelta = SampleLuminance(nuv) - edgeLuminance;
+    bool nAtEnd = abs(nLuminanceDelta) >= gradientThreshold;
+
+    UNITY_UNROLL
+    for (i = 1; i < EDGE_STEP_COUNT && !nAtEnd; i++)
+    {
+	    nuv -= edgeStep * edgeSteps[i];
+	    nLuminanceDelta = SampleLuminance(nuv) - edgeLuminance;
+	    nAtEnd = abs(nLuminanceDelta) >= gradientThreshold;
+    }
+    if (!nAtEnd)
+    {
+        nuv -= edgeStep * EDGE_GUESS;
+    }
+
+
+    half pDistance, nDistance;
+    if (e.isHorizontal)
+    {
+	    pDistance = puv.x - uv.x;
+	    nDistance = uv.x - nuv.x;
+    }
+    else
+    {
+	    pDistance = puv.y - uv.y;
+	    nDistance = uv.y - nuv.y;
+    }
+			
+    half shortestDistance;
+    bool deltaSign;
+
+    if (pDistance <= nDistance)
+    {
+	    shortestDistance = pDistance;
+        deltaSign = pLuminanceDelta >= 0;
+    }
+    else
+    {
+	    shortestDistance = nDistance;
+        deltaSign = nLuminanceDelta >= 0;
+    }
+
+    if (deltaSign == (l.m - edgeLuminance >= 0))
+        return 0;
+
+    return 0.5 - shortestDistance / (pDistance + nDistance) * 10;
+}
+
+half4 SampleWithFXAA(half4 org, half2 uv, float lod)
+{
+    LuminanceData l = GenLuminanceData(uv);
+    half contrastThreshold = _fxaaParams01.x;
+    half relativeThreshold = _fxaaParams01.y;
+    half subpixelBlending = _fxaaParams01.z;
+    half weight = _fxaaParams01.w;
+
+    // ShouldSkipPixel
+    half threshold = max(contrastThreshold, relativeThreshold * l.highest);
+    if (l.contrast < threshold)
+    {
+        return 0;
+    }
+
+    half2 texelSize = (1 << (int)lod) / half2(ClosestPowerOfTwo(_width), ClosestPowerOfTwo(_height));
+
+    // Determine pixel blend factor
+    half pixelBlend = DeterminePixelBlendFactor(l);
+    EdgeData e = DetermineEdge(l);
+    half edgeBlend = DetermineEdgeBlendFactor(l, e, uv);
+    half finalBlend = max(pixelBlend, edgeBlend);
+    if (e.isHorizontal)
+    {
+        uv.y += texelSize.y * e.pixelStep * finalBlend;
+    }
+    else
+    {
+        uv.x += texelSize.x * e.pixelStep * finalBlend;
+    }
+
+    half4 tmp = MySample(uv, lod);
+    
+    // apply offset uv color based on calculated result
+    half4 addictive = half4(lerp(org.rgb, tmp.rgb, l.m), max(org.a, tmp.a)) * weight;
+
+#if !defined(FXAA_DEBUG)
+    addictive.rgb -= org.rgb;
+#endif
+    return saturate(addictive);
+}
+
+[numthreads(8,8,1)]
+void DwCameraGPUKernel (
+    uint3 groupId : SV_GROUPID,
+    uint3 groupThreadId : SV_DISPATCHTHREADID,
+    uint3 dispatchThreadId : SV_DispatchThreadID,
+    uint groupIndex : SV_GROUPINDEX)
+{
+    // Org
+    uint3 id = dispatchThreadId;
+    
+    half2 size = float2(_width,_height); // actually texture size;
+    half2 uv = id.xy / size; // normalize x,y into 0 ~ 1 value. (since image are 1:1 output)
+    
+    half4 tex = MySample(uv, _lod);
+    half4 fxaa = SampleWithFXAA(tex, uv, _lod);
+    half4 boom = GenBooming(id.xy);
+
+#if defined(FXAA_DEBUG)
+    _ResultTex[id.xy] = fxaa;
+    return;
+#endif
+
+#if defined(BOOM_DEBUG)
+    _ResultTex[id.xy] = boom;
+    return;
+#endif
+
+    half4 final = saturate(tex + fxaa);
+    
+    final = max(final, boom);
+
+    // Invert
+    final = float4(lerp(final.rgb, 1.0 - final.rgb, saturate(_invert)), final.a);
+
+    _ResultTex[id.xy] = final;
+}
