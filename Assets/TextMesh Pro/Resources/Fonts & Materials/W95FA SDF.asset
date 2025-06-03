@@ -32,7 +32,7 @@ Texture2D:
   m_TextureDimension: 2
   m_TextureSettings:
     serializedVersion: 2
-    m_FilterMode: 1
+    m_FilterMode: 0
     m_Aniso: 1
     m_MipBias: 0
     m_WrapU: 0
@@ -200,6 +200,21 @@ MonoBehaviour:
     m_StrikethroughThickness: 0
     m_TabWidth: 26
   m_GlyphTable:
+  - m_Index: 2
+    m_Metrics:
+      m_Width: 0
+      m_Height: 0
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 0
+      m_HorizontalAdvance: 0
+    m_GlyphRect:
+      m_X: 1013
+      m_Y: 115
+      m_Width: 1
+      m_Height: 1
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
   - m_Index: 4
     m_Metrics:
       m_Width: 0
@@ -209,7 +224,7 @@ MonoBehaviour:
       m_HorizontalAdvance: 26.28125
     m_GlyphRect:
       m_X: 1013
-      m_Y: 115
+      m_Y: 135
       m_Width: 1
       m_Height: 1
     m_Scale: 1
@@ -1619,7 +1634,7 @@ MonoBehaviour:
       m_HorizontalAdvance: 26.28125
     m_GlyphRect:
       m_X: 1013
-      m_Y: 135
+      m_Y: 155
       m_Width: 1
       m_Height: 1
     m_Scale: 1
@@ -1649,7 +1664,7 @@ MonoBehaviour:
       m_HorizontalAdvance: 0
     m_GlyphRect:
       m_X: 1013
-      m_Y: 155
+      m_Y: 175
       m_Width: 1
       m_Height: 1
     m_Scale: 1
@@ -2497,6 +2512,10 @@ MonoBehaviour:
     m_ClassDefinitionType: 0
   m_CharacterTable:
   - m_ElementType: 1
+    m_Unicode: 10
+    m_GlyphIndex: 2
+    m_Scale: 1
+  - m_ElementType: 1
     m_Unicode: 32
     m_GlyphIndex: 4
     m_Scale: 1
@@ -3138,8 +3157,9 @@ MonoBehaviour:
     m_Scale: 1
   m_AtlasTextures:
   - {fileID: -6149185603864966999}
+  - {fileID: 0}
   m_AtlasTextureIndex: 0
-  m_IsMultiAtlasTexturesEnabled: 0
+  m_IsMultiAtlasTexturesEnabled: 1
   m_ClearDynamicDataOnBuild: 0
   m_UsedGlyphRects:
   - m_X: 0
@@ -3750,6 +3770,10 @@ MonoBehaviour:
     m_Y: 145
     m_Width: 20
     m_Height: 20
+  - m_X: 1003
+    m_Y: 165
+    m_Width: 20
+    m_Height: 20
   - m_X: 932
     m_Y: 286
     m_Width: 28
@@ -4000,21 +4024,21 @@ MonoBehaviour:
     m_Width: 107
     m_Height: 128
   - m_X: 1003
-    m_Y: 165
+    m_Y: 185
     m_Width: 20
-    m_Height: 45
+    m_Height: 25
   - m_X: 1008
-    m_Y: 165
+    m_Y: 185
     m_Width: 15
-    m_Height: 150
+    m_Height: 130
   - m_X: 1020
-    m_Y: 165
+    m_Y: 185
     m_Width: 3
-    m_Height: 460
+    m_Height: 440
   - m_X: 1022
-    m_Y: 165
+    m_Y: 185
     m_Width: 1
-    m_Height: 564
+    m_Height: 544
   - m_X: 932
     m_Y: 314
     m_Width: 38
@@ -4066,8 +4090,8 @@ MonoBehaviour:
     packingMode: 4
     atlasWidth: 1024
     atlasHeight: 1024
-    characterSetSelectionMode: 7
-    characterSequence: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~\_\xA7\xAD\xC0\xC1\xC2\xC3\xC4\xC5\xC6\xC7\xC8\xC9\xCA\xCB\xCC\xCD\xCE\xCF\xD1\xD2\xD3\xD4\xD5\xD6\xD8\xD9\xDA\xDB\xDC\xDD\xDF\xE0\xE1\xE2\xE3\xE4\xE5\xE6\xE7\xE8\xE9\xEA\xEB\xEC\xED\xEE\xEF\xF1\xF2\xF3\xF4\xF5\xF6\xF8\xF9\xFA\xFB\xFC\xFD\xFF\u2018\u2019\u201C\u201D\u20AC"
+    characterSetSelectionMode: 6
+    characterSequence: 0A,20-5F,61-7E,A0,A7,AD,C0-CF,D1-D6,D8-DD,DF-EF,F1-F6,F8-FD,FF,2018-2019,201C-201D,20AC
     referencedFontAssetGUID: d42e41ee601cce8469bdbc302401de44
     referencedTextAssetGUID: 
     fontStyle: 0
