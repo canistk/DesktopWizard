@@ -17,6 +17,7 @@ namespace Gaia
 
 	public interface IPointerFeature : IEquatable<object>
 	{
+		bool isActive { get; }
 		void MouseDown(GxModelView ch, PointerEventData pointerEventData);
 		void MouseMove(GxModelView ch, PointerEventData pointerEventData);
 		void MouseUp(GxModelView ch, PointerEventData pointerEventData);

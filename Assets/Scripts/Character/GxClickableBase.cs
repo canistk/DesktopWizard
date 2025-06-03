@@ -16,6 +16,8 @@ namespace Gaia
 			return pointerEventData.button == GetButtonRef();
 		}
 
+		bool IPointerFeature.isActive => gameObject.activeInHierarchy;
+
 		void IPointerFeature.MouseDown(GxModelView ch, PointerEventData pointerEvent)
 		{
 			if (!IsConditionPass(pointerEvent))

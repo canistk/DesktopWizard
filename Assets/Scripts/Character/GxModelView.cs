@@ -122,7 +122,7 @@ namespace Gaia
 				Debug.LogError("Duplicate feature detected:");
 				return;
 			}
-			m_Features.Add(feature);
+			features.Add(feature);
 		}
 		public bool Unregister(IPointerFeature feature)
 		{
@@ -157,6 +157,8 @@ namespace Gaia
 					features.RemoveAt(i);
 					continue;
 				}
+				if (!features[i].isActive)
+					continue;
 				features[i].MouseMove(this, evt);
 			}
 		}
@@ -171,6 +173,8 @@ namespace Gaia
 					features.RemoveAt(i);
 					continue;
 				}
+				if (!features[i].isActive)
+					continue;
 				features[i].MouseDown(this, evt);
 			}
 		}
@@ -185,6 +189,8 @@ namespace Gaia
 					features.RemoveAt(i);
 					continue;
 				}
+				if (!features[i].isActive)
+					continue;
 				features[i].MouseUp(this, evt);
 			}
 		}

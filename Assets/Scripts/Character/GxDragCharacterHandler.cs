@@ -28,7 +28,7 @@ namespace Gaia
 		[SerializeField][RefAnimator(nameof(m_Animator))] AnimatorStateSelector m_DragHipState;
 		[SerializeField][RefAnimator(nameof(m_Animator))] AnimatorStateSelector m_DragBackState;
 
-		[SerializeField, Range(0f, 1f)] float m_Factor = 0f;
+		private Vector2 m_FixVector = Vector2.zero;
 
 		private void Awake()
 		{
@@ -91,7 +91,6 @@ namespace Gaia
 			m_FixVector = Vector2.zero;
 		}
 
-		public Vector2 m_FixVector = Vector2.zero;
 		protected override void OnDragging(GxModelView win, GxPointerEventData evt)
 		{
 			if (!TryGetDragInfo(out var dragInfo))
@@ -120,21 +119,15 @@ namespace Gaia
 			{
 				// world 2 form space
 				var formPos = (Vector2)_camera.WorldToScreenPoint(_tran.position);
-				var formDiff = formPos - dragInfo.formStartPos;
-				// TODO: fix wanted position, we need to calculate the wanted position in FORM space.
-				// form 2 monitor space
-				var wantedMonPos = (Vector2) win.dwCamera.MatrixFormToMonitor().MultiplyPoint3x4(formPos);
+				var formDiff = dragInfo.formStartPos - formPos;
 
-				DebugExtend.DrawLine(evt.monitorPosition, wantedMonPos, Color.blue, 5f, true);
-				DebugExtend.DrawCircle(evt.monitorPosition, Vector3.forward, Color.yellow, 20f, 5f, false);
-				DebugExtend.DrawCircle(wantedMonPos, Vector3.forward, Color.green, 10f, 5f, false);
-				
-				var v = win.dwCamera.MatrixFormToMonitor().MultiplyVector(formDiff);
-				if (v.sqrMagnitude > 2f)
-				{
-					m_FixVector = (Vector2)v;
-					// m_FixVector = Vector2.ClampMagnitude(m_FixVector, win.dwCamera.setting.Size.magnitude);
-				}
+				m_FixVector = (Vector2) win.dwCamera.MatrixFormToMonitor().MultiplyVector(formDiff);
+				/***
+				var debug_wantedPos = (Vector2) win.dwCamera.MatrixFormToMonitor().MultiplyPoint3x4(formPos);
+				DebugExtend.DrawLine(evt.monitorPosition, debug_wantedPos, Color.blue, 5f, true);
+				DebugExtend.DrawCircle(debug_wantedPos, Vector3.forward, Color.green, 10f, 5f, false);
+				DebugExtend.DrawCircle(evt.monitorPosition + m_FixVector, Vector3.forward, Color.yellow, 20f, 5f, false);
+				//**/
 
 				// Calculate the FORM's position in OS space.
 				var monitorPos = evt.monitorPosition + dragInfo.monitorOffset + m_FixVector;
@@ -144,8 +137,8 @@ namespace Gaia
 			{
 				var monitorPos = evt.monitorPosition + dragInfo.monitorOffset;
 				win.dwWindow.MoveTo_Monitor(monitorPos);
+				m_FixVector = Vector2.zero;
 			}
-
 		}
 
 		protected override void OnEndDrag(GxModelView win, GxPointerEventData evt)
@@ -153,7 +146,6 @@ namespace Gaia
 			if (bodyLayout)
 				bodyLayout.animator.CrossFade(m_Idle.m_SelectedHash, 0.15f);
 
-			// TODO: apply the m_FixVector to the character's position.
 			m_FixVector = Vector2.zero;
 
 

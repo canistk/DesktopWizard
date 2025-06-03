@@ -126,6 +126,7 @@ namespace Gaia
 	{
 		[SerializeField] private PointerEventData.InputButton m_Button = PointerEventData.InputButton.Left;
 		protected virtual PointerEventData.InputButton GetButtonRef() => m_Button;
+		bool IPointerFeature.isActive => gameObject.activeInHierarchy;
 
 		public bool IsHolding => m_DragInfo.IsActive;
 		public bool IsDragging => m_DragInfo.IsDragging;

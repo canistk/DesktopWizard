@@ -16,7 +16,7 @@ namespace DesktopWizard
         [Min(1)] public Vector2Int Size = new Vector2Int(480, 640);
 
 		[Tooltip("Define which mouse drag can move this window.")]
-		public eDragMethod dragMethod = eDragMethod.HoldMouseRightBtn;
+		public eDragMethod dragMethod = eDragMethod.None;
 
         [Tooltip("Capture mouse move event, even Window.Form was lose focus.")]
         public bool CaptureMouseMoveEventOnLoseFocus = false;
