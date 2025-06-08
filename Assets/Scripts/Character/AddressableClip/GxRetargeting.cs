@@ -20,8 +20,11 @@ namespace Gaia
             }
 		}
 
+		public GxRetargeting m_CloneTarget;
+
         [SerializeField] Transform m_Pivot;
-        [SerializeField] Transform[] m_BoneRefs;
+		public Transform pivot => m_Pivot;
+		[SerializeField] Transform[] m_BoneRefs;
 		[SerializeField] Color m_GizmosColor = Color.blue;
 		private void Reset()
 		{
@@ -116,6 +119,60 @@ namespace Gaia
 					Gizmos.DrawLine(parent.position, child.position);
 				}
 			}
+
+			for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+			{
+				var bone = m_BoneRefs[(int)b];
+				if (bone == null)
+					continue;
+				GizmosExtend.DrawTransform(bone, false, 0.2f);
+			}
+		}
+
+		private void LateUpdate()
+		{
+			if (m_CloneTarget == null)
+				return;
+
+			// optimize, calculate once and apply to all bones
+			Transform fromPivot			= m_CloneTarget.pivot;
+			Transform toPivot			= pivot;
+			Quaternion revertFromPivot	= Quaternion.Inverse(fromPivot.rotation);
+			Quaternion revertToPivot	= Quaternion.Inverse(toPivot.rotation);
+
+			for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+			{
+				if (s_Ignore.Contains(b))
+					continue;
+				var i = (int)b;
+				if (m_BoneRefs[i] == null)
+					continue;
+				if (!m_CloneTarget.TryGetTPose(b, out var tPoseBone))
+					continue;
+
+				// Prepare related data for re-targeting
+				Transform fromTpose			= tPoseBone;
+				Transform toTpose			= m_BoneRefs[i];
+
+				Transform fromCurrent		= m_CloneTarget.animator.GetBoneTransform(b);
+				Transform toCurrent			= animator.GetBoneTransform(b);
+				Debug.Assert(fromCurrent != null && toCurrent != null, "Bone missing at runtime", this);
+
+				// Assume both T-Pose will not changed at runtime.
+				// Calculate the bone rotation in local space of the pivot
+				// find out the delta rotation from clone target and reapply the rotation to the current bone
+
+				// inverse world rotation, therefor we can calculate the delta rotation in local space of the pivot
+				Quaternion fromLocalTPose	= revertFromPivot	* fromTpose.rotation;
+				Quaternion toLocalTPose		= revertToPivot		* toTpose.rotation;
+				Quaternion modelDiff		= Quaternion.Inverse(fromLocalTPose) * toLocalTPose;
+
+				// calculate thee clone target bone rotation in local space of the pivot
+				var sourceCurrentLocal = revertFromPivot * fromCurrent.rotation;
+
+				// Apply the delta rotation between 2 model, to the current bone in local space of the pivot
+				toCurrent.rotation = toPivot.rotation * sourceCurrentLocal * modelDiff;
+			}
 		}
 
 		private static readonly Dictionary<HumanBodyBones, HumanBodyBones> s_ParentBoneDict = new Dictionary<HumanBodyBones, HumanBodyBones>
@@ -169,6 +226,14 @@ namespace Gaia
 			{ HumanBodyBones.RightLittleDistal, HumanBodyBones.RightLittleIntermediate },
 			{ HumanBodyBones.RightLittleIntermediate, HumanBodyBones.RightLittleProximal },
 			{ HumanBodyBones.RightLittleProximal, HumanBodyBones.RightHand }
+		};
+
+		private static readonly HashSet<HumanBodyBones> s_Ignore = new HashSet<HumanBodyBones>
+		{
+			HumanBodyBones.LeftEye,
+			HumanBodyBones.RightEye,
+			HumanBodyBones.Jaw,
+			HumanBodyBones.LastBone,
 		};
 	}
 }
