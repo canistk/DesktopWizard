@@ -191,11 +191,14 @@ namespace Gaia
 		private void Update()
 		{
 			FetchTargets();
+			if (!m_LateUpdate)
+				ApplyAnimationsByWeights();
 		}
 
 		private void LateUpdate()
 		{
-			ApplyAnimationsByWeights();
+			if (m_LateUpdate)
+				ApplyAnimationsByWeights();
 		}
 
 		private class PoseInfo
