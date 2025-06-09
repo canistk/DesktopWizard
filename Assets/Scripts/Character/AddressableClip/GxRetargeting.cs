@@ -35,9 +35,25 @@ namespace Gaia
 
 		[SerializeField] bool m_LateUpdate = false;
 
+		[System.Flags]
+		private enum eDebugDraw
+		{
+			TPoseBone = 1 << 0,
+			Bone = 1 << 1,
+			Rotation = 1 << 2,
+		}
 
-		[SerializeField] bool m_DrawRotationGizmos = false;
-		[SerializeField] Color m_GizmosColor = Color.blue;
+		[System.Serializable]
+		private struct DebugInfo
+		{
+			public eDebugDraw gizmos;
+			public Color boneColor;
+		}
+		[SerializeField] DebugInfo m_Debug = new DebugInfo
+		{
+			boneColor = Color.green,
+		};
+
 		private void Reset()
 		{
 			m_Animator = GetComponent<Animator>();
@@ -113,33 +129,61 @@ namespace Gaia
 		{
 			if (m_BoneRefs == null || m_BoneRefs.Length != (int)HumanBodyBones.LastBone)
 				return;
-			using (var col = new ColorScope(m_GizmosColor))
+			var drawTposeBone = m_Debug.gizmos.HasFlag(eDebugDraw.TPoseBone);
+			var drawBone = m_Debug.gizmos.HasFlag(eDebugDraw.Bone);
+			var drawRotation = m_Debug.gizmos.HasFlag(eDebugDraw.Rotation);
+
+			if (drawTposeBone)
 			{
-				for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+				using (var col = new ColorScope(Color.blue))
 				{
-					var i = (int)b;
-					var child = m_BoneRefs[i];
-					if (child == null)
-						continue;
+					for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+					{
+						var i = (int)b;
+						var child = m_BoneRefs[i];
+						if (child == null)
+							continue;
 
-					if (!s_ParentBoneDict.TryGetValue(b, out var pEnum))
-						continue;
-					var parent = m_BoneRefs[(int)pEnum];
-					if (parent == null)
-						continue;
+						if (!s_ParentBoneDict.TryGetValue(b, out var pEnum))
+							continue;
+						var parent = m_BoneRefs[(int)pEnum];
+						if (parent == null)
+							continue;
 
-					Gizmos.DrawLine(parent.position, child.position);
+						Gizmos.DrawLine(parent.position, child.position);
+
+						if (drawRotation)
+						{
+							GizmosExtend.DrawTransform(child, false, 0.2f);
+						}
+					}
 				}
 			}
 
-			if (m_DrawRotationGizmos)
+			if (drawBone)
 			{
-				for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+				using (var col = new ColorScope(m_Debug.boneColor))
 				{
-					var bone = m_BoneRefs[(int)b];
-					if (bone == null)
-						continue;
-					GizmosExtend.DrawTransform(bone, false, 0.2f);
+					for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+					{
+						var i = (int)b;
+						var child = animator.GetBoneTransform(b);
+						if (child == null)
+							continue;
+
+						if (!s_ParentBoneDict.TryGetValue(b, out var pEnum))
+							continue;
+						var parent = animator.GetBoneTransform(pEnum);
+						if (parent == null)
+							continue;
+
+						Gizmos.DrawLine(parent.position, child.position);
+
+						if (drawRotation)
+						{
+							GizmosExtend.DrawTransform(child, false, 0.2f);
+						}
+					}
 				}
 			}
 		}
