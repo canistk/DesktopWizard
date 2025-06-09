@@ -24,7 +24,13 @@ namespace Gaia
 
         [SerializeField] Transform m_Pivot;
 		public Transform pivot => m_Pivot;
+		[SerializeField] bool m_RemoveHipMotion = false;
 		[SerializeField] Transform[] m_BoneRefs;
+
+		[SerializeField] bool m_LateUpdate = false;
+
+
+		[SerializeField] bool m_DrawRotationGizmos = false;
 		[SerializeField] Color m_GizmosColor = Color.blue;
 		private void Reset()
 		{
@@ -120,16 +126,31 @@ namespace Gaia
 				}
 			}
 
-			for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+			if (m_DrawRotationGizmos)
 			{
-				var bone = m_BoneRefs[(int)b];
-				if (bone == null)
-					continue;
-				GizmosExtend.DrawTransform(bone, false, 0.2f);
+				for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+				{
+					var bone = m_BoneRefs[(int)b];
+					if (bone == null)
+						continue;
+					GizmosExtend.DrawTransform(bone, false, 0.2f);
+				}
 			}
 		}
 
+		private void Update()
+		{
+			if (!m_LateUpdate)
+				RunRetargeting();
+		}
+
 		private void LateUpdate()
+		{
+			if (m_LateUpdate)
+				RunRetargeting();
+		}
+
+		private void RunRetargeting()
 		{
 			if (m_CloneTarget == null)
 				return;
@@ -172,6 +193,22 @@ namespace Gaia
 
 				// Apply the delta rotation between 2 model, to the current bone in local space of the pivot
 				toCurrent.rotation = toPivot.rotation * sourceCurrentLocal * modelDiff;
+
+
+				if (!m_RemoveHipMotion && b == HumanBodyBones.Hips)
+				{
+					// Hips is the root bone, we need to apply the position as well.
+					var fromRoot		= m_CloneTarget.transform;
+					var toRoot			= transform;
+					var fromLegSqr		= (fromTpose.position - fromRoot.position).sqrMagnitude;
+					var toLegSqr		= (toTpose.position - toRoot.position).sqrMagnitude;
+					var ratio			= fromLegSqr <= 0f ? 0f : toLegSqr / fromLegSqr;
+
+					// apply hip movement, based on the ratio of leg length between models.
+					var localHipOffset	= revertFromPivot * (fromCurrent.position - m_CloneTarget.transform.position);
+					var hipOffset		= toPivot.rotation * (localHipOffset * ratio);
+					toCurrent.position	= transform.position + hipOffset;
+				}
 			}
 		}
 
