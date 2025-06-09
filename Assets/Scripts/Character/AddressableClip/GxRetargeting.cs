@@ -20,9 +20,15 @@ namespace Gaia
             }
 		}
 
-		public GxRetargeting m_CloneTarget;
+		[System.Serializable]		
+		public struct TargetInfo
+		{
+			[Range(0f, 1f)] public float weight;
+			public GxRetargeting target;
+		}
+		[SerializeField] TargetInfo[] m_Targets = new TargetInfo[0];
 
-        [SerializeField] Transform m_Pivot;
+		[SerializeField] Transform m_Pivot;
 		public Transform pivot => m_Pivot;
 		[SerializeField] bool m_RemoveHipMotion = false;
 		[SerializeField] Transform[] m_BoneRefs;
@@ -140,76 +146,169 @@ namespace Gaia
 
 		private void Update()
 		{
-			if (!m_LateUpdate)
-				RunRetargeting();
+			FetchTargets();
 		}
 
 		private void LateUpdate()
 		{
-			if (m_LateUpdate)
-				RunRetargeting();
+			ApplyAnimationsByWeights();
 		}
 
-		private void RunRetargeting()
+		private class PoseInfo
 		{
-			if (m_CloneTarget == null)
+			public readonly GxRetargeting target, self;
+			public Quaternion[] rotations;
+			public Vector3 hipOffset;
+
+			public PoseInfo(GxRetargeting target, GxRetargeting self)
+			{
+				if (target == null || target.animator == null)
+					throw new System.NullReferenceException("Target animator is null or not set.");
+
+				this.target = target;
+				this.self = self;
+				this.rotations = new Quaternion[(int)HumanBodyBones.LastBone]; // Exclude LastBone
+				this.hipOffset = Vector3.zero;
+			}
+
+			public void Snapshot()
+			{
+				if (target == null)
+					return;
+				// optimize, calculate once and apply to all bones
+				Transform fromRoot			= this.target.transform;
+				Transform toRoot			= this.self.transform;
+				Transform fromPivot			= this.target.pivot;
+				Transform toPivot			= this.self.pivot;
+				Quaternion revertFromPivot	= Quaternion.Inverse(fromPivot.rotation);
+				Quaternion revertToPivot	= Quaternion.Inverse(toPivot.rotation);
+
+				for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+				{
+					if (s_Ignore.Contains(b))
+						continue;
+					// Prepare related data for re-targeting
+					if (!self.TryGetTPose(b, out var toTpose))
+						continue;
+					if (!target.TryGetTPose(b, out var fromTpose))
+						continue;
+
+					Transform fromCurrent	= target.animator.GetBoneTransform(b);
+					Transform toCurrent		= self.animator.GetBoneTransform(b);
+					Debug.Assert(fromCurrent != null && toCurrent != null, "Bone missing at runtime", self);
+
+					// Assume both T-Pose will not changed at runtime.
+					// Calculate the bone rotation in local space of the pivot
+					// find out the delta rotation from clone target and reapply the rotation to the current bone
+
+					// inverse world rotation, therefor we can calculate the delta rotation in local space of the pivot
+					Quaternion fromLocalTPose	= revertFromPivot * fromTpose.rotation;
+					Quaternion toLocalTPose		= revertToPivot * toTpose.rotation;
+					Quaternion modelDiff		= Quaternion.Inverse(fromLocalTPose) * toLocalTPose;
+
+					// calculate thee clone target bone rotation in local space of the pivot
+					var sourceCurrentLocal		= revertFromPivot * fromCurrent.rotation;
+
+					// Apply the delta rotation between 2 model, to the current bone in local space of the pivot
+					var i = (int)b;
+					this.rotations[i]			= toPivot.rotation * sourceCurrentLocal * modelDiff;
+
+					if (b == HumanBodyBones.Hips)
+					{
+						// Hips is the root bone, we need to apply the position as well.
+						var fromLegSqr	= (fromTpose.position - fromRoot.position).sqrMagnitude;
+						var toLegSqr	= (toTpose.position - toRoot.position).sqrMagnitude;
+						var ratio		= fromLegSqr <= 0f ? 0f : toLegSqr / fromLegSqr;
+
+						// apply hip movement, based on the ratio of leg length between models.
+						var localHipOffset = revertFromPivot * (fromCurrent.position - fromRoot.position);
+						this.hipOffset	= toPivot.rotation * (localHipOffset * ratio);
+					}
+				}
+			}
+		}
+		private Dictionary<GxRetargeting, PoseInfo> m_PoseDict = new Dictionary<GxRetargeting, PoseInfo>();
+		private void FetchTargets()
+		{
+			if (m_Targets == null || m_Targets.Length == 0)
 				return;
 
-			// optimize, calculate once and apply to all bones
-			Transform fromPivot			= m_CloneTarget.pivot;
-			Transform toPivot			= pivot;
-			Quaternion revertFromPivot	= Quaternion.Inverse(fromPivot.rotation);
-			Quaternion revertToPivot	= Quaternion.Inverse(toPivot.rotation);
+			m_PoseDict.Clear();
+			for (int i = 0; i < m_Targets.Length; ++i)
+			{
+				var target = m_Targets[i].target;
+				if (target == null || target.animator == null)
+					continue;
+				if (!m_PoseDict.TryGetValue(target, out var poseInfo))
+				{
+					poseInfo = new PoseInfo(target, this);
+					m_PoseDict.Add(target, poseInfo);
+				}
+				poseInfo.Snapshot();
+			}
+			// CloneInfo
+		}
+
+		public void ApplyAnimationsByWeights()
+		{
+			if (m_Targets == null || m_Targets.Length == 0)
+				return;
+
+			var boneCnt = (int)HumanBodyBones.LastBone;
+			List<Quaternion> cacheRots = new List<Quaternion>(boneCnt);
+			List<Vector4> cachePos = new List<Vector4>(m_Targets.Length);
+			List<float> cacheWeights = new List<float>(boneCnt);
+
+			var hipOffset = Vector3.zero;
 
 			for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
 			{
 				if (s_Ignore.Contains(b))
 					continue;
-				var i = (int)b;
-				if (m_BoneRefs[i] == null)
-					continue;
-				if (!m_CloneTarget.TryGetTPose(b, out var tPoseBone))
-					continue;
 
-				// Prepare related data for re-targeting
-				Transform fromTpose			= tPoseBone;
-				Transform toTpose			= m_BoneRefs[i];
+				cachePos.Clear();
+				cacheRots.Clear();
+				cacheWeights.Clear();
+				for (int t = 0; t < m_Targets.Length; ++t)
+				{
+					var info = m_Targets[t];
+					var target = info.target;
+					if (target == null || target.animator == null)
+						continue;
 
-				Transform fromCurrent		= m_CloneTarget.animator.GetBoneTransform(b);
-				Transform toCurrent			= animator.GetBoneTransform(b);
-				Debug.Assert(fromCurrent != null && toCurrent != null, "Bone missing at runtime", this);
+					if (info.weight <= 0f)
+						continue;
+					var weight = Mathf.Clamp01(info.weight);
 
-				// Assume both T-Pose will not changed at runtime.
-				// Calculate the bone rotation in local space of the pivot
-				// find out the delta rotation from clone target and reapply the rotation to the current bone
+					if (!m_PoseDict.TryGetValue(target, out var poseInfo))
+						continue;
 
-				// inverse world rotation, therefor we can calculate the delta rotation in local space of the pivot
-				Quaternion fromLocalTPose	= revertFromPivot	* fromTpose.rotation;
-				Quaternion toLocalTPose		= revertToPivot		* toTpose.rotation;
-				Quaternion modelDiff		= Quaternion.Inverse(fromLocalTPose) * toLocalTPose;
+					cacheRots.Add(poseInfo.rotations[(int)b]);
+					cacheWeights.Add(weight);
 
-				// calculate thee clone target bone rotation in local space of the pivot
-				var sourceCurrentLocal = revertFromPivot * fromCurrent.rotation;
+					if (!m_RemoveHipMotion && b == HumanBodyBones.Hips)
+					{
+						var v4 = (Vector4)poseInfo.hipOffset;
+						v4.w = weight; // Store weight in w component
+						cachePos.Add(v4);
+					}
+				} // End for
 
-				// Apply the delta rotation between 2 model, to the current bone in local space of the pivot
-				toCurrent.rotation = toPivot.rotation * sourceCurrentLocal * modelDiff;
-
+				// Calculate the final rotation
+				var finalRotation = QuaternionExtend.WeightedAverage(cacheRots.ToArray(), cacheWeights.ToArray());
+				var bone = animator.GetBoneTransform(b);
+				bone.rotation = finalRotation;
 
 				if (!m_RemoveHipMotion && b == HumanBodyBones.Hips)
 				{
-					// Hips is the root bone, we need to apply the position as well.
-					var fromRoot		= m_CloneTarget.transform;
-					var toRoot			= transform;
-					var fromLegSqr		= (fromTpose.position - fromRoot.position).sqrMagnitude;
-					var toLegSqr		= (toTpose.position - toRoot.position).sqrMagnitude;
-					var ratio			= fromLegSqr <= 0f ? 0f : toLegSqr / fromLegSqr;
-
-					// apply hip movement, based on the ratio of leg length between models.
-					var localHipOffset	= revertFromPivot * (fromCurrent.position - m_CloneTarget.transform.position);
-					var hipOffset		= toPivot.rotation * (localHipOffset * ratio);
-					toCurrent.position	= transform.position + hipOffset;
+					var finalPosOffset = Vector3Extend.Centroid(cachePos.ToArray());
+					bone.position = transform.position + finalPosOffset;
 				}
 			}
+			cachePos.Clear();
+			cacheRots.Clear();
+			cacheWeights.Clear();
+			hipOffset = default;
 		}
 
 		private static readonly Dictionary<HumanBodyBones, HumanBodyBones> s_ParentBoneDict = new Dictionary<HumanBodyBones, HumanBodyBones>
