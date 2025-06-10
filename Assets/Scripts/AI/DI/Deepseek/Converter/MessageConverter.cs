@@ -101,7 +101,7 @@ namespace Deepseek
 				{
 					var name = jsonObject["name"]?.Value<string>() ?? string.Empty;
 					var prefix = jsonObject["prefix"]?.Value<bool>() ?? false;
-					var reasoning = jsonObject["reasoning_content"]?.Value<string>() ?? string.Empty;
+					var reasoning = jsonObject["reasoning_content"]?.Value<string>() ?? null;
 					return  new AssistantMessage(name, content, prefix, reasoning);
 				}
 				case "tool":
