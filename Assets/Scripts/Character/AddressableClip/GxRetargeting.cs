@@ -35,6 +35,10 @@ namespace Gaia
 
 		[SerializeField] bool m_LateUpdate = false;
 
+		[Header("Extra")]
+		[Tooltip("Smooth the pose when applying animations, useful for blending animations.")]
+		[SerializeField] bool m_SmoothPose = false;
+
 		[System.Flags]
 		private enum eDebugDraw
 		{
@@ -201,11 +205,42 @@ namespace Gaia
 				ApplyAnimationsByWeights();
 		}
 
-		private class PoseInfo
+		private const int BONE_COUNT = (int)HumanBodyBones.LastBone;
+		private class PoseSnapshot
 		{
-			public readonly GxRetargeting target, self;
 			public Quaternion[] rotations;
 			public Vector3 hipOffset;
+
+			public void Snapshot(Animator target)
+			{
+				if (target == null)
+					throw new System.NullReferenceException("Animator is null or not set.");
+				if (!target.isHuman)
+					throw new System.InvalidOperationException("Animator is not humanoid.");
+				this.rotations = new Quaternion[BONE_COUNT]; // Exclude LastBone
+				this.hipOffset = Vector3.zero;
+				for (var b = HumanBodyBones.Hips; b < HumanBodyBones.LastBone; ++b)
+				{
+					var bone = target.GetBoneTransform(b);
+					if (bone == null)
+						continue;
+					var i = (int)b;
+					this.rotations[i] = bone.rotation;
+
+					if (b == HumanBodyBones.Hips)
+					{
+						// We need to store the hip offset in local space of the pivot, so we can apply it later.
+						//var worldOffset = bone.position - target.transform.position;
+						//hipOffset = Quaternion.Inverse(target.transform.rotation) * worldOffset; // Convert to local space
+						hipOffset = bone.localPosition; // cheap.
+					}
+				}
+			}
+		}
+
+		private class PoseInfo : PoseSnapshot
+		{
+			public readonly GxRetargeting target, self;
 
 			public PoseInfo(GxRetargeting target, GxRetargeting self)
 			{
@@ -218,7 +253,7 @@ namespace Gaia
 				this.hipOffset = Vector3.zero;
 			}
 
-			public void Snapshot()
+			public void Evaluate()
 			{
 				if (target == null)
 					return;
@@ -275,6 +310,7 @@ namespace Gaia
 			}
 		}
 		private Dictionary<GxRetargeting, PoseInfo> m_PoseDict = new Dictionary<GxRetargeting, PoseInfo>();
+		private PoseSnapshot m_LastPose;
 		private void FetchTargets()
 		{
 			if (m_Targets == null || m_Targets.Length == 0)
@@ -291,7 +327,7 @@ namespace Gaia
 					poseInfo = new PoseInfo(target, this);
 					m_PoseDict.Add(target, poseInfo);
 				}
-				poseInfo.Snapshot();
+				poseInfo.Evaluate();
 			}
 			// CloneInfo
 		}
@@ -300,6 +336,21 @@ namespace Gaia
 		{
 			if (m_Targets == null || m_Targets.Length == 0)
 				return;
+
+			var totalWeight = 0f;
+			for (int i = 0; i< m_Targets.Length; ++i)
+				totalWeight += m_Targets[i].weight;
+			if (totalWeight <= float.Epsilon)
+			{
+				// no animation to apply.
+				return;
+			}
+
+			if (m_LastPose == null)
+			{
+				m_LastPose = new PoseSnapshot();
+				m_LastPose.Snapshot(animator);
+			}
 
 			var boneCnt = (int)HumanBodyBones.LastBone;
 			List<Quaternion> cacheRots = new List<Quaternion>(boneCnt);
@@ -344,6 +395,15 @@ namespace Gaia
 				// Calculate the final rotation
 				var finalRotation = QuaternionExtend.WeightedAverage(cacheRots.ToArray(), cacheWeights.ToArray());
 				var bone = animator.GetBoneTransform(b);
+				if (m_SmoothPose)
+				{
+					var lastRot = m_LastPose.rotations[(int)b];
+					// If the rotation is flipped, we need to slerp unclamped to avoid flipping
+					if (Quaternion.Dot(finalRotation, lastRot) < 0f)
+					{
+						finalRotation = Quaternion.Slerp(lastRot, finalRotation, 0.5f);
+					}
+				}
 				bone.rotation = finalRotation;
 
 				if (!m_RemoveHipMotion && b == HumanBodyBones.Hips)
@@ -352,6 +412,8 @@ namespace Gaia
 					bone.position = transform.position + finalPosOffset;
 				}
 			}
+
+			m_LastPose.Snapshot(animator);
 			cachePos.Clear();
 			cacheRots.Clear();
 			cacheWeights.Clear();

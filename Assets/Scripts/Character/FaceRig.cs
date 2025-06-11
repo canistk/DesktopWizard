@@ -175,10 +175,10 @@ namespace Gaia
 		[ContextMenu("Fetch blendshape to Database")]
 		public void Editor_FetchDatabase()
 		{
+#if UNITY_EDITOR
 			if (m_Database == null)
 			{
 				Debug.LogError("Database not assigned.");
-#if UNITY_EDITOR
 				var ans = UnityEditor.EditorUtility.DisplayDialog("Error", "Database not assigned, do you want to create a new one?", "OK", "No thanks");
 				if (ans)
 				{
@@ -190,10 +190,12 @@ namespace Gaia
 					UnityEditor.AssetDatabase.SaveAssets();
 					UnityEditor.AssetDatabase.Refresh();
 				}
-#endif
 				if (!ans)
 					return; // skip create process
 			}
+#else
+			return; // skip create process
+#endif
 
 			var cnt = render.sharedMesh.blendShapeCount;
 			if (m_Database.data == null || m_Database.data.Length != cnt)
