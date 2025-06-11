@@ -1,10 +1,31 @@
 using Kit2;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-    [RequireComponent(typeof(Animator))]
+	public interface IRetargeting : IEquatable<IRetargeting>
+	{
+		public float GetWeight01();
+		public GxRetargeting GetTarget();
+	}
+
+	[System.Serializable]
+	public class TargetInfo : IRetargeting
+	{
+		[Range(0f, 1f)] public float weight;
+		public GxRetargeting target;
+
+		public GxRetargeting GetTarget() => target;
+		public float GetWeight01() => weight;
+		public bool Equals(IRetargeting other)
+		{
+			return target.Equals(other);
+		}
+	}
+
+	[RequireComponent(typeof(Animator))]
 	public class GxRetargeting : MonoBehaviour
     {
         [SerializeField] Animator m_Animator;
@@ -20,13 +41,8 @@ namespace Gaia
             }
 		}
 
-		[System.Serializable]		
-		public struct TargetInfo
-		{
-			[Range(0f, 1f)] public float weight;
-			public GxRetargeting target;
-		}
 		[SerializeField] TargetInfo[] m_Targets = new TargetInfo[0];
+		private List<IRetargeting> m_TargetsList = new List<IRetargeting>();
 
 		[SerializeField] Transform m_Pivot;
 		public Transform pivot => m_Pivot;
@@ -127,6 +143,15 @@ namespace Gaia
 			}
 			bone = m_BoneRefs[i];
 			return bone != null;
+		}
+
+		private void Awake()
+		{
+			m_TargetsList.AddRange(m_Targets);
+		}
+
+		private void OnDestroy()
+		{
 		}
 
 		private void OnDrawGizmos()
@@ -313,13 +338,14 @@ namespace Gaia
 		private PoseSnapshot m_LastPose;
 		private void FetchTargets()
 		{
-			if (m_Targets == null || m_Targets.Length == 0)
+			if (m_TargetsList.Count == 0)
 				return;
 
 			m_PoseDict.Clear();
-			for (int i = 0; i < m_Targets.Length; ++i)
+			var cnt = m_TargetsList.Count;
+			for (int i = 0; i < cnt; ++i)
 			{
-				var target = m_Targets[i].target;
+				var target = m_TargetsList[i].GetTarget();
 				if (target == null || target.animator == null)
 					continue;
 				if (!m_PoseDict.TryGetValue(target, out var poseInfo))
@@ -334,12 +360,13 @@ namespace Gaia
 
 		public void ApplyAnimationsByWeights()
 		{
-			if (m_Targets == null || m_Targets.Length == 0)
+			if (m_TargetsList.Count == 0)
 				return;
 
 			var totalWeight = 0f;
-			for (int i = 0; i< m_Targets.Length; ++i)
-				totalWeight += m_Targets[i].weight;
+			var cnt = m_TargetsList.Count;
+			for (int i = 0; i < cnt; ++i)
+				totalWeight += m_TargetsList[i].GetWeight01();
 			if (totalWeight <= float.Epsilon)
 			{
 				// no animation to apply.
@@ -367,17 +394,17 @@ namespace Gaia
 				cachePos.Clear();
 				cacheRots.Clear();
 				cacheWeights.Clear();
-				for (int t = 0; t < m_Targets.Length; ++t)
+				for (int t = 0; t < cnt; ++t)
 				{
-					var info = m_Targets[t];
-					var target = info.target;
+					var info = m_TargetsList[t];
+					var target = info.GetTarget();
 					if (target == null || target.animator == null)
 						continue;
 
-					if (info.weight <= 0f)
+					var weight = info.GetWeight01();
+					if (weight <= 0f)
 						continue;
-					var weight = Mathf.Clamp01(info.weight);
-
+					
 					if (!m_PoseDict.TryGetValue(target, out var poseInfo))
 						continue;
 
@@ -418,6 +445,16 @@ namespace Gaia
 			cacheRots.Clear();
 			cacheWeights.Clear();
 			hipOffset = default;
+		}
+
+		public void AddTarget(IRetargeting data)
+		{
+			m_TargetsList.Add(data);
+		}
+
+		public void RemoveTarget(IRetargeting data)
+		{
+			m_TargetsList.Remove(data);
 		}
 
 		private static readonly Dictionary<HumanBodyBones, HumanBodyBones> s_ParentBoneDict = new Dictionary<HumanBodyBones, HumanBodyBones>

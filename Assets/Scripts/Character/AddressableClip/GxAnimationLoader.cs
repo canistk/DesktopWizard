@@ -7,9 +7,6 @@ namespace Gaia
 {
     public class GxAnimationLoader : MonoBehaviour
     {
-		[SerializeField] Animator m_Animator = null;
-		[SerializeField] Animation m_Animation = null;
-
 		[SerializeField] string m_AnimationPath = "Assets/Scripts/Character/SMB/TestAni01.asset";
 		[Space]
 		[SerializeField] bool m_UseRef = false;
@@ -43,20 +40,6 @@ namespace Gaia
 		private void _MyOnloaded(GxTimelineAsset ani)
 		{
 			Debug.Log($"Load {ani} completed");
-
-			if (m_Animator == null)
-			{
-				Debug.LogError("Animator is not set.");
-				return;
-			}
-
-			// Add the animation clip to the animator, with GxSMB as the state machine behaviour
-			var ctrl = m_Animator.runtimeAnimatorController as AnimatorOverrideController;
-			if (ctrl == null)
-			{
-				Debug.LogError("Animator controller is not set.");
-				return;
-			}
 
 			// If the animation clip is not found, add it
 			//var newClip = Instantiate(ani.animationClip);
