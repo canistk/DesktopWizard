@@ -2,26 +2,38 @@ using Kit2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 namespace Gaia
 {
-	public interface IRetargeting : IEquatable<IRetargeting>
+	public interface IRetarget
 	{
 		public float GetWeight01();
 		public GxRetargeting GetTarget();
 	}
-
 	[System.Serializable]
-	public class TargetInfo : IRetargeting
+	public class TargetInfo : IEquatable<TargetInfo>, IRetarget
 	{
 		[Range(0f, 1f)] public float weight;
+		public float GetWeight01() => Mathf.Clamp01(weight);
 		public GxRetargeting target;
-
 		public GxRetargeting GetTarget() => target;
-		public float GetWeight01() => weight;
-		public bool Equals(IRetargeting other)
+
+		public bool Equals(TargetInfo other)
 		{
-			return target.Equals(other);
+			return other != null &&
+				Mathf.Approximately(weight, other.weight) &&
+				ReferenceEquals(target, other.target);
+		}
+
+		public override bool Equals(object obj)
+		{
+			return base.Equals(obj as TargetInfo);
+		}
+
+		public override int GetHashCode()
+		{
+			return (target, weight).GetHashCode();
 		}
 	}
 
@@ -41,8 +53,28 @@ namespace Gaia
             }
 		}
 
-		[SerializeField] TargetInfo[] m_Targets = new TargetInfo[0];
-		private List<IRetargeting> m_TargetsList = new List<IRetargeting>();
+		[SerializeField] List<TargetInfo> m_Targets = new List<TargetInfo>();
+		private List<IRetarget> m_TargetsList = new List<IRetarget>();
+		private IEnumerable<TargetInfo> targets
+		{
+			get
+			{
+				foreach (var t in m_Targets)
+				{
+					if (t == null || t.target == null)
+						continue;
+					yield return t;
+				}
+
+			}
+		}
+		private int targetCount
+		{
+			get
+			{
+				return m_Targets.Count + m_TargetsList.Count;
+			}
+		}
 
 		[SerializeField] Transform m_Pivot;
 		public Transform pivot => m_Pivot;
@@ -143,15 +175,6 @@ namespace Gaia
 			}
 			bone = m_BoneRefs[i];
 			return bone != null;
-		}
-
-		private void Awake()
-		{
-			m_TargetsList.AddRange(m_Targets);
-		}
-
-		private void OnDestroy()
-		{
 		}
 
 		private void OnDrawGizmos()
@@ -338,14 +361,13 @@ namespace Gaia
 		private PoseSnapshot m_LastPose;
 		private void FetchTargets()
 		{
-			if (m_TargetsList.Count == 0)
+			if (targetCount == 0)
 				return;
 
 			m_PoseDict.Clear();
-			var cnt = m_TargetsList.Count;
-			for (int i = 0; i < cnt; ++i)
+			foreach (var t in targets)
 			{
-				var target = m_TargetsList[i].GetTarget();
+				var target = t.GetTarget();
 				if (target == null || target.animator == null)
 					continue;
 				if (!m_PoseDict.TryGetValue(target, out var poseInfo))
@@ -355,18 +377,21 @@ namespace Gaia
 				}
 				poseInfo.Evaluate();
 			}
-			// CloneInfo
 		}
 
 		public void ApplyAnimationsByWeights()
 		{
-			if (m_TargetsList.Count == 0)
+			if (targetCount == 0)
 				return;
 
 			var totalWeight = 0f;
-			var cnt = m_TargetsList.Count;
-			for (int i = 0; i < cnt; ++i)
-				totalWeight += m_TargetsList[i].GetWeight01();
+			foreach (var t in targets)
+			{
+			   	var weight = t.GetWeight01();
+				if (weight <= 0f)
+					continue;
+				totalWeight += weight;
+			}
 			if (totalWeight <= float.Epsilon)
 			{
 				// no animation to apply.
@@ -381,7 +406,7 @@ namespace Gaia
 
 			var boneCnt = (int)HumanBodyBones.LastBone;
 			List<Quaternion> cacheRots = new List<Quaternion>(boneCnt);
-			List<Vector4> cachePos = new List<Vector4>(m_Targets.Length);
+			List<Vector4> cachePos = new List<Vector4>(m_Targets.Count);
 			List<float> cacheWeights = new List<float>(boneCnt);
 
 			var hipOffset = Vector3.zero;
@@ -394,30 +419,27 @@ namespace Gaia
 				cachePos.Clear();
 				cacheRots.Clear();
 				cacheWeights.Clear();
-				for (int t = 0; t < cnt; ++t)
+				
+				// fetch all target rotations and weights for this bone
+				foreach (var t in targets)
 				{
-					var info = m_TargetsList[t];
-					var target = info.GetTarget();
-					if (target == null || target.animator == null)
-						continue;
-
-					var weight = info.GetWeight01();
+					var weight = t.GetWeight01();
 					if (weight <= 0f)
 						continue;
-					
+					var target = t.GetTarget();
+					if (target == null || target.animator == null)
+						continue;
 					if (!m_PoseDict.TryGetValue(target, out var poseInfo))
 						continue;
-
 					cacheRots.Add(poseInfo.rotations[(int)b]);
 					cacheWeights.Add(weight);
-
 					if (!m_RemoveHipMotion && b == HumanBodyBones.Hips)
 					{
 						var v4 = (Vector4)poseInfo.hipOffset;
 						v4.w = weight; // Store weight in w component
 						cachePos.Add(v4);
 					}
-				} // End for
+				}
 
 				// Calculate the final rotation
 				var finalRotation = QuaternionExtend.WeightedAverage(cacheRots.ToArray(), cacheWeights.ToArray());
@@ -447,12 +469,12 @@ namespace Gaia
 			hipOffset = default;
 		}
 
-		public void AddTarget(IRetargeting data)
+		public void AddTarget(IRetarget data)
 		{
 			m_TargetsList.Add(data);
 		}
 
-		public void RemoveTarget(IRetargeting data)
+		public void RemoveTarget(IRetarget data)
 		{
 			m_TargetsList.Remove(data);
 		}
