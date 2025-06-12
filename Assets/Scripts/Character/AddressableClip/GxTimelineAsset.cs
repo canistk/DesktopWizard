@@ -26,16 +26,19 @@ namespace Gaia
             }
 		}
 
-        
+
 		// TODO: bind actor to track, so that the timeline can control the actor's animation.
+		[SerializeField] private GxRetargeting m_Retargeting;
+		public GxRetargeting GetRetargeting() => m_Retargeting;
 
 		/// <summary>Bind target actor to related track</summary>
 		/// <param name="actor"></param>
-		public void Bind(Animator actor)
+		public void Bind(GxCharacter character)
         {
-            var playableAsset = Director.playableAsset as GxPlayableAsset;
+			/// <see cref="IRetarget"/>
+			// TODO: handle character retargeting
 
-            //Director.GetGenericBinding(TrackAsset);
+			//Director.GetGenericBinding(TrackAsset);
 		}
 	}
 
