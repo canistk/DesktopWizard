@@ -38,7 +38,7 @@ namespace Gaia
 
 		private void Update()
 		{
-			MyTaskHandler.ManualTasksUpdate(m_Tasks);
+			MyTaskHandler.ManualParallelUpdate(m_Tasks);
 		}
 	}
 }
