@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Timeline;
 using UnityEngine.Playables;
 using Kit2;
+using Kit2.Pooling;
 
 namespace Gaia
 {
@@ -11,7 +12,7 @@ namespace Gaia
     /// This class is used to define a Gaia animation.
     /// </summary>
     [RequireComponent(typeof(PlayableDirector))]
-	public class GxTimelineAsset : MonoBehaviour
+	public class GxTimelineAsset : MonoBehaviour, ISpawnObject
     {
         [SerializeField] private PlayableDirector m_director = null;
         public PlayableDirector Director
@@ -39,6 +40,17 @@ namespace Gaia
 			// TODO: handle character retargeting
 
 			//Director.GetGenericBinding(TrackAsset);
+		}
+
+
+		public void OnSpawned(ObjectPool pool)
+		{
+			throw new System.NotImplementedException();
+		}
+
+		public void OnDespawned(ObjectPool pool)
+		{
+			throw new System.NotImplementedException();
 		}
 	}
 

@@ -1,4 +1,4 @@
-using Kit2.Task;
+using Kit2.Tasks;
 
 namespace Gaia
 {

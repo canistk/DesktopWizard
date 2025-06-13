@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using UnityEngine;
 //using Kit2;
-using Kit2.Task;
+using Kit2.Tasks;
 namespace Gaia
 {
     public class GxModelView : MonoBehaviour

@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Kit2;
-using Kit2.Task;
+using Kit2.Tasks;
 using System.IO;
 using UnityEditor;
 using UnityEngine.Animations;
