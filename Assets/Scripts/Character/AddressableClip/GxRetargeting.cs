@@ -118,6 +118,11 @@ namespace Gaia
                 return;
 
 #if UNITY_EDITOR
+			if (animator.runtimeAnimatorController == null)
+			{
+				Debug.LogError("Require runtime animator controller", animator);
+				return;
+			}
 			animator.playableGraph.Evaluate(0);
 
             if (m_Pivot == null)

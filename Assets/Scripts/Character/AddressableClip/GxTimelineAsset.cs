@@ -27,10 +27,15 @@ namespace Gaia
             }
 		}
 
+		private void Reset()
+		{
+			m_director = GetComponent<PlayableDirector>();
+		}
 
 		// TODO: bind actor to track, so that the timeline can control the actor's animation.
 		[SerializeField] private GxRetargeting m_Retargeting;
 		public GxRetargeting GetRetargeting() => m_Retargeting;
+		public void AssignRetargeting(GxRetargeting value) => m_Retargeting = value;
 
 		/// <summary>Bind target actor to related track</summary>
 		/// <param name="actor"></param>

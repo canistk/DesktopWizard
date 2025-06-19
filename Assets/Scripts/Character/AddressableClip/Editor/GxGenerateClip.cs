@@ -5,8 +5,15 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
+using UnityEditor.AddressableAssets;
+using UnityEditor.AddressableAssets.Settings;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas;
+
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.Playables;
+using UnityEngine.Timeline;
+
 namespace Gaia
 {
     public class GxGenerateClip : EditorWindowBase
@@ -22,6 +29,7 @@ namespace Gaia
 		string[] s_FullPaths, s_FileNames;
 		int m_SelectedIndex = 0;
 		VisualElement m_GenAniPanel, m_ModelPanel;
+		ObjectField m_ModeField, m_TPoseField;
 		private void FetchFiles()
 		{
 			var guids = AssetDatabase.FindAssets("t:Model", new[] { "Assets/Animation" });
@@ -61,21 +69,6 @@ namespace Gaia
 			};
 			left.selectedIndicesChanged += OnAniSelectionChange;
 
-			m_ModelPanel = new VisualElement()
-			{
-				style = {
-					flexGrow = 1,
-					flexDirection = FlexDirection.Column,
-				}
-			};
-			m_GenAniPanel = new VisualElement()
-			{
-				style = {
-					flexGrow = 1,
-					flexDirection = FlexDirection.Column,
-					display = DisplayStyle.Flex,
-				}
-			};
 			var split = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal)
 			{
 				style = {
@@ -84,13 +77,20 @@ namespace Gaia
 				}
 			};
 			split.Add(left);
-			var detail = VisualElementExtend.SplitVertical(300f, out m_ModelPanel, -1f, out m_GenAniPanel);
-			m_ModelPanel.style.flexGrow = 1;
-			m_ModelPanel.style.flexDirection = FlexDirection.Column;
+
+
+			var right = VisualElementExtend.SplitVertical(100f, out m_ModelPanel, -1f, out m_GenAniPanel);
+			split.Add(right);
+
+			m_ModeField = VisualElementExtend.CachePrefabField<GameObject>("Human Model", "GxGenerateClip.ModelPrefab");
+			m_ModelPanel.Add(m_ModeField);
+			m_TPoseField = VisualElementExtend.CachePrefabField<RuntimeAnimatorController>("T-Pose", "GxGenerateClip.TPose");
+			m_ModelPanel.Add(m_TPoseField);
+
 			m_GenAniPanel.style.flexGrow = 1;
 			m_GenAniPanel.style.flexDirection = FlexDirection.Column;
-			
-			split.Add(m_GenAniPanel);
+			right.Add(m_ModelPanel);
+			right.Add(m_GenAniPanel);
 
 			var root = VisualElementExtend.SplitVertical(-1f, out var top, 30f, out var footer);
 			top.Add(split);
@@ -165,8 +165,10 @@ namespace Gaia
 				{
 					if (obj is AnimationClip clip)
 					{
+						if (clip.name.Contains("preview", System.StringComparison.OrdinalIgnoreCase))
+							continue;
 						var fileName = Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
-						var prefabPath = Path.Combine(s_OutputPath, $"{fileName}.prefab");
+						var prefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
 						
 						CreateTimeline(clip, prefabPath);
 
@@ -183,12 +185,151 @@ namespace Gaia
 			m_GenAniPanel.Add(generateButton);
 		}
 		
-		private void CreateTimeline(AnimationClip clip, string path)
+		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase
+		private void CreateTimeline(AnimationClip clip, string prefabPath)
 		{
-			EditorExtend.EnsureFolderExist(path);
+			var modelRef = m_ModeField.value as GameObject;
+			if (modelRef == null)
+			{
+				SetHint("Model prefab is not set.");
+				return;
+			}
+			var tPose = m_TPoseField.value as RuntimeAnimatorController;
+			if (tPose == null)
+			{
+				SetHint("T-Pose animator is not set.");
+				return;
+			}
+			
+			var modelPath = AssetDatabase.GetAssetPath(modelRef);
+
+			EditorExtend.EnsureFolderExist(prefabPath);
+
+			using (var cp = new CreatePrefab(prefabPath, afterSave: _CovertToAddressable))
+			{
+				var root = cp.token;
+				var timeline = _PrepareTimelineAsset(prefabPath);
+				if (timeline == null)
+					return;
+				
+
+				// Model
+				var model = PrefabUtility.LoadPrefabContents(modelPath);
+				model.transform.SetParent(root.transform);
+				model.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+				// timeline + director
+				var playableDirector = root.AddComponent<PlayableDirector>();
+				playableDirector.playableAsset = timeline;
+				playableDirector.playOnAwake = false;
+
+				var track = timeline.CreateTrack<AnimationTrack>("Animation Track");
+				_ = track.CreateClip(clip);
+				playableDirector.SetGenericBinding(track, model);
+
+				// retargeting
+				var retargeting = model.GetOrAddComponent<GxRetargeting>();
+				retargeting.animator.runtimeAnimatorController = tPose;
+				retargeting.ForceTPose();
+				retargeting.animator.runtimeAnimatorController = null;
+
+				// timeline binging
+				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();
+				GxTimelineAsset.AssignRetargeting(retargeting);
+			}
+
+			void _CovertToAddressable(GameObject prefab)
+			{
+				var settings = AddressableAssetSettingsDefaultObject.Settings;
+				if (settings == null)
+				{
+					SetHint("Addressable Asset Settings not found.");
+					return;
+				}
+
+				var group = settings.groups.FirstOrDefault(g => g.name.Equals("Timeline", IGNORE)) ??
+				// var group = settings.groups;
+				if (group == null)
+				{
+					SetHint("Addressable group not found.");
+					return;
+				}
+				var entry = settings.CreateOrMoveEntry(AssetDatabase.AssetPathToGUID(prefabPath), group);
+				entry.address = Path.GetFileNameWithoutExtension(prefabPath);
+			}
+
+			TimelineAsset _PrepareTimelineAsset(string prefabPath)
+			{
+				// Ready timeline asset
+				var dirPath = Path.GetDirectoryName(prefabPath);
+				var fileName = Path.GetFileNameWithoutExtension(prefabPath);
+				var timelinePath = Path.Combine(dirPath, $"{fileName}_timeline.asset");
+
+				var timeline = AssetDatabase.LoadAssetAtPath<TimelineAsset>(timelinePath);
+				if (timeline == null)
+				{
+					AssetDatabase.CreateAsset(new TimelineAsset(), timelinePath);
+					AssetDatabase.Refresh();
+					timeline = AssetDatabase.LoadAssetAtPath<TimelineAsset>(timelinePath);
+					return timeline;
+				}
+
+				if (timeline == null)
+				{
+					SetHint($"Failed to create timeline asset at {timelinePath}");
+				}
+				return timeline;
+			}
 		}
 	}
 
+	public class CreatePrefab : System.IDisposable
+	{
+		private GameObject _token;
+		public GameObject token => _token;
+		private string path;
+		private System.Action<GameObject> before, after;
+
+		public CreatePrefab(string path,
+			System.Action<GameObject> beforeSave = null,
+			System.Action<GameObject> afterSave = null)
+			: this(path, null, beforeSave, afterSave) { }
+		public CreatePrefab(string path, GameObject prefab,
+			System.Action<GameObject> beforeSave = null,
+			System.Action<GameObject> afterSave = null)
+		{
+			this._token = prefab == null ?
+				new GameObject() : //PrefabUtility.CreateEmptyPrefab()
+				(GameObject)PrefabUtility.InstantiatePrefab(prefab);
+			this.path = path;
+			this.before = beforeSave;
+			this.after = afterSave;
+		}
+
+		public void Dispose()
+		{
+			before?.Invoke(_token);
+			try
+			{
+				EditorExtend.EnsureFolderExist(path);
+				if (!PrefabUtility.SaveAsPrefabAsset(_token, path, out var success))
+					throw new System.Exception("Fail to save as prefab asset.");
+
+				// var prefab = PrefabUtility.LoadPrefabContents(path);
+				var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+				after?.Invoke(prefab);
+			}
+			catch (System.Exception ex)
+			{
+				Debug.LogException(ex);
+			}
+			finally
+			{
+				GameObject.DestroyImmediate(_token);
+				_token = null;
+			}
+		}
+	}
 
 	public static class GenerateUtils
 	{
