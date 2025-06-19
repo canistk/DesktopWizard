@@ -184,8 +184,8 @@ namespace Gaia
 			};
 			m_GenAniPanel.Add(generateButton);
 		}
-		
-		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase
+
+		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 		private void CreateTimeline(AnimationClip clip, string prefabPath)
 		{
 			var modelRef = m_ModeField.value as GameObject;
@@ -247,7 +247,7 @@ namespace Gaia
 					return;
 				}
 
-				var group = settings.groups.FirstOrDefault(g => g.name.Equals("Timeline", IGNORE)) ??
+				var group = settings.groups.FirstOrDefault(g => g.name.Equals("Timeline", IGNORE));
 				// var group = settings.groups;
 				if (group == null)
 				{
