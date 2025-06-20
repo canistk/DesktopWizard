@@ -29,7 +29,8 @@ namespace Gaia
 		string[] s_FullPaths, s_FileNames;
 		int m_SelectedIndex = 0;
 		VisualElement m_GenAniPanel, m_ModelPanel;
-		ObjectField m_ModeField, m_TPoseField;
+		ObjectField m_ModeField, m_TPoseField, m_DatabaseField;
+
 		private void FetchFiles()
 		{
 			var guids = AssetDatabase.FindAssets("t:Model", new[] { "Assets/Animation" });
@@ -97,6 +98,10 @@ namespace Gaia
 			m_ModelPanel.Add(m_TPoseField = VisualElementExtend.
 				CachePrefabField<RuntimeAnimatorController>
 				("T-Pose", "GxGenerateClip.TPose"));
+			m_ModelPanel.Add(m_DatabaseField = VisualElementExtend.
+				CachePrefabField<GxTimelineCollection>
+				("Database", "GxGenerateClip.collision")
+			);
 
 			m_ModelPanel.Add(new Button(OnGenerateAllClicked)
 			{
@@ -178,6 +183,11 @@ namespace Gaia
 			return tPose != null;
 		}
 
+		private bool TryGetDatabase(out GxTimelineCollection database)
+		{
+			database = m_DatabaseField.value as GxTimelineCollection;
+			return database != null;
+		}
 
 		private void OnAniSelectionChange(IEnumerable<int> selection)
 		{
@@ -320,7 +330,14 @@ namespace Gaia
 					return;
 				}
 				var entry = settings.CreateOrMoveEntry(AssetDatabase.AssetPathToGUID(outputPrefabPath), group);
-				entry.address = Path.GetFileNameWithoutExtension(outputPrefabPath);
+				var fileName = Path.GetFileNameWithoutExtension(outputPrefabPath);
+				var path = Path.Combine("Addressable/Timeline", fileName).Replace('\\','/');
+				entry.address = path;
+				if (TryGetDatabase(out var database))
+				{
+					database.Add(path, clip);
+					EditorUtility.SetDirty(database);
+				}
 			}
 
 			TimelineAsset _PrepareTimelineAsset(string prefabPath)

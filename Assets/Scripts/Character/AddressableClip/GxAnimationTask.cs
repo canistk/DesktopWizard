@@ -13,14 +13,11 @@ namespace Gaia
 		GxTimelineAsset timelineAsset;
 		GxRetargeting fromBiped => timelineAsset?.GetRetargeting();
 
-		private MyTask m_Downloader;
 		private BlendWeight m_BlendIn;
 		private int m_Index = 0;
 		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
-		public GxAnimationTask(GxCharacter character, string assetPath) : base(character)
+		public GxAnimationTask(GxCharacter character, GxTimelineAsset timeline, float blendTime) : base(character)
 		{
-			m_Downloader = new GxAddressableTask<GxTimelineAsset>(assetPath, _OnAssetLoaded, _ErrorHandler);
-			m_Tasks.Add(m_Downloader);
 			m_Tasks.Add(new MyTaskAction(() => 
 			{
 				if (timelineAsset == null)
@@ -36,7 +33,7 @@ namespace Gaia
 
 				character.Retargeting.AddTarget(this);
 			}));
-			m_BlendIn = new BlendWeight(0f, 1f, 0.5f, false);
+			m_BlendIn = new BlendWeight(0f, 1f, blendTime, false);
 			m_Tasks.Add(m_BlendIn);
 		}
 

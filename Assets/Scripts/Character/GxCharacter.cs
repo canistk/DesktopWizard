@@ -3,27 +3,28 @@ using System.Collections.Generic;
 using UnityEngine;
 using Kit2.Tasks;
 using Kit2.ObjectPool;
+using Kit2;
 namespace Gaia
 {
     public class GxCharacter : MonoBehaviour
     {
-        [SerializeField] BodyLayout BodyLayout;
+        [SerializeField] BodyLayout m_BodyLayout;
 
         private bool m_FetchBodyLayout = false;
 		public Animator animator
         {
             get
             {
-                if (BodyLayout == null && !m_FetchBodyLayout)
+                if (m_BodyLayout == null && !m_FetchBodyLayout)
                 {
-                    BodyLayout = GetComponentInChildren<BodyLayout>();
+                    m_BodyLayout = GetComponentInChildren<BodyLayout>();
                     m_FetchBodyLayout = true;
-                    if (BodyLayout == null)
+                    if (m_BodyLayout == null)
                         throw new System.NullReferenceException("GxCharacter requires a BodyLayout component in its children.");
-                    if (BodyLayout.animator == null)
+                    if (m_BodyLayout.animator == null)
                         throw new System.NullReferenceException("BodyLayout requires an Animator component.");
 				}
-                return BodyLayout.animator;
+                return m_BodyLayout.animator;
             }
 		}
 
@@ -34,9 +35,43 @@ namespace Gaia
 
 		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
 
+		private void Reset()
+		{
+			m_BodyLayout = GetComponentInChildren<BodyLayout>();
+            m_Retargeting = GetComponentInChildren<GxRetargeting>();
+            m_Pool = transform.GetOrAddComponent<kObjectPool>();
+		}
+
 		private void Update()
 		{
 			MyTaskHandler.ManualParallelUpdate(m_Tasks);
 		}
+
+        public void CrossFade(string timelineAssetPath, float fadeIn)
+        {
+            if (string.IsNullOrEmpty(timelineAssetPath))
+                throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
+            var timelineAssetGo = m_Pool.Spawn(timelineAssetPath, true, transform, false);
+            if (timelineAssetGo == null)
+            {
+                Debug.LogError($"Failed to spawn timeline asset from path: {timelineAssetPath}");
+                return;
+			}
+            var timelineAsset = timelineAssetGo.GetComponent<GxTimelineAsset>();
+			var aniTask = new GxAnimationTask(this, timelineAsset , fadeIn);
+            m_Tasks.Add(aniTask);
+		}
+
+        public IEnumerator<GxAnimationTask> GetActiveAnimations()
+        {
+            foreach (var task in m_Tasks)
+            {
+                if (task is not GxAnimationTask aniTask)
+                    continue;
+                if (aniTask.isCompleted)
+                    continue;
+                yield return aniTask;
+			}
+		}
 	}
-}
+} 
