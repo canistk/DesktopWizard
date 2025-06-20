@@ -13,6 +13,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
+using UnityEngine.AddressableAssets;
 
 namespace Gaia
 {
@@ -329,13 +330,15 @@ namespace Gaia
 					SetHint("Addressable group not found.");
 					return;
 				}
-				var entry = settings.CreateOrMoveEntry(AssetDatabase.AssetPathToGUID(outputPrefabPath), group);
+				var guid = AssetDatabase.AssetPathToGUID(outputPrefabPath);
+				var entry = settings.CreateOrMoveEntry(guid, group);
 				var fileName = Path.GetFileNameWithoutExtension(outputPrefabPath);
-				var path = Path.Combine("Addressable/Timeline", fileName).Replace('\\','/');
-				entry.address = path;
+				var address = Path.Combine("Addressable/Timeline", fileName).Replace('\\','/');
+				entry.address = address;
 				if (TryGetDatabase(out var database))
 				{
-					database.Add(path, clip);
+					var assetRef = new AssetReference(guid);
+					database.Add(assetRef, address, clip);
 					EditorUtility.SetDirty(database);
 				}
 			}

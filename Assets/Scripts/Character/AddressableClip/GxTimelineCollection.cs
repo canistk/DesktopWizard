@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Gaia
 {
@@ -18,42 +19,42 @@ namespace Gaia
 		[System.Serializable]
 		private struct ClipInfo
 		{
-			public string path;
+			public string addressPath;
+			public AssetReference assetRef;
 			public bool isLoop;
 			public float duration;
 
-			public ClipInfo(AnimationClip clip, string path)
-			{
-   				this.path = path;
-				this.isLoop = clip.isLooping;
-				this.duration = clip.length;
-			}
+			public ClipInfo(AssetReference assetRef, string address, AnimationClip clip)
+				: this(assetRef, address, clip.isLooping, clip.length)
+			{ }
 
-			public ClipInfo(string path, bool isLoop, float duration)
+			public ClipInfo(AssetReference assetRef, string address, bool isLoop, float duration)
 			{
-				this.path = path;
+				this.addressPath = address;
+				this.assetRef = assetRef;
 				this.isLoop = isLoop;
 				this.duration = duration;
 			}
 		}
 
-		public void Add(string path, AnimationClip clip)
+		public void Add(AssetReference assetRef, string path, AnimationClip clip)
 		{
 			var duplicate = false;
+			var clipInfo = new ClipInfo(assetRef, path, clip);
 			for (int i = 0; i < m_Timelines.Count; ++i)
 			{
 				var rec = m_Timelines[i];
-				if (rec.path == path)
+				if (rec.addressPath == path)
 				{
 					duplicate = true;
 					Debug.LogWarning($"Timeline with path '{path}' already exists in the collection. Skipping addition.");
-					m_Timelines[i] = new ClipInfo(clip, path);
+					m_Timelines[i] = clipInfo;
 					return;
 				}
 			}
 			if (!duplicate)
 			{
-				m_Timelines.Add(new ClipInfo(clip, path));
+				m_Timelines.Add(clipInfo);
 			}
 		}
     }
