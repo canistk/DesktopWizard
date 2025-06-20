@@ -13,10 +13,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Linq;
 using System.Net;
+using Kit2.ObjectPool;
 namespace Gaia
 {
 	using eAlign = UIMessage.eAlign;
-	[RequireComponent(typeof(ObjectPool))]
+	[RequireComponent(typeof(kObjectPool))]
 	public class ChatAgentV1 : MonoBehaviour
 	{
 		[SerializeField] UIMessage m_AiMsgPrefab = null;
@@ -31,19 +32,18 @@ namespace Gaia
 
 		private List<Message> m_History = null;
 		private HashLock<object> m_Interact = new HashLock<object>(true);
-		private ObjectPool m_Pool = null;
-		private ObjectPool pool
+		private kObjectPool m_Pool = null;
+		private kObjectPool pool
 		{
 			get
 			{
 				if (m_Pool == null)
-					m_Pool = GetComponent<ObjectPool>();
+					m_Pool = GetComponent<kObjectPool>();
 				return m_Pool;
 			}
 		}
 		private void Awake()
 		{
-			pool.Initialize();
 			m_History = new List<Message>(100);
 			m_InputField.EVENT_Submit += OnSubmit;
 			m_Interact.Locked += OnLock;
