@@ -46,6 +46,15 @@ namespace Gaia
 			s_FileNames = fileNames.ToArray();
 		}
 
+		private void OnDisable()
+		{
+			if (m_DetailObjects != null)
+			{
+				m_DetailObjects = null;
+			}
+
+		}
+
 		Label m_Hints;
 		public void CreateGUI()
 		{
@@ -188,7 +197,6 @@ namespace Gaia
 		{
 			m_GenAniPanel.Clear();
 			m_DetailObjects = AssetDatabase.LoadAllAssetsAtPath(path);
-
 			var rootGO = m_DetailObjects.FirstOrDefault(o => o is GameObject) as GameObject;
 
 			for (int i = 0; i < m_DetailObjects.Length; ++i)
