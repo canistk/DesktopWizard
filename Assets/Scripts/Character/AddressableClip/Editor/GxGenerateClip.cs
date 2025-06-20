@@ -82,10 +82,19 @@ namespace Gaia
 			var right = VisualElementExtend.SplitVertical(100f, out m_ModelPanel, -1f, out m_GenAniPanel);
 			split.Add(right);
 
-			m_ModeField = VisualElementExtend.CachePrefabField<GameObject>("Human Model", "GxGenerateClip.ModelPrefab");
-			m_ModelPanel.Add(m_ModeField);
-			m_TPoseField = VisualElementExtend.CachePrefabField<RuntimeAnimatorController>("T-Pose", "GxGenerateClip.TPose");
-			m_ModelPanel.Add(m_TPoseField);
+			m_ModelPanel.Add(m_ModeField = VisualElementExtend.
+				CachePrefabField<GameObject>
+				("Human Model", "GxGenerateClip.ModelPrefab"));
+			m_ModelPanel.Add(m_TPoseField = VisualElementExtend.
+				CachePrefabField<RuntimeAnimatorController>
+				("T-Pose", "GxGenerateClip.TPose"));
+
+			m_ModelPanel.Add(new Button(OnGenerateAllClicked)
+			{
+				text = "Generate All Animations",
+				style = { width = 200f }
+			});
+
 
 			m_GenAniPanel.style.flexGrow = 1;
 			m_GenAniPanel.style.flexDirection = FlexDirection.Column;
@@ -102,6 +111,37 @@ namespace Gaia
 
 		}
 
+		private void OnGenerateAllClicked()
+		{
+			if (!TryGetModelPath(out var modelPath))
+			{
+				SetHint("Model prefab is not set.");
+				return;
+			}
+
+			if (!TryGetTPose(out var tPose))
+			{
+				SetHint("T-Pose animator is not set.");
+				return;
+			}
+			for (int i = 0; i < s_FullPaths.Length; ++i)
+			{
+				var path = s_FullPaths[i];
+				if (string.IsNullOrEmpty(path))
+					continue;
+
+				var fileName = Path.GetFileNameWithoutExtension(path);
+				var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+				if (clip == null)
+				{
+					Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {path}");
+					continue;
+				}
+				var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
+				CreateTimeline(modelPath, tPose, clip, outputPrefabPath);
+			}
+		}
+
 		private void SetHint(string msg)
 		{
 			if (m_Hints == null)
@@ -110,6 +150,25 @@ namespace Gaia
 			}
 			m_Hints.text = msg;
 		}
+
+		private bool TryGetModelPath(out string modelPath)
+		{
+			var modelRef = m_ModeField.value as GameObject;
+			if (modelRef == null)
+			{
+				modelPath = null;
+				return false;
+			}
+			modelPath = AssetDatabase.GetAssetPath(modelRef);
+			return !string.IsNullOrEmpty(modelPath);
+		}
+
+		private bool TryGetTPose(out RuntimeAnimatorController tPose)
+		{
+			tPose = m_TPoseField.value as RuntimeAnimatorController;
+			return tPose != null;
+		}
+
 
 		private void OnAniSelectionChange(IEnumerable<int> selection)
 		{
@@ -160,7 +219,18 @@ namespace Gaia
 					return;
 				}
 
+				if (!TryGetModelPath(out var modelPath))
+				{
+					SetHint("Model prefab is not set.");
+					return;
+				}
 
+				if (!TryGetTPose(out var tPose))
+				{
+					SetHint("T-Pose animator is not set.");
+					return;
+				}
+				
 				foreach (var obj in m_DetailObjects)
 				{
 					if (obj is AnimationClip clip)
@@ -168,13 +238,13 @@ namespace Gaia
 						if (clip.name.Contains("preview", System.StringComparison.OrdinalIgnoreCase))
 							continue;
 						var fileName = Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
-						var prefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
+						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
 						
-						CreateTimeline(clip, prefabPath);
+						CreateTimeline(modelPath, tPose, clip, outputPrefabPath);
 
 
 						// var prefab = PrefabUtility.SaveAsPrefabAsset(rootGO, prefabPath);
-						Debug.Log($"Generated prefab: {prefabPath}");
+						Debug.Log($"Generated prefab: {outputPrefabPath}");
 					}
 				}
 				SetHint("Prefab(s) generated successfully.");
@@ -186,33 +256,19 @@ namespace Gaia
 		}
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
-		private void CreateTimeline(AnimationClip clip, string prefabPath)
+		private void CreateTimeline(
+			string modelPath,
+			RuntimeAnimatorController tPose,
+			AnimationClip clip, string outputPrefabPath)
 		{
-			var modelRef = m_ModeField.value as GameObject;
-			if (modelRef == null)
-			{
-				SetHint("Model prefab is not set.");
-				return;
-			}
-			var tPose = m_TPoseField.value as RuntimeAnimatorController;
-			if (tPose == null)
-			{
-				SetHint("T-Pose animator is not set.");
-				return;
-			}
 			
-			var modelPath = AssetDatabase.GetAssetPath(modelRef);
-
-			EditorExtend.EnsureFolderExist(prefabPath);
-
-			using (var cp = new CreatePrefab(prefabPath, afterSave: _CovertToAddressable))
+			using (var cp = new CreatePrefab(outputPrefabPath, afterSave: _CovertToAddressable))
 			{
 				var root = cp.token;
-				var timeline = _PrepareTimelineAsset(prefabPath);
+				var timeline = _PrepareTimelineAsset(outputPrefabPath);
 				if (timeline == null)
 					return;
 				
-
 				// Model
 				var model = PrefabUtility.LoadPrefabContents(modelPath);
 				model.transform.SetParent(root.transform);
@@ -254,8 +310,8 @@ namespace Gaia
 					SetHint("Addressable group not found.");
 					return;
 				}
-				var entry = settings.CreateOrMoveEntry(AssetDatabase.AssetPathToGUID(prefabPath), group);
-				entry.address = Path.GetFileNameWithoutExtension(prefabPath);
+				var entry = settings.CreateOrMoveEntry(AssetDatabase.AssetPathToGUID(outputPrefabPath), group);
+				entry.address = Path.GetFileNameWithoutExtension(outputPrefabPath);
 			}
 
 			TimelineAsset _PrepareTimelineAsset(string prefabPath)
