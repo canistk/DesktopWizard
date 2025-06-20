@@ -5,6 +5,7 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 namespace Gaia
 {
+	[System.Obsolete]
     public class GxAnimationLoader : MonoBehaviour
     {
 		[SerializeField] string m_AnimationPath = "Assets/Scripts/Character/SMB/TestAni01.asset";

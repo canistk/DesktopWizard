@@ -300,6 +300,7 @@ namespace Gaia
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();
 				GxTimelineAsset.AssignRetargeting(retargeting);
+				GxTimelineAsset.UpdateInfo(clip);
 			}
 
 			void _CovertToAddressable(GameObject prefab)

@@ -5,6 +5,7 @@ using UnityEngine.Timeline;
 using UnityEngine.Playables;
 using Kit2;
 using Kit2.Pooling;
+using Kit2.ObjectPool;
 
 namespace Gaia
 {
@@ -12,7 +13,7 @@ namespace Gaia
     /// This class is used to define a Gaia animation.
     /// </summary>
     [RequireComponent(typeof(PlayableDirector))]
-	public class GxTimelineAsset : MonoBehaviour, ISpawnObject
+	public class GxTimelineAsset : MonoBehaviour
     {
         [SerializeField] private PlayableDirector m_director = null;
         public PlayableDirector Director
@@ -34,29 +35,22 @@ namespace Gaia
 
 		// TODO: bind actor to track, so that the timeline can control the actor's animation.
 		[SerializeField] private GxRetargeting m_Retargeting;
+
+
 		public GxRetargeting GetRetargeting() => m_Retargeting;
 		public void AssignRetargeting(GxRetargeting value) => m_Retargeting = value;
 
-		/// <summary>Bind target actor to related track</summary>
-		/// <param name="actor"></param>
-		public void Bind(GxCharacter character)
-        {
-			/// <see cref="IRetarget"/>
-			// TODO: handle character retargeting
-
-			//Director.GetGenericBinding(TrackAsset);
-		}
-
-
-		public void OnSpawned(ObjectPool pool)
+		public bool isLoop;
+		public float duration;
+		public void UpdateInfo(AnimationClip clip)
 		{
-			throw new System.NotImplementedException();
+			this.duration = clip.length;
+			this.isLoop = clip.isLooping;
+			m_director.extrapolationMode = isLoop ?
+				DirectorWrapMode.Loop :
+				DirectorWrapMode.Hold;
 		}
 
-		public void OnDespawned(ObjectPool pool)
-		{
-			throw new System.NotImplementedException();
-		}
 	}
 
 	#region Character Playable Asset

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Kit2.Tasks;
+using Kit2.ObjectPool;
 namespace Gaia
 {
     public class GxCharacter : MonoBehaviour
@@ -29,12 +30,9 @@ namespace Gaia
         [SerializeField] GxRetargeting m_Retargeting;
         public GxRetargeting Retargeting => m_Retargeting;
         
-		public void Blend(GxTimelineAsset timeline, TargetInfo targetInfo)
-        {
-            Retargeting.AddTarget(targetInfo);
-		}
+        [SerializeField] kObjectPool m_Pool;
 
-        private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
+		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
 
 		private void Update()
 		{
