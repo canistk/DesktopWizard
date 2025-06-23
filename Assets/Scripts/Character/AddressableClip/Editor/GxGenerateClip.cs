@@ -358,7 +358,15 @@ namespace Gaia
 					timeline = AssetDatabase.LoadAssetAtPath<TimelineAsset>(timelinePath);
 					return timeline;
 				}
-
+				else
+				{
+					while (timeline.rootTrackCount > 0)
+					{
+						var track = timeline.GetRootTrack(0);
+						if (track != null)
+							timeline.DeleteTrack(track);
+					}
+				}
 				if (timeline == null)
 				{
 					SetHint($"Failed to create timeline asset at {timelinePath}");

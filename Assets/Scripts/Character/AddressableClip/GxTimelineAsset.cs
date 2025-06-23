@@ -13,7 +13,7 @@ namespace Gaia
     /// This class is used to define a Gaia animation.
     /// </summary>
     [RequireComponent(typeof(PlayableDirector))]
-	public class GxTimelineAsset : MonoBehaviour
+	public class GxTimelineAsset : TimeLineHelper, ISpawnToken
     {
         [SerializeField] private PlayableDirector m_director = null;
         public PlayableDirector Director
@@ -46,11 +46,32 @@ namespace Gaia
 		{
 			this.duration = clip.length;
 			this.isLoop = clip.isLooping;
-			m_director.extrapolationMode = isLoop ?
+			Director.extrapolationMode = isLoop ?
 				DirectorWrapMode.Loop :
 				DirectorWrapMode.Hold;
 		}
 
+		private ISpawner m_Spawner;
+		public void OnSpawn(ISpawner pool)
+		{
+			this.m_Spawner = pool;
+		}
+
+		public void OnDespawn()
+		{
+		}
+
+		public void Despawn()
+		{
+			if (m_Spawner != null)
+			{
+				m_Spawner.Despawn(gameObject);
+			}
+			else
+			{
+				Debug.LogWarning("GxTimelineAsset is not spawned by a pool, cannot despawn.");
+			}
+		}
 	}
 
 	#region Character Playable Asset

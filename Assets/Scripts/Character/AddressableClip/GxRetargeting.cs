@@ -55,7 +55,7 @@ namespace Gaia
 
 		[SerializeField] List<TargetInfo> m_Targets = new List<TargetInfo>();
 		private List<IRetarget> m_TargetsList = new List<IRetarget>();
-		private IEnumerable<TargetInfo> targets
+		private IEnumerable<IRetarget> targets
 		{
 			get
 			{
@@ -65,7 +65,10 @@ namespace Gaia
 						continue;
 					yield return t;
 				}
-
+				foreach (var t in m_TargetsList)
+				{
+					yield return t;
+				}
 			}
 		}
 		private int targetCount
@@ -82,6 +85,7 @@ namespace Gaia
 		[SerializeField] Transform[] m_BoneRefs;
 
 		[SerializeField] bool m_LateUpdate = false;
+		public bool IsLateUpdate => m_LateUpdate;
 
 		[Header("Extra")]
 		[Tooltip("Smooth the pose when applying animations, useful for blending animations.")]
@@ -411,7 +415,7 @@ namespace Gaia
 
 			var boneCnt = (int)HumanBodyBones.LastBone;
 			List<Quaternion> cacheRots = new List<Quaternion>(boneCnt);
-			List<Vector4> cachePos = new List<Vector4>(m_Targets.Count);
+			List<Vector4> cachePos = new List<Vector4>(targetCount);
 			List<float> cacheWeights = new List<float>(boneCnt);
 
 			var hipOffset = Vector3.zero;

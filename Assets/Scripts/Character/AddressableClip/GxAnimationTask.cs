@@ -6,76 +6,128 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.Playables;
 namespace Gaia
 {
 	public class GxAnimationTask : GxCharacterTask, IRetarget
 	{
-		GxTimelineAsset timelineAsset;
-		GxRetargeting fromBiped => timelineAsset?.GetRetargeting();
+		GxTimelineAsset m_Timeline;
+		GxRetargeting fromBiped => m_Timeline?.GetRetargeting();
+		GxCharacter m_Character;
 
-		private BlendWeight m_BlendIn;
-		private int m_Index = 0;
-		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
-		public GxAnimationTask(GxCharacter character, GxTimelineAsset timeline, float blendTime) : base(character)
+		private enum eState
 		{
-			m_Tasks.Add(new MyTaskAction(() => 
-			{
-				if (timelineAsset == null)
-				{
-					Debug.LogError("Timeline asset is null, cannot bind to character.");
-					return;
-				}
-				// timelineAsset.Director.Play();
-				if (timelineAsset.isLoop)
-					timelineAsset.Director.extrapolationMode = UnityEngine.Playables.DirectorWrapMode.Loop;
-				else
-					timelineAsset.Director.extrapolationMode = UnityEngine.Playables.DirectorWrapMode.Hold;
+			Idle,
+			PlayAni,
+			BlendIn,
+			Hold,
+			BlendOut,
+			Exit,
+		}
+		private eState state = eState.Idle;
 
-				character.Retargeting.AddTarget(this);
-			}));
-			m_BlendIn = new BlendWeight(0f, 1f, blendTime, false);
-			m_Tasks.Add(m_BlendIn);
+		private BlendWeight m_BlendIn, m_BlendOut;
+		
+		public bool IsRealtime { get; private set; } = false;
+		public GxAnimationTask(GxCharacter character, GxTimelineAsset timeline, float blendTime, bool isRealTime) : base(character)
+		{
+			if (character == null)
+			{
+				Debug.LogError("GxAnimationTask requires a valid GxCharacter reference.");
+				return;
+			}
+			if (timeline == null)
+			{
+				Debug.LogError($"The {nameof(GxRetargeting)} reference NOT found, cannot bind to character.");
+				return;
+			}
+			this.m_Timeline = timeline;
+			this.m_Character = character;
+			this.IsRealtime = isRealTime;
+			m_BlendIn = new BlendWeight(0f, 1f, blendTime, IsRealtime);
+		}
+
+		private void PlayTimelineOnloaded()
+		{
+			m_Timeline.Director.extrapolationMode = m_Timeline.isLoop ?
+				DirectorWrapMode.Loop :
+				DirectorWrapMode.Hold;
+
+			m_Character.Retargeting.AddTarget(this);
+			m_Timeline.EVENT_PlayedOneCycle += M_Timeline_EVENT_PlayedOneCycle;
+			m_Timeline.Director.Play();
+		}
+
+		private void M_Timeline_EVENT_PlayedOneCycle()
+		{
+			Debug.Log($"{m_Timeline.gameObject.name} played Once");
+			m_Timeline.EVENT_PlayedOneCycle -= M_Timeline_EVENT_PlayedOneCycle;
+			if (state == eState.Hold && m_BlendOut != null)
+				++state; // Move to BlendOut state if we are holding.
 		}
 
 		protected override bool InternalExecute()
 		{
-			if (m_Tasks.Count == 0)
-				return false;
-			
-			if (m_Index < m_Tasks.Count)
+			switch (state)
 			{
-				var task = m_Tasks[m_Index];
-				if (!task.Execute())
-				{
-					++m_Index;
-				}
+				case eState.Idle:
+					PlayTimelineOnloaded();
+					++state;
+					break;
+				case eState.PlayAni:
+					++state;
+					break;
+				case eState.BlendIn:
+					if (!m_BlendIn.Execute()) ++state;
+					break;
+				case eState.Hold:
+					// Just wait for next animation.
+				break;
+				case eState.BlendOut:
+					if (!m_BlendOut.Execute()) ++state;
+					break;
 			}
-			return m_Index > m_Tasks.Count;
+
+			if (state == eState.Exit)
+			{
+				m_Timeline.Despawn();
+				m_Character.Retargeting.RemoveTarget(this);
+				m_Despawned = true;
+
+			}
+			return state < eState.Exit;
 		}
+
+		private bool m_Despawned = false;
+		public bool IsDespawned => m_Despawned;
 
 		public override void Reset()
 		{
 			base.Reset();
-			foreach (var task in m_Tasks)
+			state = eState.Idle;
+			m_BlendIn.Reset();
+			m_BlendOut?.Reset();
+			m_BlendOut = null;
+			m_Despawned = false;
+		}
+
+		public void OnWillPlayAnimation(GxAnimationTask other)
+		{
+			if (state == eState.Hold)
 			{
-				task.Reset();
+				Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
+				var w = this.m_BlendIn.weight;
+				var duration = other.m_BlendIn.duration;
+				m_BlendOut = new BlendWeight(w, 0f, duration, other.IsRealtime);
 			}
-		}
-
-		private void _OnAssetLoaded(GxTimelineAsset asset)
-		{
-			timelineAsset = asset;
-			Debug.Log($"Timeline loaded: {asset.name}");
-		}
-
-		void _ErrorHandler(System.Exception ex)
-		{
-			Debug.LogError($"Error loading asset: {ex.Message}");
-			
+			if (state == eState.Hold && m_BlendOut != null)
+				++state; // Move to BlendOut state if we are holding.
 		}
 
 		public float GetWeight01()
 		{
+			if (m_Despawned)
+				return 0f;
 			return m_BlendIn.weight;
 		}
 
@@ -87,9 +139,10 @@ namespace Gaia
 
 	public class BlendWeight : MyTaskBase
 	{
-		private readonly float start,end,duration;
+		private readonly float start, end;
 		private readonly bool realTime;
 		public float weight { get; private set; } = 0f;
+		public float duration { get; private set; } = 0f;
 		public BlendWeight(float startWeight01, float targetWeight01, float duration, bool realTime)
 		{
 			this.start = Mathf.Clamp01(startWeight01);
@@ -118,7 +171,7 @@ namespace Gaia
 
 			if (!m_StartTime.Key)
 			{
-   				m_StartTime = new KeyValuePair<bool, float>(true, time);
+				m_StartTime = new KeyValuePair<bool, float>(true, time);
 				weight = start;
 			}
 

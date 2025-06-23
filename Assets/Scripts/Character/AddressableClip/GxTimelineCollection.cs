@@ -17,7 +17,7 @@ namespace Gaia
         [SerializeField] private List<ClipInfo> m_Timelines = new List<ClipInfo>();
   
 		[System.Serializable]
-		private struct ClipInfo
+		public struct ClipInfo
 		{
 			public string addressPath;
 			public AssetReference assetRef;
@@ -36,6 +36,7 @@ namespace Gaia
 				this.duration = duration;
 			}
 		}
+		public IReadOnlyList<ClipInfo> Timelines => m_Timelines;
 
 		public void Add(AssetReference assetRef, string path, AnimationClip clip)
 		{

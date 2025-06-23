@@ -47,7 +47,7 @@ namespace Gaia
 			MyTaskHandler.ManualParallelUpdate(m_Tasks);
 		}
 
-        public void CrossFade(string timelineAssetPath, float fadeIn)
+        public void CrossFade(string timelineAssetPath, float fadeIn, bool realTime = false)
         {
             if (string.IsNullOrEmpty(timelineAssetPath))
                 throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
@@ -58,11 +58,26 @@ namespace Gaia
                 return;
 			}
             var timelineAsset = timelineAssetGo.GetComponent<GxTimelineAsset>();
-			var aniTask = new GxAnimationTask(this, timelineAsset , fadeIn);
-            m_Tasks.Add(aniTask);
+			var aniTask = new GxAnimationTask(this, timelineAsset , fadeIn, realTime);
+            if (animator.enabled)
+            {
+                if (!Retargeting.IsLateUpdate)
+                    animator.enabled = false;
+            }
+
+            BoardcastWillPlayAnimation(aniTask);
+			m_Tasks.Add(aniTask);
 		}
 
-        public IEnumerator<GxAnimationTask> GetActiveAnimations()
+        private void BoardcastWillPlayAnimation(GxAnimationTask next)
+        {
+            foreach (var at in GetActiveAnimations())
+            {
+                at.OnWillPlayAnimation(next);
+			}
+        }
+
+        public IEnumerable<GxAnimationTask> GetActiveAnimations()
         {
             foreach (var task in m_Tasks)
             {
