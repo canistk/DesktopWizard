@@ -54,7 +54,7 @@ namespace Gaia
 					var clip = self.db.Timelines[m_Index];
 					if (GUILayout.Button("Play Animation", GUILayout.ExpandWidth(true), GUILayout.Height(30f)))
 					{
-						Debug.Log($"Trigger animation: {clip.addressPath}");
+						Debug.Log($"Trigger animation(Editor): {clip.addressPath}");
 						TriggerAnimation(m_Index);
 					}
 				}

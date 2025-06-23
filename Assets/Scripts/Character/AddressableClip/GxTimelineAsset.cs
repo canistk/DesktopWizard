@@ -52,9 +52,26 @@ namespace Gaia
 		}
 
 		private ISpawner m_Spawner;
+		private Dictionary<Renderer, bool> m_Renderers = null;
+		private void Awake()
+		{
+			if (m_Renderers == null)
+				m_Renderers = new Dictionary<Renderer, bool>();
+			foreach (var renderer in GetComponentsInChildren<Renderer>())
+			{
+				m_Renderers.Add(renderer, renderer.enabled);
+			}
+		}
+
 		public void OnSpawn(ISpawner pool)
 		{
 			this.m_Spawner = pool;
+			foreach (var renderer in GetComponentsInChildren<Renderer>())
+			{
+				renderer.enabled = false; // Disable renderers by default
+			}
+			// Always animate to ensure the character is animated even when not visible
+			m_Retargeting.animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 		}
 
 		public void OnDespawn()

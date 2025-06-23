@@ -60,7 +60,7 @@ namespace Gaia
 
 		private void M_Timeline_EVENT_PlayedOneCycle()
 		{
-			Debug.Log($"{m_Timeline.gameObject.name} played Once");
+			// Debug.Log($"{m_Timeline.gameObject.name} played Once");
 			m_Timeline.EVENT_PlayedOneCycle -= M_Timeline_EVENT_PlayedOneCycle;
 			if (state == eState.Hold && m_BlendOut != null)
 				++state; // Move to BlendOut state if we are holding.
@@ -115,7 +115,7 @@ namespace Gaia
 		{
 			if (state == eState.Hold)
 			{
-				Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
+				//Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
 				var w = this.m_BlendIn.weight;
 				var duration = other.m_BlendIn.duration;
 				m_BlendOut = new BlendWeight(w, 0f, duration, other.IsRealtime);
@@ -248,7 +248,7 @@ namespace Gaia
 
 		protected override void OnComplete()
 		{
-			Debug.Log($"Successfully loaded asset: {m_Oper.DebugName}");
+			//Debug.Log($"Successfully loaded asset: {m_Oper.DebugName}");
 			try
 			{
 				if (m_Oper.Status == AsyncOperationStatus.Failed)

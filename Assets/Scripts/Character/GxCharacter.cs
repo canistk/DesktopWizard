@@ -58,6 +58,12 @@ namespace Gaia
                 return;
 			}
             var timelineAsset = timelineAssetGo.GetComponent<GxTimelineAsset>();
+            if (timelineAsset == null)
+            {
+                Debug.LogError($"The spawned GameObject does not have a GxTimelineAsset component: {timelineAssetGo.name}");
+                return;
+            }
+
 			var aniTask = new GxAnimationTask(this, timelineAsset , fadeIn, realTime);
             if (animator.enabled)
             {
