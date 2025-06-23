@@ -14,6 +14,7 @@ namespace Gaia
 		private KeyValuePair<bool, string[]> m_ClipNames = default;
 
 		private int m_Index = 0;
+		private int m_BaseIndex = 0;
 
 		private float m_FadeIn = 0.2f;
 		protected override void OnAfterDrawGUI()
@@ -47,6 +48,15 @@ namespace Gaia
 					}
 				}
 
+				using (var checker = new EditorGUI.ChangeCheckScope())
+				{
+					var idx = EditorGUILayout.Popup("Back loop", m_BaseIndex, m_ClipNames.Value, EditorStyles.popup);
+					if (checker.changed)
+					{
+						m_BaseIndex = idx;
+					}
+				}
+
 				if (m_ClipNames.Key &&
 					m_Index >= 0 &&
 					m_Index < m_ClipNames.Value.Length)
@@ -55,28 +65,30 @@ namespace Gaia
 					if (GUILayout.Button("Play Animation", GUILayout.ExpandWidth(true), GUILayout.Height(30f)))
 					{
 						Debug.Log($"Trigger animation(Editor): {clip.addressPath}");
-						TriggerAnimation(m_Index);
+						TriggerAnimation(m_Index, m_BaseIndex);
 					}
 				}
 				else
 				{
 					EditorGUILayout.HelpBox("No animation selected.", MessageType.Info);
 				}
-
 			}
 		}
 
-		private void TriggerAnimation(int idx)
+		private void TriggerAnimation(int idx, int nextIdx)
 		{
 			var character = self.character;
 			var db = self.db;
-			var record = db.Timelines[idx];
-			if (character == null || db == null || record.assetRef == null)
+			var r1 = db.Timelines[idx];
+			var r2 = db.Timelines[nextIdx];
+			if (character == null || db == null || r1.assetRef == null)
 			{
 				Debug.LogWarning("Character or Database is not assigned or invalid.");
 				return;
 			}
-			character.CrossFade(record.addressPath, m_FadeIn);
+			character.ClearQueueAnime();
+			character.CrossFade(r1.addressPath, m_FadeIn);
+			character.QueueAnime(r2.addressPath, m_FadeIn);
 
 		}
 	}

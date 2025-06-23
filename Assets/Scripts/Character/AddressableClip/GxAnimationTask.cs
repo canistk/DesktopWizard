@@ -63,7 +63,10 @@ namespace Gaia
 			// Debug.Log($"{m_Timeline.gameObject.name} played Once");
 			m_Timeline.EVENT_PlayedOneCycle -= M_Timeline_EVENT_PlayedOneCycle;
 			if (state == eState.Hold && m_BlendOut != null)
+			{
 				++state; // Move to BlendOut state if we are holding.
+			}
+			m_Character.BoardCastPlayedOnce(this);
 		}
 
 		protected override bool InternalExecute()
@@ -121,7 +124,9 @@ namespace Gaia
 				m_BlendOut = new BlendWeight(w, 0f, duration, other.IsRealtime);
 			}
 			if (state == eState.Hold && m_BlendOut != null)
+			{
 				++state; // Move to BlendOut state if we are holding.
+			}
 		}
 
 		public float GetWeight01()
