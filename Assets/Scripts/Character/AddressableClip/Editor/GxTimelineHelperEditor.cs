@@ -87,6 +87,7 @@ namespace Gaia
 			}
 		}
 
+		private bool flag = false;
 		private void TriggerAnimation(int idx, int nextIdx)
 		{
 			var character = self.character;
@@ -98,10 +99,10 @@ namespace Gaia
 				Debug.LogWarning("Character or Database is not assigned or invalid.");
 				return;
 			}
-			character.ClearQueueAnime();
-			character.CrossFade(r1.addressPath, fadeIn);
-			character.QueueAnime(r2.addressPath, fadeIn);
 
+			var r = flag ? r2 : r1;
+			flag = !flag;
+			character.CrossFade(r.addressPath, fadeIn);
 		}
 	}
 }

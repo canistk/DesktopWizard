@@ -33,9 +33,9 @@ namespace Gaia
         
         [SerializeField] kObjectPool m_Pool;
 
+        [SerializeField] int m_TaskCount = 0;
 		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
-        private Queue<GxAnimationTask> m_AnimationQueue = new Queue<GxAnimationTask>();
-
+        
 		private void Reset()
 		{
 			m_BodyLayout = GetComponentInChildren<BodyLayout>();
@@ -46,32 +46,7 @@ namespace Gaia
 		private void Update()
 		{
 			MyTaskHandler.ManualParallelUpdate(m_Tasks);
-            HandleAnimationFlow();
-		}
-
-        private void HandleAnimationFlow()
-        {
-            Debug.Assert(m_AnimationQueue != null, "Animation queue should not be null.");
-            if (m_AnimationQueue.Count == 1)
-            {
-                var t = m_AnimationQueue.Peek();
-                if (!t.isCompleted)
-                    t.Execute();
-            }
-            else if (m_AnimationQueue.Count > 1)
-            {
-                var t = m_AnimationQueue.Dequeue();
-                Debug.Assert(t != null, "Dequeued animation task should not be null.");
-                
-				if (t != null)
-                {
-                    InternalPlayTimeline(t, 0f, false);
-                }
-                else
-                {
-                    Debug.LogWarning("Received a null timeline asset in the animation queue.");
-                }
-            }
+			m_TaskCount = m_Tasks.Count;
 		}
 
         private void InternalPlayTimeline(GxTimelineAsset timelineAsset, float fadeIn, bool realTime)
@@ -89,7 +64,6 @@ namespace Gaia
                     animator.enabled = false;
             }
 
-            BoardcastWillPlayAnimation(aniTask);
             m_Tasks.Add(aniTask);
         }
 
@@ -112,46 +86,22 @@ namespace Gaia
             InternalPlayTimeline(timelineAsset, fadeIn, realTime);
 		}
 
-        private struct QueuedAnime
-        {
-            public string timelineAssetPath;
-            public float fadeIn;
-            public bool realTime;
-            public QueuedAnime(string path, float fade, bool realTime)
-            {
-                timelineAssetPath = path;
-                fadeIn = fade;
-                this.realTime = realTime;
-			}
-		}
-        Queue<QueuedAnime> m_QueuedAnimes = new Queue<QueuedAnime>();
-		public void QueueAnime(string timelineAssetPath, float fadeIn, bool realTime = false)
-        {
-            Debug.Log($"{timelineAssetPath}, queued.");
-			m_QueuedAnimes.Enqueue(new QueuedAnime(timelineAssetPath, fadeIn, realTime));
-		}
-
-        public void ClearQueueAnime()
-        {
-            m_QueuedAnimes.Clear();
-		}
-        private void BoardcastWillPlayAnimation(GxAnimationTask next)
+        /// <summary>Called by <see cref="GxAnimationTask"/></summary>
+        /// <param name="ani"></param>
+        internal void BoardcastWillPlayAnimation(GxAnimationTask ani)
         {
             foreach (var at in GetActiveAnimations())
             {
-                at.OnWillPlayAnimation(next);
+                if (at == ani)
+                    continue;
+                at.OnWillPlayAnimation(ani);
 			}
         }
 
-        public void BoardCastPlayedOnce(GxAnimationTask anime)
+		/// <summary>Called by <see cref="GxAnimationTask"/></summary>
+		internal void BoardCastPlayedOnce(GxAnimationTask ani)
         {
-            if (m_QueuedAnimes.Count > 0)
-            {
-                BoardcastWillPlayAnimation(anime);
-                var q = m_QueuedAnimes.Dequeue();
-                CrossFade(q.timelineAssetPath, q.fadeIn, q.realTime);
-                Debug.Log($"Play queued {q.timelineAssetPath}");
-			}
+            
 		}
 
         public IEnumerable<GxAnimationTask> GetActiveAnimations()

@@ -6,7 +6,6 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.Playables;
 namespace Gaia
 {
 	public class GxAnimationTask : GxCharacterTask, IRetarget
@@ -17,14 +16,14 @@ namespace Gaia
 
 		private enum eState
 		{
-			Idle,
+			None,
 			PlayAni,
 			BlendIn,
 			Hold,
 			BlendOut,
 			Exit,
 		}
-		private eState state = eState.Idle;
+		private eState state = eState.None;
 
 		private BlendWeight m_BlendIn, m_BlendOut;
 		
@@ -44,7 +43,8 @@ namespace Gaia
 			this.m_Timeline = timeline;
 			this.m_Character = character;
 			this.IsRealtime = isRealTime;
-			m_BlendIn = new BlendWeight(0f, 1f, blendTime, IsRealtime);
+			this.m_BlendIn = new BlendWeight(0f, 1f, blendTime, IsRealtime);
+			this.m_BlendOut = null; // Reset blend out to null initially
 		}
 
 		private void PlayTimelineOnloaded()
@@ -53,19 +53,20 @@ namespace Gaia
 
 			// Hook up the retargeting system
 			m_Character.Retargeting.AddTarget(this);
+			m_Character.BoardcastWillPlayAnimation(this);
 
-			m_Timeline.EVENT_PlayedOneCycle += M_Timeline_EVENT_PlayedOneCycle;
+			m_Timeline.EVENT_PlayedOneCycle += OnPlayedOneCycle;
 			if (!pd.playOnAwake)
 				pd.Play();
+			state = eState.PlayAni;
 		}
 
 		protected override bool InternalExecute()
 		{
 			switch (state)
 			{
-				case eState.Idle:
+				case eState.None:
 					PlayTimelineOnloaded();
-					++state;
 					break;
 				case eState.PlayAni:
 					++state;
@@ -75,64 +76,99 @@ namespace Gaia
 					break;
 				case eState.Hold:
 					// Just wait for next animation.
+					if (!m_Timeline.IsLoop &&
+						m_Timeline.IsPlayedOnce())
+					{
+						
+					}
 				break;
 				case eState.BlendOut:
 					if (!m_BlendOut.Execute()) ++state;
 					break;
+				case eState.Exit:
+					break;
+				default:
+					throw new System.NotImplementedException();
 			}
 
 			if (state == eState.Exit)
 			{
-				m_Timeline.Despawn();
-				m_Character.Retargeting.RemoveTarget(this);
-				m_Despawned = true;
-
+				Abort();
 			}
 			return state < eState.Exit;
 		}
 
-		private bool m_Despawned = false;
-		public bool IsDespawned => m_Despawned;
-
 		public override void Reset()
 		{
 			base.Reset();
-			state = eState.Idle;
+			state = eState.None;
 			m_BlendIn.Reset();
 			m_BlendOut?.Reset();
 			m_BlendOut = null;
-			m_Despawned = false;
 		}
 
-		private void M_Timeline_EVENT_PlayedOneCycle()
+		protected override void OnDisposing()
+		{
+			base.OnDisposing();
+			m_Timeline.Despawn();
+			m_Character.Retargeting.RemoveTarget(this);
+		}
+
+		private void OnPlayedOneCycle()
 		{
 			// Debug.Log($"{m_Timeline.gameObject.name} played Once");
-			m_Timeline.EVENT_PlayedOneCycle -= M_Timeline_EVENT_PlayedOneCycle;
-			if (state == eState.Hold && m_BlendOut != null)
-			{
-				++state; // Move to BlendOut state if we are holding.
-			}
+			m_Timeline.EVENT_PlayedOneCycle -= OnPlayedOneCycle;
 			m_Character.BoardCastPlayedOnce(this);
+			
+			if (!m_Timeline.IsLoop && m_BlendOut == null)
+			{
+				m_BlendOut = new BlendWeight(m_BlendIn.weight, 0f, m_BlendIn.duration, IsRealtime);
+				TryTriggerBlendOut();
+			}
 		}
 
 		public void OnWillPlayAnimation(GxAnimationTask other)
 		{
+			if (isDisposed)
+				return;
+			if (state >= eState.BlendOut)
+				return; // Already blending out, ignore.
+			if (m_BlendOut != null)
+				return;
+
+			Debug.Assert(this != other, "Cannot blend out itself, this should not happen.");
+
 			//Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
 			var w = this.m_BlendIn.weight;
 			var duration = other.m_BlendIn.duration;
 			m_BlendOut = new BlendWeight(w, 0f, duration, other.IsRealtime);
-			
-			if (state == eState.Hold && m_BlendOut != null)
-			{
-				++state; // Move to BlendOut state if we are holding.
-			}
+			TryTriggerBlendOut();
+		}
+
+		/// <summary>
+		/// Played one cycle, <see cref="OnPlayedOneCycle"/>
+		/// Blend out by others <see cref="OnWillPlayAnimation(GxAnimationTask)"/>
+		/// 
+		/// </summary>
+		private void TryTriggerBlendOut()
+		{
+			if (state < eState.BlendIn &&
+				state >= eState.BlendOut)
+				return;
+			if (m_BlendOut == null)
+				return;
+			state = eState.BlendOut;
 		}
 
 		public float GetWeight01()
 		{
-			if (m_Despawned)
+			if (isDisposed)
 				return 0f;
-			return m_BlendIn.weight;
+
+			// assume that the blend in is always before blend out.
+			return state < eState.BlendOut ?
+				m_BlendIn.weight :
+				m_BlendOut.weight;
 		}
 
 		public GxRetargeting GetTarget()
