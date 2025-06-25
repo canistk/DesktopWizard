@@ -12,6 +12,11 @@ namespace Gaia
         [SerializeField] private GxCharacter m_Character;
         public GxCharacter character => m_Character;
 
+        public int m_FirstIndex = 0;
+        public int m_SecondIndex = 0;
+
+        public float m_FadeIn = 0.2f;
+
 		private void Reset()
 		{
 			m_Character = GetComponent<GxCharacter>();

@@ -49,24 +49,14 @@ namespace Gaia
 
 		private void PlayTimelineOnloaded()
 		{
-			m_Timeline.Director.extrapolationMode = m_Timeline.isLoop ?
-				DirectorWrapMode.Loop :
-				DirectorWrapMode.Hold;
+			var pd = m_Timeline.playableDirector;
 
+			// Hook up the retargeting system
 			m_Character.Retargeting.AddTarget(this);
-			m_Timeline.EVENT_PlayedOneCycle += M_Timeline_EVENT_PlayedOneCycle;
-			m_Timeline.Director.Play();
-		}
 
-		private void M_Timeline_EVENT_PlayedOneCycle()
-		{
-			// Debug.Log($"{m_Timeline.gameObject.name} played Once");
-			m_Timeline.EVENT_PlayedOneCycle -= M_Timeline_EVENT_PlayedOneCycle;
-			if (state == eState.Hold && m_BlendOut != null)
-			{
-				++state; // Move to BlendOut state if we are holding.
-			}
-			m_Character.BoardCastPlayedOnce(this);
+			m_Timeline.EVENT_PlayedOneCycle += M_Timeline_EVENT_PlayedOneCycle;
+			if (!pd.playOnAwake)
+				pd.Play();
 		}
 
 		protected override bool InternalExecute()
@@ -114,15 +104,24 @@ namespace Gaia
 			m_Despawned = false;
 		}
 
+		private void M_Timeline_EVENT_PlayedOneCycle()
+		{
+			// Debug.Log($"{m_Timeline.gameObject.name} played Once");
+			m_Timeline.EVENT_PlayedOneCycle -= M_Timeline_EVENT_PlayedOneCycle;
+			if (state == eState.Hold && m_BlendOut != null)
+			{
+				++state; // Move to BlendOut state if we are holding.
+			}
+			m_Character.BoardCastPlayedOnce(this);
+		}
+
 		public void OnWillPlayAnimation(GxAnimationTask other)
 		{
-			if (state == eState.Hold)
-			{
-				//Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
-				var w = this.m_BlendIn.weight;
-				var duration = other.m_BlendIn.duration;
-				m_BlendOut = new BlendWeight(w, 0f, duration, other.IsRealtime);
-			}
+			//Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
+			var w = this.m_BlendIn.weight;
+			var duration = other.m_BlendIn.duration;
+			m_BlendOut = new BlendWeight(w, 0f, duration, other.IsRealtime);
+			
 			if (state == eState.Hold && m_BlendOut != null)
 			{
 				++state; // Move to BlendOut state if we are holding.

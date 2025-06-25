@@ -34,6 +34,7 @@ namespace Gaia
         [SerializeField] kObjectPool m_Pool;
 
 		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
+        private Queue<GxAnimationTask> m_AnimationQueue = new Queue<GxAnimationTask>();
 
 		private void Reset()
 		{
@@ -45,6 +46,32 @@ namespace Gaia
 		private void Update()
 		{
 			MyTaskHandler.ManualParallelUpdate(m_Tasks);
+            HandleAnimationFlow();
+		}
+
+        private void HandleAnimationFlow()
+        {
+            Debug.Assert(m_AnimationQueue != null, "Animation queue should not be null.");
+            if (m_AnimationQueue.Count == 1)
+            {
+                var t = m_AnimationQueue.Peek();
+                if (!t.isCompleted)
+                    t.Execute();
+            }
+            else if (m_AnimationQueue.Count > 1)
+            {
+                var t = m_AnimationQueue.Dequeue();
+                Debug.Assert(t != null, "Dequeued animation task should not be null.");
+                
+				if (t != null)
+                {
+                    InternalPlayTimeline(t, 0f, false);
+                }
+                else
+                {
+                    Debug.LogWarning("Received a null timeline asset in the animation queue.");
+                }
+            }
 		}
 
         private void InternalPlayTimeline(GxTimelineAsset timelineAsset, float fadeIn, bool realTime)
@@ -52,9 +79,13 @@ namespace Gaia
             if (timelineAsset == null)
                 throw new System.ArgumentNullException(nameof(timelineAsset), "Timeline asset cannot be null.");
             var aniTask = new GxAnimationTask(this, timelineAsset, fadeIn, realTime);
-            if (animator.enabled)
+
+			// Hack : while retargeting system is using Update (prefer to use LateUpdate instead),
+            // we need to disable animator in Update to prevent animation flickering/overrided.
+			if (animator.enabled)
             {
-                if (!Retargeting.IsLateUpdate)
+                Debug.LogWarning("Retargeting is enabled in Update, disabling it to prevent flickering. Consider using LateUpdate for retargeting.");
+				if (!Retargeting.IsLateUpdate)
                     animator.enabled = false;
             }
 

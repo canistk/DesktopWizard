@@ -13,10 +13,22 @@ namespace Gaia
 
 		private KeyValuePair<bool, string[]> m_ClipNames = default;
 
-		private int m_Index = 0;
-		private int m_BaseIndex = 0;
+		private SerializedProperty m_FirstIndexProp;
+		private SerializedProperty m_SecondIndexProp;
+		private SerializedProperty m_FadeInProp;
 
-		private float m_FadeIn = 0.2f;
+		protected override void OnEnable()
+		{
+			base.OnEnable();
+			m_FirstIndexProp = serializedObject.FindProperty(nameof(self.m_FirstIndex));
+			m_SecondIndexProp = serializedObject.FindProperty(nameof(self.m_SecondIndex));
+			m_FadeInProp = serializedObject.FindProperty(nameof(self.m_FadeIn));
+		}
+
+		private int idx1 { get => m_FirstIndexProp.intValue; set => m_FirstIndexProp.intValue = value; }
+		private int idx2 { get => m_SecondIndexProp.intValue; set => m_SecondIndexProp.intValue = value; }
+		private float fadeIn { get => m_FadeInProp.floatValue; set => m_FadeInProp.floatValue = value; }
+
 		protected override void OnAfterDrawGUI()
 		{
 			// base.OnAfterDrawGUI();
@@ -41,31 +53,31 @@ namespace Gaia
 
 				using (var checker = new EditorGUI.ChangeCheckScope())
 				{
-					var idx = EditorGUILayout.Popup("Timeline", m_Index, m_ClipNames.Value, EditorStyles.popup);
+					var idx = EditorGUILayout.Popup("Timeline", idx1, m_ClipNames.Value, EditorStyles.popup);
 					if (checker.changed)
 					{
-						m_Index = idx;
+						idx1 = idx;
 					}
 				}
 
 				using (var checker = new EditorGUI.ChangeCheckScope())
 				{
-					var idx = EditorGUILayout.Popup("Back loop", m_BaseIndex, m_ClipNames.Value, EditorStyles.popup);
+					var idx = EditorGUILayout.Popup("Back loop", idx2, m_ClipNames.Value, EditorStyles.popup);
 					if (checker.changed)
 					{
-						m_BaseIndex = idx;
+						idx2 = idx;
 					}
 				}
 
 				if (m_ClipNames.Key &&
-					m_Index >= 0 &&
-					m_Index < m_ClipNames.Value.Length)
+					idx1 >= 0 &&
+					idx1 < m_ClipNames.Value.Length)
 				{
-					var clip = self.db.Timelines[m_Index];
+					var clip = self.db.Timelines[idx1];
 					if (GUILayout.Button("Play Animation", GUILayout.ExpandWidth(true), GUILayout.Height(30f)))
 					{
 						Debug.Log($"Trigger animation(Editor): {clip.addressPath}");
-						TriggerAnimation(m_Index, m_BaseIndex);
+						TriggerAnimation(idx1, idx2);
 					}
 				}
 				else
@@ -87,8 +99,8 @@ namespace Gaia
 				return;
 			}
 			character.ClearQueueAnime();
-			character.CrossFade(r1.addressPath, m_FadeIn);
-			character.QueueAnime(r2.addressPath, m_FadeIn);
+			character.CrossFade(r1.addressPath, fadeIn);
+			character.QueueAnime(r2.addressPath, fadeIn);
 
 		}
 	}

@@ -15,45 +15,33 @@ namespace Gaia
     [RequireComponent(typeof(PlayableDirector))]
 	public class GxTimelineAsset : TimeLineHelper, ISpawnToken
     {
-        [SerializeField] private PlayableDirector m_director = null;
-        public PlayableDirector Director
-        {
-            get
-            {
-                if (m_director == null)
-                {
-                    m_director = GetComponent<PlayableDirector>();
-                }
-                return m_director;
-            }
-		}
-
-		private void Reset()
-		{
-			m_director = GetComponent<PlayableDirector>();
-		}
-
-		// TODO: bind actor to track, so that the timeline can control the actor's animation.
+        // TODO: bind actor to track, so that the timeline can control the actor's animation.
 		[SerializeField] private GxRetargeting m_Retargeting;
 
 
 		public GxRetargeting GetRetargeting() => m_Retargeting;
 		public void AssignRetargeting(GxRetargeting value) => m_Retargeting = value;
 
-		public bool isLoop;
-		public float duration;
+		/// <summary>
+		/// Remark, it's copy value from AnimationClip.isLooping, not from PlayableDirector.extrapolationMode.
+		/// <see cref="UpdateInfo(AnimationClip)"/>
+		/// </summary>
+		[SerializeField] bool m_IsLoop;
+		[SerializeField] float m_Duration;
+		public bool IsLoop => m_IsLoop;
+		public float Duration => m_Duration;
 		public void UpdateInfo(AnimationClip clip)
 		{
-			this.duration = clip.length;
-			this.isLoop = clip.isLooping;
-			Director.extrapolationMode = isLoop ?
+			this.m_Duration = clip.length;
+			this.m_IsLoop = clip.isLooping;
+			playableDirector.extrapolationMode = m_IsLoop ?
 				DirectorWrapMode.Loop :
 				DirectorWrapMode.Hold;
 		}
 
 		private ISpawner m_Spawner;
 		private Dictionary<Renderer, bool> m_Renderers = null;
-		private void Awake()
+		protected override void Awake()
 		{
 			if (m_Renderers == null)
 				m_Renderers = new Dictionary<Renderer, bool>();
@@ -63,9 +51,14 @@ namespace Gaia
 			}
 		}
 
+		private float m_SpawnTime = 0f;
+		public float playedTime => Time.timeSinceLevelLoad - m_SpawnTime;
+		public double InitialTime => playableDirector.initialTime;
+
 		public void OnSpawn(ISpawner pool)
 		{
 			this.m_Spawner = pool;
+			m_SpawnTime = Time.timeSinceLevelLoad;
 			foreach (var renderer in GetComponentsInChildren<Renderer>())
 			{
 				renderer.enabled = false; // Disable renderers by default
