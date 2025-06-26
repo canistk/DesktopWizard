@@ -8,7 +8,7 @@ namespace Gaia
 	[TaskCategory("Gaia")]
 	[TaskName("Get Cursor Pos (ModelSpace).")]
 	[TaskDescription("Get Cursor Pos.")]
-	public class GetCursorPos : OwnerBase
+	public class GetCursorPos : ModelViewBase
 	{
 		[Header("Cursor Pos - Output")]
 		[SerializeField] SharedVector2Int m_OS_Pos;
@@ -18,20 +18,20 @@ namespace Gaia
 		[Header("Z Depth Override")]
 		[SerializeField] float		m_ZDepthOverride = 0f;
 		[SerializeField] SharedVector3 m_CursorPosInModelSpace;
-		protected override eState InternalUpdate()
+		protected override eState OnModelViewUpdate()
 		{
-			if (Core == null || Core.camera == null)
+			if (ModelView == null || ModelView.dwCamera == null)
 				return eState.Failure;
-			var c		= Core.camera;
+			var c		= ModelView.dwCamera;
 			var os		= c.GetMousePosInOSSpace();
-			var world	= c.MatrixOSToMonitor().MultiplyPoint3x4(new Vector3(os.x, os.y, 0f));
-			var model	= c.MonitorToModelPoint((Vector3)world);
-			var origin	= (Vector3)model;
+			var world	= c.GetMousePosInMonitorSpace();
+			var model	= c.GetMouseRayInModelSpace();
+			var origin	= model.origin;
 			var dir		= c.transform.forward;
 
 			m_OS_Pos		.SetValue(os);
 			m_Monitor_Pos	.SetValue((Vector2)world);
-			m_Model_Pos		.SetValue((Vector2)model);
+			m_Model_Pos		.SetValue(origin);
 			var rst		= origin + (dir * m_ZDepthOverride);
 			m_CursorPosInModelSpace.SetValue(rst);
 			return eState.Success;

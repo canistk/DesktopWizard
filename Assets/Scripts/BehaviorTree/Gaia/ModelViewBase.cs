@@ -5,7 +5,7 @@ namespace Gaia
     public abstract class ModelViewBase : ActionBase
     {
         private KeyValuePair<bool, GxModelView> m_ModelView;
-        protected GxModelView modelView
+        protected GxModelView ModelView
         {
             get
             {
@@ -17,13 +17,13 @@ namespace Gaia
                 return m_ModelView.Value;
             }
         }
-		protected DwCamera dwCamera => modelView.dwCamera;
-		protected DwForm dwForm => modelView.dwForm;
-        protected DwWindow dwWindow => modelView.dwWindow;
+		protected DwCamera dwCamera => ModelView.dwCamera;
+		protected DwForm dwForm => ModelView.dwForm;
+        protected DwWindow dwWindow => ModelView.dwWindow;
 
 		protected sealed override eState InternalUpdate()
 		{
-			if (modelView == null)
+			if (ModelView == null)
                 return eState.Failure;
             return OnModelViewUpdate();
 		}

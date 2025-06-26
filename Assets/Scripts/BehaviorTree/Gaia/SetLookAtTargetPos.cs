@@ -8,16 +8,19 @@ namespace Gaia
 	[TaskCategory("Gaia")]
 	[TaskName("Set Look At")]
 	[TaskDescription("Set Avatar's look at Pos in (ModelSpace).")]
-	public class SetLookAtTargetPos : OwnerBase
+	[System.Obsolete]
+	public class SetLookAtTargetPos : ModelViewBase
 	{
         [SerializeField] SharedVector3 m_TargetPos;
 
-		protected override eState InternalUpdate()
+		protected override eState OnModelViewUpdate()
 		{
-			if (Core == null)
+			if (ModelView == null)
 				return eState.Failure;
 			var v3 = m_TargetPos.Value;
-			Core.SetLookAtTargetPos(v3);
+			// ModelView.SetLookAtTargetPos(v3);
+			// TODO: Implement SetLookAtTargetPos in GxModelView
+			throw new System.NotImplementedException();
 			return eState.Success;
 		}
 	}

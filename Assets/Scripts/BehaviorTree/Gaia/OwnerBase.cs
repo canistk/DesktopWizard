@@ -6,16 +6,16 @@ namespace Gaia
 {
     public abstract class OwnerBase : ActionBase
     {
-        protected HeroineCore m_Core;
-		protected HeroineCore Core
+        protected GxModelView m_ModelView;
+		protected GxModelView ModelView
 		{
 			get
 			{
-				if (m_Core == null)
+				if (m_ModelView == null)
 				{
-					m_Core = gameObject.GetComponent<HeroineCore>();
+					m_ModelView = gameObject.GetComponent<GxModelView>();
 				}
-				return m_Core;
+				return m_ModelView;
 			}
 		}
 	}
