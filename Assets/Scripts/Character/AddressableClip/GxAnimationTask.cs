@@ -76,11 +76,6 @@ namespace Gaia
 					break;
 				case eState.Hold:
 					// Just wait for next animation.
-					if (!m_Timeline.IsLoop &&
-						m_Timeline.IsPlayedOnce())
-					{
-						
-					}
 				break;
 				case eState.BlendOut:
 					if (!m_BlendOut.Execute()) ++state;

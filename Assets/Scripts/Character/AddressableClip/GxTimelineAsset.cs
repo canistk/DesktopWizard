@@ -43,6 +43,7 @@ namespace Gaia
 		private Dictionary<Renderer, bool> m_Renderers = null;
 		protected override void Awake()
 		{
+			base.Awake();
 			if (m_Renderers == null)
 				m_Renderers = new Dictionary<Renderer, bool>();
 			foreach (var renderer in GetComponentsInChildren<Renderer>())
