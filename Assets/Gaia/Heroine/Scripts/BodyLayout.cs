@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
+	[System.Obsolete("Use GxCharacter instead.")]
 	[RequireComponent(typeof(Animator))]
     public class BodyLayout : MonoBehaviour
     {

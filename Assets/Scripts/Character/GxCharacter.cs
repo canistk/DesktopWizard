@@ -8,53 +8,66 @@ namespace Gaia
 {
     public class GxCharacter : MonoBehaviour
     {
-        [SerializeField] BodyLayout m_BodyLayout;
-
-        private bool m_FetchBodyLayout = false;
-		public Animator animator
-        {
-            get
-            {
-                if (m_BodyLayout == null && !m_FetchBodyLayout)
-                {
-                    m_BodyLayout = GetComponentInChildren<BodyLayout>();
-                    m_FetchBodyLayout = true;
-                    if (m_BodyLayout == null)
-                        throw new System.NullReferenceException("GxCharacter requires a BodyLayout component in its children.");
-                    if (m_BodyLayout.animator == null)
-                        throw new System.NullReferenceException("BodyLayout requires an Animator component.");
-				}
-                return m_BodyLayout.animator;
-            }
-		}
-
-        [SerializeField] GxRetargeting m_Retargeting;
-        public GxRetargeting Retargeting => m_Retargeting;
-        
-        [SerializeField] kObjectPool m_Pool;
-
-		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
         
 		private void Reset()
 		{
-			m_BodyLayout = GetComponentInChildren<BodyLayout>();
-            m_Retargeting = GetComponentInChildren<GxRetargeting>();
-            // m_Pool = transform.GetOrAddComponent<kObjectPool>();
-            m_Pool = GetComponentInChildren<kObjectPool>();
-            if (m_Pool == null)
-            {
-                var tran = new GameObject("Loader").transform;
-                tran.SetParent(transform, false);
-                tran.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-                m_Pool = tran.gameObject.AddComponent<kObjectPool>();
-            }
+            Editor_RetargetingCreate();
+			Editor_ObjectPoolCreate();
 		}
 
 		private void Update()
 		{
-			MyTaskHandler.ManualParallelUpdate(m_Tasks);
+            HandleTasks();
 		}
 
+		#region Task Management
+		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
+        private void HandleTasks()
+        {
+			MyTaskHandler.ManualParallelUpdate(m_Tasks);
+		}
+		#endregion Task Management
+
+		#region Object Pooling
+		[SerializeField] kObjectPool m_Pool;
+        private void Editor_ObjectPoolCreate()
+        {
+			// m_Pool = transform.GetOrAddComponent<kObjectPool>();
+			m_Pool = GetComponentInChildren<kObjectPool>();
+			if (m_Pool == null)
+			{
+				var tran = new GameObject("Loader").transform;
+				tran.SetParent(transform, false);
+				tran.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+				m_Pool = tran.gameObject.AddComponent<kObjectPool>();
+			}
+		}
+		#endregion Object Pooling
+
+		#region Wrapped Retargeting Methods
+		[SerializeField] GxRetargeting m_Retargeting;
+		private bool m_Fetched = false;
+		public Animator animator
+		{
+			get
+			{
+				if (m_Retargeting == null && !m_Fetched)
+				{
+					m_Retargeting = GetComponentInChildren<GxRetargeting>();
+					m_Fetched = true;
+					if (m_Retargeting == null)
+						throw new System.NullReferenceException("GxCharacter requires a Retargeting component in its children.");
+					if (m_Retargeting.animator == null)
+						throw new System.NullReferenceException("Retargeting requires an Animator component.");
+				}
+				return m_Retargeting.animator;
+			}
+		}
+
+		private void Editor_RetargetingCreate()
+        {
+			m_Retargeting = GetComponentInChildren<GxRetargeting>();
+		}
         private void InternalPlayTimeline(GxTimelineAsset timelineAsset, float fadeIn, bool realTime)
         {
             if (timelineAsset == null)
@@ -66,7 +79,7 @@ namespace Gaia
 			if (animator.enabled)
             {
                 Debug.LogWarning("Retargeting is enabled in Update, disabling it to prevent flickering. Consider using LateUpdate for retargeting.");
-				if (!Retargeting.IsLateUpdate)
+				if (!m_Retargeting.IsLateUpdate)
                     animator.enabled = false;
             }
 
@@ -121,5 +134,58 @@ namespace Gaia
                 yield return aniTask;
 			}
 		}
+
+        public void AddAnimationRetarget(IRetarget target)
+        {
+            if (m_Retargeting == null)
+            {
+                Debug.LogError("GxRetargeting is not initialized.");
+                return;
+            }
+            m_Retargeting.AddTarget(target);
+		}
+
+        public void RemoveAnimationRetarget(IRetarget target)
+        {
+            if (m_Retargeting == null)
+            {
+                Debug.LogError("GxRetargeting is not initialized.");
+                return;
+            }
+            m_Retargeting.RemoveTarget(target);
+		}
+		#endregion Wrapped Retargeting Methods
+
+		#region Face Rig
+		private KeyValuePair<bool, FaceRig> m_FaceRig;
+		public FaceRig FaceRig
+		{
+			get
+			{
+				if (!m_FaceRig.Key)
+				{
+					m_FaceRig = new KeyValuePair<bool, FaceRig>(true, GetComponentInChildren<FaceRig>(true));
+					Debug.Assert(m_FaceRig.Value != null, "FaceRig component is missing in the children of GxCharacter.");
+				}
+				return m_FaceRig.Value;
+			}
+		}
+		#endregion Face Rig
+
+		#region Emotion Wheel
+		private KeyValuePair<bool, EmotionWheel> m_EmotionWheel;
+		public EmotionWheel EmotionWheel
+		{
+			get
+			{
+				if (!m_EmotionWheel.Key)
+				{
+					m_EmotionWheel = new KeyValuePair<bool, EmotionWheel>(true, GetComponentInChildren<EmotionWheel>(true));
+					Debug.Assert(m_EmotionWheel.Value != null, "EmotionWheel component is missing in the children of GxCharacter.");
+				}
+				return m_EmotionWheel.Value;
+			}
+		}
+		#endregion Emotion Wheel
 	}
 } 

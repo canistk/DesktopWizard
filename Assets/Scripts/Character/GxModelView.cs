@@ -25,6 +25,7 @@ namespace Gaia
 		// ****/
 		public DwWindow dwWindow => m_DwCamera?.dwWindow;
 
+		[System.Obsolete("Use GxCharacter instead.")]
 		public BodyLayout bodyLayout
         {
             get
@@ -34,6 +35,22 @@ namespace Gaia
                 return m_BodyLayout;
             }
         }
+
+		private KeyValuePair<bool, GxCharacter> m_Character;
+		/// <summary>Try get character component in this model view. (nullable)</summary>
+		/// </summary>
+		public GxCharacter Character
+		{
+			get
+			{
+				if (!m_Character.Key)
+				{
+					m_Character = new KeyValuePair<bool, GxCharacter>(true, GetComponentInChildren<GxCharacter>(true));
+				}
+				return m_Character.Value;
+			}
+		}
+
 
 		private KeyValuePair<bool, GxCameraCtrl> m_CameraCtrl;
 		public GxCameraCtrl CameraCtrl
@@ -82,6 +99,7 @@ namespace Gaia
 
 		private void Awake()
 		{
+			ReferenceEquals(Character, null); // Force initialization of Character
 			AddListener();
 		}
 

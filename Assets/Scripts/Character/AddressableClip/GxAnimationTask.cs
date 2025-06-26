@@ -52,7 +52,7 @@ namespace Gaia
 			var pd = m_Timeline.playableDirector;
 
 			// Hook up the retargeting system
-			m_Character.Retargeting.AddTarget(this);
+			m_Character.AddAnimationRetarget(this);
 			m_Character.BoardcastWillPlayAnimation(this);
 
 			m_Timeline.EVENT_PlayedOneCycle += OnPlayedOneCycle;
@@ -106,7 +106,7 @@ namespace Gaia
 		{
 			base.OnDisposing();
 			m_Timeline.Despawn();
-			m_Character.Retargeting.RemoveTarget(this);
+			m_Character.RemoveAnimationRetarget(this);
 		}
 
 		private void OnPlayedOneCycle()
