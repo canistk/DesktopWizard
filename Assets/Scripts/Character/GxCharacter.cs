@@ -33,20 +33,26 @@ namespace Gaia
         
         [SerializeField] kObjectPool m_Pool;
 
-        [SerializeField] int m_TaskCount = 0;
 		private List<MyTaskBase> m_Tasks = new List<MyTaskBase>();
         
 		private void Reset()
 		{
 			m_BodyLayout = GetComponentInChildren<BodyLayout>();
             m_Retargeting = GetComponentInChildren<GxRetargeting>();
-            m_Pool = transform.GetOrAddComponent<kObjectPool>();
+            // m_Pool = transform.GetOrAddComponent<kObjectPool>();
+            m_Pool = GetComponentInChildren<kObjectPool>();
+            if (m_Pool == null)
+            {
+                var tran = new GameObject("Loader").transform;
+                tran.SetParent(transform, false);
+                tran.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+                m_Pool = tran.gameObject.AddComponent<kObjectPool>();
+            }
 		}
 
 		private void Update()
 		{
 			MyTaskHandler.ManualParallelUpdate(m_Tasks);
-			m_TaskCount = m_Tasks.Count;
 		}
 
         private void InternalPlayTimeline(GxTimelineAsset timelineAsset, float fadeIn, bool realTime)
@@ -71,7 +77,7 @@ namespace Gaia
         {
 			if (string.IsNullOrEmpty(timelineAssetPath))
                 throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
-            var timelineAssetGo = m_Pool.Spawn(timelineAssetPath, true, transform, false);
+            var timelineAssetGo = m_Pool.Spawn(timelineAssetPath, true, null, false);
             if (timelineAssetGo == null)
             {
                 Debug.LogError($"Failed to spawn timeline asset from path: {timelineAssetPath}");

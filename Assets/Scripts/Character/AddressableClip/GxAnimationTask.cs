@@ -120,6 +120,9 @@ namespace Gaia
 				m_BlendOut = new BlendWeight(m_BlendIn.weight, 0f, m_BlendIn.duration, IsRealtime);
 				TryTriggerBlendOut();
 			}
+			/// else,
+			/// If it's looping, we just hold the blend in weight until next animation.
+			/// <see cref="OnWillPlayAnimation(GxAnimationTask)"/>
 		}
 
 		public void OnWillPlayAnimation(GxAnimationTask other)

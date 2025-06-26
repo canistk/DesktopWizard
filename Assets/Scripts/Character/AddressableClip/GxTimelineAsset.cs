@@ -41,14 +41,19 @@ namespace Gaia
 
 		private ISpawner m_Spawner;
 		private Dictionary<Renderer, bool> m_Renderers = null;
-		protected override void Awake()
+		public Dictionary<Renderer, bool> Renderers
 		{
-			base.Awake();
-			if (m_Renderers == null)
-				m_Renderers = new Dictionary<Renderer, bool>();
-			foreach (var renderer in GetComponentsInChildren<Renderer>())
+			get
 			{
-				m_Renderers.Add(renderer, renderer.enabled);
+				if (m_Renderers == null)
+				{
+					m_Renderers = new Dictionary<Renderer, bool>();
+					foreach (var renderer in GetComponentsInChildren<Renderer>())
+					{
+						m_Renderers.Add(renderer, renderer.enabled);
+					}
+				}
+				return m_Renderers;
 			}
 		}
 
@@ -60,10 +65,8 @@ namespace Gaia
 		{
 			this.m_Spawner = pool;
 			m_SpawnTime = Time.timeSinceLevelLoad;
-			foreach (var renderer in GetComponentsInChildren<Renderer>())
-			{
-				renderer.enabled = false; // Disable renderers by default
-			}
+			SetRenderer(false); // Ensure all renderers are disabled initially
+			
 			// Always animate to ensure the character is animated even when not visible
 			m_Retargeting.animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 		}
@@ -81,6 +84,42 @@ namespace Gaia
 			else
 			{
 				Debug.LogWarning("GxTimelineAsset is not spawned by a pool, cannot despawn.");
+			}
+		}
+
+		private bool m_Active = false;
+		public bool IsRenderActive => !m_Active;
+		public void SetRenderer(bool active)
+		{
+			if (active)
+			{
+				ResetRenderer();
+			}
+			else
+			{
+				m_Active = active;
+				foreach (var renderer in Renderers.Keys)
+				{
+					if (renderer == null)
+						continue;
+					renderer.enabled = false;
+				}
+			}
+		}
+
+		public void ToggleRenerer()
+		{
+			SetRenderer(!m_Active);
+		}
+
+		public void ResetRenderer()
+		{
+			m_Active = true;
+			foreach ((var r, var active) in Renderers)
+			{
+				if (r == null)
+					continue;
+				r.enabled = active; // Restore to original state
 			}
 		}
 	}
