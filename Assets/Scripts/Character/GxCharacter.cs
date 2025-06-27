@@ -15,6 +15,19 @@ namespace Gaia
 			Editor_ObjectPoolCreate();
 		}
 
+		public void RuntimeCreation()
+		{
+			Editor_RetargetingCreate();
+			if (m_Retargeting != null)
+			{
+				m_Retargeting.ForceTPose();
+			}
+			Editor_ObjectPoolCreate();
+			#if DEBUG
+			_ = transform.GetOrAddComponent<GxTimelineHelper>();
+			#endif
+		}
+
 		private void Update()
 		{
             HandleTasks();
@@ -67,6 +80,15 @@ namespace Gaia
 		private void Editor_RetargetingCreate()
         {
 			m_Retargeting = GetComponentInChildren<GxRetargeting>();
+			if (m_Retargeting == null)
+			{
+				var animator = GetComponentInChildren<Animator>();
+				if (animator == null)
+				{
+					Debug.LogError($"Unable to create {nameof(GxRetargeting)} required component animator.");
+				}
+				m_Retargeting = animator.gameObject.AddComponent<GxRetargeting>();
+			}
 		}
         private void InternalPlayTimeline(GxTimelineAsset timelineAsset, float fadeIn, bool realTime)
         {
@@ -170,6 +192,7 @@ namespace Gaia
 				return m_FaceRig.Value;
 			}
 		}
+
 		#endregion Face Rig
 
 		#region Emotion Wheel

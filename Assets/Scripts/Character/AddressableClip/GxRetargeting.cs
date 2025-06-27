@@ -1,8 +1,11 @@
+// #define USE_UNIVRM
+// #define USE_ADOBE_TPOSE
 using Kit2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UniHumanoid;
 using UnityEngine;
 namespace Gaia
 {
@@ -115,21 +118,55 @@ namespace Gaia
 			m_Animator = GetComponent<Animator>();
 		}
 
+		/// <summary>
+		/// based on UniVRM T-Pose, this is the default pose for humanoid avatars.
+		/// version VRM-1.0 <see cref="https://vrm.dev/en/univrm1/"/>
+		/// </summary>
+		private const string s_UniVRM_Tpose_json = @"{""bodyPosition"":{""x"":0.0024022944271564485,""y"":1.0000280141830445,""z"":0.0019842784386128189},""bodyRotation"":{""x"":0.0,""y"":1.4901161193847657e-8,""z"":1.4901161193847657e-8,""w"":1.0},""muscles"":[-1.067216093275647e-8,-6.361109437179021e-16,6.361109437179021e-16,-5.549528623305378e-7,2.685182494133187e-7,-1.2914859182089345e-9,0.0,0.0,0.0,2.936904195394163e-7,-5.362765023164684e-7,2.691804468213377e-7,5.229362614045385e-7,1.214893217138524e-7,3.68344103662821e-7,0.0,0.0,0.0,0.0,0.0,0.0,0.5957686901092529,-0.018923696130514146,0.210589200258255,1.0025907754898072,-0.13775762915611268,-0.0028545460663735868,-0.02064414694905281,-0.000006081602350604953,0.5957680940628052,-0.018925389274954797,0.21061649918556214,1.0025908946990967,-0.1377776861190796,-0.002855474827811122,-0.0206453874707222,-2.002984800589247e-12,3.415094056435919e-7,-1.1383647802176711e-7,0.3982909321784973,0.30049070715904238,-0.030618805438280107,0.9997979998588562,0.03679788112640381,-0.0025310651399195196,0.0003060820163227618,6.78518156441957e-15,-4.55345883665359e-7,0.398291677236557,0.3004913926124573,-0.030611246824264528,0.9997984170913696,0.03679078817367554,-0.0025303007569164039,0.0003055269189644605,-0.6851787567138672,0.45670729875564577,0.6459015607833862,0.645901620388031,0.6689663529396057,-0.4002758264541626,0.8113421201705933,0.8113429546356201,0.6677030324935913,-0.6235257387161255,0.8111323714256287,0.81113201379776,0.6683899164199829,-0.569826602935791,0.8116428256034851,0.8116353750228882,0.6692385077476502,-0.44004642963409426,0.808272123336792,0.8082727789878845,-0.684016764163971,0.4576999545097351,0.6457741260528565,0.6457732319831848,0.6689646244049072,-0.40025004744529726,0.8113406300544739,0.8113411664962769,0.6677078008651733,-0.623522937297821,0.8111324310302734,0.811129093170166,0.6683884263038635,-0.5698763728141785,0.8116430640220642,0.8116341829299927,0.6692467331886292,-0.44011595845222475,0.8082780241966248,0.8082770705223084]}";
+		private static KeyValuePair<bool, HumanPose> s_UniVRM_Tpose = default;
+		private HumanPose UniVRM_Tpose
+		{
+			get
+			{
+				if (!s_UniVRM_Tpose.Key)
+				{
+					var data = JsonUtility.FromJson<HumanPose>(s_UniVRM_Tpose_json);
+					s_UniVRM_Tpose = new KeyValuePair<bool, HumanPose>(true, data);
+				}
+				return s_UniVRM_Tpose.Value;
+			}
+		}
+
         [ContextMenu("Force T-Pose")]
 		public void ForceTPose()
         {
-            if (Application.isPlaying)
-                return;
+			var aniEnable = animator.enabled;
+			animator.enabled = false;// Disable animator to prevent any animation from interfering with T-Pose
 
-#if UNITY_EDITOR
+#if USE_UNIVRM
+			// UniVRM
+			HumanPoseTransfer.SetTPose(animator.avatar, transform);
+			//var humanPoseClip = Resources.Load<HumanPoseClip>(HumanPoseClip.TPoseResourcePath);
+			//var pose = humanPoseClip.GetPose();
+			//var json = JsonUtility.ToJson(pose); // copy from UniVRM T-Pose
+			//HumanPoseTransfer.SetPose(animator.avatar, transform, pose);
+#elif USE_ADOBE_TPOSE
+			// Adobe Mixamo T - Pose,
 			if (animator.runtimeAnimatorController == null)
 			{
 				Debug.LogError("Require runtime animator controller", animator);
 				return;
 			}
 			animator.playableGraph.Evaluate(0);
+#else
+			// serialize UniVRM T-Pose to JSON.
+			// work without UniVRM package.
+			var pose = UniVRM_Tpose;
+			var handler = new HumanPoseHandler(animator.avatar, transform);
+			handler.SetHumanPose(ref pose);
+#endif
 
-            if (m_Pivot == null)
+			if (m_Pivot == null)
             {
                 m_Pivot = new GameObject("TPose").transform;
                 m_Pivot.SetParent(transform, false);
@@ -171,7 +208,8 @@ namespace Gaia
 
 				child.SetParent(parent, true);
 			}
-#endif
+
+			animator.enabled = aniEnable; // Restore animator state
 		}
 
 		public bool TryGetTPose(HumanBodyBones boneTag, out Transform bone)

@@ -65,6 +65,7 @@ namespace Gaia
 		{
 			this.m_Spawner = pool;
 			m_SpawnTime = Time.timeSinceLevelLoad;
+
 			SetRenderer(false); // Ensure all renderers are disabled initially
 			
 			// Always animate to ensure the character is animated even when not visible
