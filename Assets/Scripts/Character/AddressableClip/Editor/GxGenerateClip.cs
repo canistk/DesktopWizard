@@ -14,6 +14,7 @@ using UnityEngine.UIElements;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using UnityEngine.AddressableAssets;
+using Baxter;
 
 namespace Gaia
 {
@@ -30,7 +31,7 @@ namespace Gaia
 		string[] s_FullPaths, s_FileNames;
 		int m_SelectedIndex = 0;
 		VisualElement m_GenAniPanel, m_ModelPanel;
-		ObjectField m_ModeField, m_TPoseField, m_DatabaseField;
+		ObjectField m_ModelField, m_AnimatorField, m_TPoseField, m_DatabaseField;
 
 		private void FetchFiles()
 		{
@@ -93,9 +94,12 @@ namespace Gaia
 			var right = VisualElementExtend.SplitVertical(100f, out m_ModelPanel, -1f, out m_GenAniPanel);
 			split.Add(right);
 
-			m_ModelPanel.Add(m_ModeField = VisualElementExtend.
+			m_ModelPanel.Add(m_ModelField = VisualElementExtend.
 				CachePrefabField<GameObject>
 				("Human Model", "GxGenerateClip.ModelPrefab"));
+			m_ModelPanel.Add(m_AnimatorField = VisualElementExtend.
+				CachePrefabField<Animator>
+				("Animator", "GxGenerateClip.Animator"));
 			m_ModelPanel.Add(m_TPoseField = VisualElementExtend.
 				CachePrefabField<RuntimeAnimatorController>
 				("T-Pose", "GxGenerateClip.TPose"));
@@ -139,6 +143,13 @@ namespace Gaia
 				SetHint("T-Pose animator is not set.");
 				return;
 			}
+
+			if (!TryGetAnimator(out var animator))
+			{
+				SetHint("Animator is not set.");
+				// return;
+			}
+
 			for (int i = 0; i < s_FullPaths.Length; ++i)
 			{
 				var path = s_FullPaths[i];
@@ -152,8 +163,12 @@ namespace Gaia
 					Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {path}");
 					continue;
 				}
-				var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
-				CreateTimeline(modelPath, tPose, clip, outputPrefabPath);
+				var PrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
+				CreateTimeline(modelPath, tPose, clip, PrefabPath);
+
+				var VRMAPath = Path.Combine(s_OutputPath, $"{clip.name}.vrma");
+				if (animator != null)
+					GenerateVRMA(animator, clip, VRMAPath);
 			}
 		}
 
@@ -168,7 +183,7 @@ namespace Gaia
 
 		private bool TryGetModelPath(out string modelPath)
 		{
-			var modelRef = m_ModeField.value as GameObject;
+			var modelRef = m_ModelField.value as GameObject;
 			if (modelRef == null)
 			{
 				modelPath = null;
@@ -182,6 +197,12 @@ namespace Gaia
 		{
 			tPose = m_TPoseField.value as RuntimeAnimatorController;
 			return tPose != null;
+		}
+
+		private bool TryGetAnimator(out Animator animator)
+		{
+			animator = m_AnimatorField.value as Animator;
+			return animator != null;
 		}
 
 		private bool TryGetDatabase(out GxTimelineCollection database)
@@ -275,6 +296,7 @@ namespace Gaia
 		}
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
+
 		private void CreateTimeline(
 			string modelPath,
 			RuntimeAnimatorController tPose,
@@ -304,14 +326,16 @@ namespace Gaia
 
 				// retargeting
 				var retargeting = model.GetOrAddComponent<GxRetargeting>();
+				var rac = retargeting.animator.runtimeAnimatorController;
 				retargeting.animator.runtimeAnimatorController = tPose;
 				retargeting.ForceTPose();
-				retargeting.animator.runtimeAnimatorController = null;
+				retargeting.animator.runtimeAnimatorController = rac;
 
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();
 				GxTimelineAsset.AssignRetargeting(retargeting);
 				GxTimelineAsset.UpdateInfo(clip);
+
 			}
 
 			void _CovertToAddressable(GameObject prefab)
@@ -374,6 +398,13 @@ namespace Gaia
 				return timeline;
 			}
 		}
+
+		private void GenerateVRMA(Animator animator, AnimationClip clip, string path)
+		{
+			var bytes = AnimationClipToVrmaCore.Create(animator, clip);
+			File.WriteAllBytes(path, bytes);
+			Debug.Log($"VRM Animation saved to: {path}");
+		}
 	}
 
 	public class CreatePrefab : System.IDisposable
@@ -424,12 +455,4 @@ namespace Gaia
 		}
 	}
 
-	public static class GenerateUtils
-	{
-		public static void GenerateTimeline(string modelPath, string animationPath)
-		{
-			var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
-			var ani = AssetDatabase.LoadAssetAtPath<GameObject>(animationPath);
-		}
-	}
 }
