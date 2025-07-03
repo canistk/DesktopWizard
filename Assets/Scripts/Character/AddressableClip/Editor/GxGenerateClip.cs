@@ -24,14 +24,14 @@ namespace Gaia
 		private static void Init()
 		{
 			GxGenerateClip window = GetWindow<GxGenerateClip>();
-			window.titleContent = new GUIContent("FBX Animation to prefab");
+			window.titleContent = new GUIContent("GxGenerateClip - FBX Animation to prefab");
 		}
 
 		private const string s_OutputPath= "Assets/Addressable/Timelines";
 		string[] s_FullPaths, s_FileNames;
 		int m_SelectedIndex = 0;
 		VisualElement m_GenAniPanel, m_ModelPanel;
-		ObjectField m_ModelField, m_AnimatorField, m_TPoseField, m_DatabaseField;
+		ObjectField m_ModelField, m_TPoseField, m_DatabaseField;
 
 		private void FetchFiles()
 		{
@@ -97,9 +97,6 @@ namespace Gaia
 			m_ModelPanel.Add(m_ModelField = VisualElementExtend.
 				CachePrefabField<GameObject>
 				("Human Model", "GxGenerateClip.ModelPrefab"));
-			m_ModelPanel.Add(m_AnimatorField = VisualElementExtend.
-				CachePrefabField<Animator>
-				("Animator", "GxGenerateClip.Animator"));
 			m_ModelPanel.Add(m_TPoseField = VisualElementExtend.
 				CachePrefabField<RuntimeAnimatorController>
 				("T-Pose", "GxGenerateClip.TPose"));
@@ -164,12 +161,9 @@ namespace Gaia
 					continue;
 				}
 				var PrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
-				CreateTimeline(modelPath, tPose, clip, PrefabPath);
-
-				var VRMAPath = Path.Combine(s_OutputPath, $"{clip.name}.vrma");
-				if (animator != null)
-					GenerateVRMA(animator, clip, VRMAPath);
+				CreateTimeline(modelPath, animator, tPose, clip, PrefabPath);
 			}
+			AssetDatabase.Refresh();
 		}
 
 		private void SetHint(string msg)
@@ -201,7 +195,11 @@ namespace Gaia
 
 		private bool TryGetAnimator(out Animator animator)
 		{
-			animator = m_AnimatorField.value as Animator;
+			animator = null;
+			var modelRef = m_ModelField.value as GameObject;
+			if (modelRef == null)
+				return false;
+			animator = modelRef.GetComponent<Animator>();
 			return animator != null;
 		}
 
@@ -270,6 +268,11 @@ namespace Gaia
 					SetHint("T-Pose animator is not set.");
 					return;
 				}
+
+				if (!TryGetAnimator(out var animator))
+				{
+					SetHint("Animator is not set.");
+				}
 				
 				foreach (var obj in m_DetailObjects)
 				{
@@ -280,9 +283,8 @@ namespace Gaia
 						var fileName = Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
 						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
 						
-						CreateTimeline(modelPath, tPose, clip, outputPrefabPath);
-
-
+						CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath);
+						
 						// var prefab = PrefabUtility.SaveAsPrefabAsset(rootGO, prefabPath);
 						Debug.Log($"Generated prefab: {outputPrefabPath}");
 					}
@@ -299,10 +301,13 @@ namespace Gaia
 
 		private void CreateTimeline(
 			string modelPath,
+			Animator animator,
 			RuntimeAnimatorController tPose,
 			AnimationClip clip, string outputPrefabPath)
 		{
-			
+			if (animator != null)
+				GenerateVRMA(animator, clip);
+
 			using (var cp = new CreatePrefab(outputPrefabPath, afterSave: _CovertToAddressable))
 			{
 				var root = cp.token;
@@ -357,7 +362,7 @@ namespace Gaia
 				var guid = AssetDatabase.AssetPathToGUID(outputPrefabPath);
 				var entry = settings.CreateOrMoveEntry(guid, group);
 				var fileName = Path.GetFileNameWithoutExtension(outputPrefabPath);
-				var address = Path.Combine("Addressable/Timeline", fileName).Replace('\\','/');
+				var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
 				entry.address = address;
 				if (TryGetDatabase(out var database))
 				{
@@ -399,10 +404,25 @@ namespace Gaia
 			}
 		}
 
-		private void GenerateVRMA(Animator animator, AnimationClip clip, string path)
+		private void GenerateVRMA(Animator animator, AnimationClip clip)
 		{
+			var path = Path.Combine(s_OutputPath, $"{clip.name}_vrma.glb");
+			EditorExtend.ResolvePath(path, out var absolutePath, out _);
+			EditorExtend.EnsureFolderExist(path);
+			/// <see cref="AnimationClipToVrmaAssetCommand.ConvertAnimationClipToVrmAnimation"/>
 			var bytes = AnimationClipToVrmaCore.Create(animator, clip);
-			File.WriteAllBytes(path, bytes);
+			File.WriteAllBytes(absolutePath, bytes);
+
+			var settings = AddressableAssetSettingsDefaultObject.Settings;
+			var group = settings.groups.FirstOrDefault(g => g.name.Equals("Timeline", IGNORE));
+			// var group = settings.groups;
+			if (group == null)
+			{
+				SetHint("Addressable group not found.");
+				return;
+			}
+			var guid = AssetDatabase.AssetPathToGUID(path);
+			var entry = settings.CreateOrMoveEntry(guid, group);
 			Debug.Log($"VRM Animation saved to: {path}");
 		}
 	}
