@@ -4,8 +4,6 @@ using Kit2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using UniHumanoid;
 using UnityEngine;
 namespace Gaia
 {
@@ -112,6 +110,15 @@ namespace Gaia
 		{
 			boneColor = Color.green,
 		};
+
+		private void Awake()
+		{
+			if (m_BoneRefs == null || m_BoneRefs.Length == 0)
+			{
+				// Auto initialize bone references, on Awake.
+				ForceTPose();
+			}
+		}
 
 		private void Reset()
 		{
