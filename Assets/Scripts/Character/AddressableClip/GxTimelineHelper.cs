@@ -55,7 +55,7 @@ namespace Gaia
 		{
 #if UNITY_EDITOR
 			var r = db.Timelines[idx];
-			character.CrossFade(r.addressPath, m_FadeIn);
+			character.CrossFade(r.addressPath, m_FadeIn, Kit2.ObjectPool.eSrcType.Addressable);
 #endif
 		}
 
@@ -63,7 +63,8 @@ namespace Gaia
 		public void Editor_LoadVRMA(string path)
 		{
 #if UNITY_EDITOR
-			LoadVRMA(path, OnVRMALoaded, Debug.LogException);
+			character.CrossFade(path, m_FadeIn, Kit2.ObjectPool.eSrcType.GameObject);
+			// LoadVRMA(path, OnVRMALoaded, Debug.LogException);
 #endif
 		}
 
