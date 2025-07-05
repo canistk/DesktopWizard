@@ -11,7 +11,9 @@ namespace Gaia
 	{
 		public float GetWeight01();
 		public GxRetargeting GetTarget();
+		public void OnWillPlayAnimation(IRetarget other);
 	}
+
 	[System.Serializable]
 	public class TargetInfo : IEquatable<TargetInfo>, IRetarget
 	{
@@ -35,6 +37,10 @@ namespace Gaia
 		public override int GetHashCode()
 		{
 			return (target, weight).GetHashCode();
+		}
+
+		public void OnWillPlayAnimation(IRetarget other)
+		{
 		}
 	}
 

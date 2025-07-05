@@ -132,19 +132,28 @@ namespace Gaia
 				_CrossFade_Timeline(timelineAssetGo, timelineAssetPath, fadeIn, realTime);
 			}
 		}
+
+		private Dictionary<string, GameObject /* prefab */> m_VrmaDict = new Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
+
 		private void CrossFade_VRMA(string timelineAssetPath, float fadeIn, eSrcType type, bool realTime = false)
 		{
   			if (string.IsNullOrEmpty(timelineAssetPath))
 				throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
 			// Force to GameObject for VRMA assets
 			type = eSrcType.GameObject;
-			if (!m_Pool.TryGetPrefab(timelineAssetPath, eSrcType.GameObject, out var _vrmaPrefab))
+			if (!m_VrmaDict.TryGetValue(timelineAssetPath, out var _vrmaPrefab))
+			// if (!m_Pool.TryGetPrefab(timelineAssetPath, eSrcType.GameObject, out var _vrmaPrefab))
 			{
 				// load VRMA asset directly if not in pool
 				_InternalLoadVRMA(timelineAssetPath, (gltf) =>
 				{
 					var prefab = gltf.gameObject;
-					var token = m_Pool.Spawn(prefab, eSrcType.GameObject, null, false);
+					if (prefab == null)
+						throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
+					prefab.SetActive(false); // ensure prefab is inactive before spawning
+					
+					m_VrmaDict.Add(timelineAssetPath, _vrmaPrefab = prefab);
+					var token = m_Pool.Spawn(prefab, eSrcType.GameObject, m_Pool.transform, false);
 					_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
 
 				}, Debug.LogException);
@@ -153,7 +162,8 @@ namespace Gaia
 			else
 			{
 				// Use exist prefab to spawn
-				_OnVRMATokenLoaded(_vrmaPrefab, timelineAssetPath, fadeIn, realTime);
+				var token = m_Pool.Spawn(_vrmaPrefab, eSrcType.GameObject, m_Pool.transform, false);
+				_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
 			}
 			return;
 
@@ -234,7 +244,7 @@ namespace Gaia
 
         /// <summary>Called by <see cref="GxAnimationTask"/></summary>
         /// <param name="ani"></param>
-        internal void BoardcastWillPlayAnimation(GxAnimationTask ani)
+        internal void BoardcastWillPlayAnimation(IRetarget ani)
         {
             foreach (var at in GetActiveAnimations())
             {
@@ -245,12 +255,12 @@ namespace Gaia
         }
 
 		/// <summary>Called by <see cref="GxAnimationTask"/></summary>
-		internal void BoardCastPlayedOnce(GxAnimationTask ani)
+		internal void BoardCastPlayedOnce(IRetarget ani)
         {
             
 		}
 
-        public IEnumerable<GxAnimationTask> GetActiveAnimations()
+        public IEnumerable<IRetarget> GetActiveAnimations()
         {
             foreach (var task in m_Tasks)
             {

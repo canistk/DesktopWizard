@@ -11,8 +11,9 @@ namespace Gaia
 {
     public class GxVRMLoader : MonoBehaviour
     {
-        [SerializeField] private string m_Path = $"{Application.streamingAssetsPath}/AliciaSolid_vrm-0.51.vrm";
-        [SerializeField] private string m_VRMAPath = "Assets/StreamingAssets/VRMA_01.vrma";
+		[Header("StreamingAssets File")]
+		[SerializeField] private string m_ModelPath = $"AliciaSolid_vrm-0.51.vrm";
+        [SerializeField] private string m_VRMAPath = "VRMA_01.vrma";
 		private void OnEnable()
 		{
             LoadVRM();
@@ -21,7 +22,7 @@ namespace Gaia
 		[ContextMenu("Load VRM")]
 		private void LoadVRM()
         {
-            LoadModel(m_Path, OnModelLoaded, Debug.LogException);
+            LoadModel(KxPath.Combine(Application.streamingAssetsPath,m_ModelPath), OnModelLoaded, Debug.LogException);
 		}
 
 		#region Charcter
@@ -81,7 +82,7 @@ namespace Gaia
 		[ContextMenu("Load VRMA")]
 		private void LoadAnimation()
         {
-            LoadVRMAFlow(m_VRMAPath, OnVRMALoaded, Debug.LogError);
+            LoadVRMAFlow(KxPath.Combine(Application.streamingAssetsPath,m_VRMAPath), OnVRMALoaded, Debug.LogError);
 		}
 		private async void LoadVRMAFlow(string path,
 			System.Action<RuntimeGltfInstance> loaded,

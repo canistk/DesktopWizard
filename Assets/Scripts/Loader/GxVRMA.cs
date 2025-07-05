@@ -31,8 +31,13 @@ namespace Gaia
 		}
 		private eState state = eState.None;
 		private BlendWeight m_BlendIn, m_BlendOut;
+		public BlendWeight BlendIn => m_BlendIn;
+		public BlendWeight BlendOut => m_BlendOut ??= new BlendWeight(1f, 0f, 0.5f, IsRealtime);
+
 		private readonly GxCharacter character;
 		private Vrm10AnimationInstance m_Vrma;
+		private Animation m_Animation;
+		private float m_StartTime = 0f;
 		public bool IsRealtime { get; private set; } = false;
 		public GxVRMA(GxCharacter character, RuntimeGltfInstance gltf, float blendTime, bool isRealTime) : base(character)
 		{
@@ -69,6 +74,7 @@ namespace Gaia
 					break;
 				case eState.Hold:
 					// Hold state, do nothing
+					CheckPlayTime();
 					break;
 				case eState.BlendOut:
 					if (!m_BlendOut.Execute()) ++state;
@@ -126,14 +132,61 @@ namespace Gaia
 					retargeting.ForceTPose();
 				}
 			}
+			
 			character.AddAnimationRetarget(this);
-			var animation = gltf.GetComponent<Animation>();
-			if (animation)
+			character.BoardcastWillPlayAnimation(this);
+
+
+			m_Animation = gltf.GetComponent<Animation>();
+			m_Animation.cullingType = AnimationCullingType.AlwaysAnimate;
+			if (m_Animation)
 			{
-				animation.Play();
+				m_Animation.Play();
+				// m_Animation.clip.length;
+				m_StartTime = Time.timeSinceLevelLoad;
 			}
 		}
 
+		private void CheckPlayTime()
+		{
+			if (state != eState.Hold)
+				return; // Not in hold state, do nothing.
 
+			var total = m_Animation.clip.length;
+			var elapsed = Time.timeSinceLevelLoad - m_StartTime;
+			if (elapsed < total)
+				return; // Still playing, do nothing.
+
+			TryTriggerBlendOut();
+		}
+
+		public void OnWillPlayAnimation(IRetarget other)
+		{
+			if (isDisposed)
+				return;
+			if (state >= eState.BlendOut)
+				return; // Already blending out, ignore.
+			if (m_BlendOut != null)
+				return;
+
+			Debug.Assert(this != other, "Cannot blend out itself, this should not happen.");
+
+			//Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
+			var w = this.m_BlendIn.weight;
+			// var duration = other.BlendIn.duration;
+			var duration = 0.25f;
+			m_BlendOut = new BlendWeight(w, 0f, duration, IsRealtime);
+			TryTriggerBlendOut();
+		}
+
+		private void TryTriggerBlendOut()
+		{
+			if (state < eState.BlendIn &&
+				state >= eState.BlendOut)
+				return;
+			if (m_BlendOut == null)
+				return;
+			state = eState.BlendOut;
+		}
 	}
 }

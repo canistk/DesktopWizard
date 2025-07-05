@@ -125,7 +125,7 @@ namespace Gaia
 			/// <see cref="OnWillPlayAnimation(GxAnimationTask)"/>
 		}
 
-		public void OnWillPlayAnimation(GxAnimationTask other)
+		public void OnWillPlayAnimation(IRetarget other)
 		{
 			if (isDisposed)
 				return;
@@ -138,8 +138,9 @@ namespace Gaia
 
 			//Debug.Log($"Attempt to blend out {m_Timeline.gameObject.name}");
 			var w = this.m_BlendIn.weight;
-			var duration = other.m_BlendIn.duration;
-			m_BlendOut = new BlendWeight(w, 0f, duration, other.IsRealtime);
+			// var duration = other.BlendIn.duration;
+			var duration = 0.25f;
+			m_BlendOut = new BlendWeight(w, 0f, duration, IsRealtime);
 			TryTriggerBlendOut();
 		}
 
