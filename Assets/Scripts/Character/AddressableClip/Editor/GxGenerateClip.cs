@@ -14,6 +14,7 @@ using UnityEngine.UIElements;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using UnityEngine.AddressableAssets;
+using Baxter;
 
 namespace Gaia
 {
@@ -23,14 +24,14 @@ namespace Gaia
 		private static void Init()
 		{
 			GxGenerateClip window = GetWindow<GxGenerateClip>();
-			window.titleContent = new GUIContent("FBX Animation to prefab");
+			window.titleContent = new GUIContent("GxGenerateClip - FBX Animation to prefab");
 		}
 
 		private const string s_OutputPath= "Assets/Addressable/Timelines";
 		string[] s_FullPaths, s_FileNames;
 		int m_SelectedIndex = 0;
 		VisualElement m_GenAniPanel, m_ModelPanel;
-		ObjectField m_ModeField, m_TPoseField, m_DatabaseField;
+		ObjectField m_ModelField, m_TPoseField, m_DatabaseField;
 
 		private void FetchFiles()
 		{
@@ -93,7 +94,7 @@ namespace Gaia
 			var right = VisualElementExtend.SplitVertical(100f, out m_ModelPanel, -1f, out m_GenAniPanel);
 			split.Add(right);
 
-			m_ModelPanel.Add(m_ModeField = VisualElementExtend.
+			m_ModelPanel.Add(m_ModelField = VisualElementExtend.
 				CachePrefabField<GameObject>
 				("Human Model", "GxGenerateClip.ModelPrefab"));
 			m_ModelPanel.Add(m_TPoseField = VisualElementExtend.
@@ -139,6 +140,13 @@ namespace Gaia
 				SetHint("T-Pose animator is not set.");
 				return;
 			}
+
+			if (!TryGetAnimator(out var animator))
+			{
+				SetHint("Animator is not set.");
+				// return;
+			}
+
 			for (int i = 0; i < s_FullPaths.Length; ++i)
 			{
 				var path = s_FullPaths[i];
@@ -152,9 +160,10 @@ namespace Gaia
 					Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {path}");
 					continue;
 				}
-				var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
-				CreateTimeline(modelPath, tPose, clip, outputPrefabPath);
+				var PrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
+				CreateTimeline(modelPath, animator, tPose, clip, PrefabPath);
 			}
+			AssetDatabase.Refresh();
 		}
 
 		private void SetHint(string msg)
@@ -168,7 +177,7 @@ namespace Gaia
 
 		private bool TryGetModelPath(out string modelPath)
 		{
-			var modelRef = m_ModeField.value as GameObject;
+			var modelRef = m_ModelField.value as GameObject;
 			if (modelRef == null)
 			{
 				modelPath = null;
@@ -182,6 +191,16 @@ namespace Gaia
 		{
 			tPose = m_TPoseField.value as RuntimeAnimatorController;
 			return tPose != null;
+		}
+
+		private bool TryGetAnimator(out Animator animator)
+		{
+			animator = null;
+			var modelRef = m_ModelField.value as GameObject;
+			if (modelRef == null)
+				return false;
+			animator = modelRef.GetComponent<Animator>();
+			return animator != null;
 		}
 
 		private bool TryGetDatabase(out GxTimelineCollection database)
@@ -249,6 +268,11 @@ namespace Gaia
 					SetHint("T-Pose animator is not set.");
 					return;
 				}
+
+				if (!TryGetAnimator(out var animator))
+				{
+					SetHint("Animator is not set.");
+				}
 				
 				foreach (var obj in m_DetailObjects)
 				{
@@ -259,9 +283,8 @@ namespace Gaia
 						var fileName = Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
 						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
 						
-						CreateTimeline(modelPath, tPose, clip, outputPrefabPath);
-
-
+						CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath);
+						
 						// var prefab = PrefabUtility.SaveAsPrefabAsset(rootGO, prefabPath);
 						Debug.Log($"Generated prefab: {outputPrefabPath}");
 					}
@@ -275,12 +298,16 @@ namespace Gaia
 		}
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
+
 		private void CreateTimeline(
 			string modelPath,
+			Animator animator,
 			RuntimeAnimatorController tPose,
 			AnimationClip clip, string outputPrefabPath)
 		{
-			
+			//if (animator != null)
+			//	ConvertVRMA2Ani(animator, clip);
+
 			using (var cp = new CreatePrefab(outputPrefabPath, afterSave: _CovertToAddressable))
 			{
 				var root = cp.token;
@@ -304,14 +331,16 @@ namespace Gaia
 
 				// retargeting
 				var retargeting = model.GetOrAddComponent<GxRetargeting>();
+				var rac = retargeting.animator.runtimeAnimatorController;
 				retargeting.animator.runtimeAnimatorController = tPose;
 				retargeting.ForceTPose();
-				retargeting.animator.runtimeAnimatorController = null;
+				retargeting.animator.runtimeAnimatorController = rac;
 
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();
 				GxTimelineAsset.AssignRetargeting(retargeting);
 				GxTimelineAsset.UpdateInfo(clip);
+
 			}
 
 			void _CovertToAddressable(GameObject prefab)
@@ -333,7 +362,7 @@ namespace Gaia
 				var guid = AssetDatabase.AssetPathToGUID(outputPrefabPath);
 				var entry = settings.CreateOrMoveEntry(guid, group);
 				var fileName = Path.GetFileNameWithoutExtension(outputPrefabPath);
-				var address = Path.Combine("Addressable/Timeline", fileName).Replace('\\','/');
+				var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
 				entry.address = address;
 				if (TryGetDatabase(out var database))
 				{
@@ -373,6 +402,33 @@ namespace Gaia
 				}
 				return timeline;
 			}
+		}
+
+		// TODO: Convert VRMA to AnimationClip, make a export function for this.
+		// to allow exporting a AnimationClip in to a VRMA file.
+		private void ConvertVRMA2Ani(Animator animator, AnimationClip clip)
+		{
+			// if we use ".glb" extension, it will be treated as a GLB file.
+			const string EXTENSION = ".vrma";
+
+			var path = Path.Combine(s_OutputPath, $"{clip.name}{EXTENSION}");
+			EditorExtend.ResolvePath(path, out var absolutePath, out _);
+			EditorExtend.EnsureFolderExist(path);
+			/// <see cref="AnimationClipToVrmaAssetCommand.ConvertAnimationClipToVrmAnimation"/>
+			var bytes = AnimationClipToVrmaCore.Create(animator, clip);
+			File.WriteAllBytes(absolutePath, bytes);
+
+			var settings = AddressableAssetSettingsDefaultObject.Settings;
+			var group = settings.groups.FirstOrDefault(g => g.name.Equals("Timeline", IGNORE));
+			// var group = settings.groups;
+			if (group == null)
+			{
+				SetHint("Addressable group not found.");
+				return;
+			}
+			var guid = AssetDatabase.AssetPathToGUID(path);
+			var entry = settings.CreateOrMoveEntry(guid, group);
+			Debug.Log($"VRM Animation saved to: {path}");
 		}
 	}
 
@@ -424,12 +480,4 @@ namespace Gaia
 		}
 	}
 
-	public static class GenerateUtils
-	{
-		public static void GenerateTimeline(string modelPath, string animationPath)
-		{
-			var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
-			var ani = AssetDatabase.LoadAssetAtPath<GameObject>(animationPath);
-		}
-	}
 }

@@ -17,7 +17,7 @@ using Kit2.ObjectPool;
 namespace Gaia
 {
 	using eAlign = UIMessage.eAlign;
-	[RequireComponent(typeof(kObjectPool))]
+	[RequireComponent(typeof(KxObjectPool))]
 	public class ChatAgentV1 : MonoBehaviour
 	{
 		[SerializeField] UIMessage m_AiMsgPrefab = null;
@@ -32,13 +32,13 @@ namespace Gaia
 
 		private List<Message> m_History = null;
 		private HashLock<object> m_Interact = new HashLock<object>(true);
-		private kObjectPool m_Pool = null;
-		private kObjectPool pool
+		private KxObjectPool m_Pool = null;
+		private KxObjectPool pool
 		{
 			get
 			{
 				if (m_Pool == null)
-					m_Pool = GetComponent<kObjectPool>();
+					m_Pool = GetComponent<KxObjectPool>();
 				return m_Pool;
 			}
 		}

@@ -1,7 +1,11 @@
+using Kit2;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UniVRM10;
 
 namespace Gaia
 {
@@ -34,6 +38,39 @@ namespace Gaia
 				this.assetRef = assetRef;
 				this.isLoop = isLoop;
 				this.duration = duration;
+			}
+
+			public async void LoadVRMA(System.Action<IVrm10Animation> vrma, System.Action<System.Exception> exception)
+			{
+				// EditorExtend.ResolvePath(path, out var absolutePath, out var relativePath);
+				// vrma = Resources.Load(relativePath);
+				// vrma = Resources.Load(relativePath);
+
+				try
+				{
+					var path = $"{addressPath}_vrma.glb";
+					var oper = Addressables.LoadAssetAsync<GameObject>(path);
+					var task = await oper.Task;
+					if (oper.Status == UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationStatus.Succeeded)
+					{
+						var comp = oper.Result.GetComponent<IVrm10Animation>();
+						if (comp == null)
+							throw new System.Exception("VRMA not found.");
+						var ani = comp as IVrm10Animation;
+						if (ani == null)
+							throw new System.Exception("VRMA not found.");
+						vrma?.Invoke(ani);
+					}
+					else
+					{
+						Debug.LogError($"Failed to load VRMA from path: {path}");
+						vrma?.Invoke(null);
+					}
+				}
+				catch (System.Exception ex)
+				{
+					exception?.Invoke(ex);
+				}
 			}
 		}
 		public IReadOnlyList<ClipInfo> Timelines => m_Timelines;

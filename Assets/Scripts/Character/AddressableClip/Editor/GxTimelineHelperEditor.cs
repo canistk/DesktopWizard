@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
+using PlasticPipe.PlasticProtocol.Messages;
+using UniVRM10;
+using PlasticGui.WebApi.Responses;
+using UniGLTF;
 namespace Gaia
 {
     [CustomEditor(typeof(GxTimelineHelper))]
@@ -16,6 +20,7 @@ namespace Gaia
 		private SerializedProperty m_FirstIndexProp;
 		private SerializedProperty m_SecondIndexProp;
 		private SerializedProperty m_FadeInProp;
+		private SerializedProperty m_VRMAPathProp;
 
 		protected override void OnEnable()
 		{
@@ -23,6 +28,7 @@ namespace Gaia
 			m_FirstIndexProp = serializedObject.FindProperty(nameof(self.m_FirstIndex));
 			m_SecondIndexProp = serializedObject.FindProperty(nameof(self.m_SecondIndex));
 			m_FadeInProp = serializedObject.FindProperty(nameof(self.m_FadeIn));
+			m_VRMAPathProp = serializedObject.FindProperty(nameof(self.m_VRMAPath));
 		}
 
 		private int idx1 { get => m_FirstIndexProp.intValue; set => m_FirstIndexProp.intValue = value; }
@@ -42,7 +48,7 @@ namespace Gaia
 			}
 
 			EditorGUILayout.LabelField("Animation(s)", EditorStyles.boldLabel);
-			using (var scroll = new EditorGUILayout.ScrollViewScope(Vector2.zero, GUILayout.MaxHeight(500f), GUILayout.ExpandWidth(true)))
+			//using (var scroll = new EditorGUILayout.ScrollViewScope(Vector2.zero, GUILayout.ExpandWidth(true)))
 			{
 				if (!m_ClipNames.Key)
 				{
@@ -84,6 +90,15 @@ namespace Gaia
 				{
 					EditorGUILayout.HelpBox("No animation selected.", MessageType.Info);
 				}
+
+				if (m_VRMAPathProp != null)
+				{
+					if (GUILayout.Button("Load VRMA", GUILayout.ExpandWidth(true), GUILayout.Height(30f)))
+					{
+						Debug.Log($"Trigger VRMA load: {self.m_VRMAPath}");
+						self.Editor_LoadVRMA(self.m_VRMAPath);
+					}
+				}
 			}
 		}
 
@@ -100,9 +115,23 @@ namespace Gaia
 				return;
 			}
 
-			var r = flag ? r2 : r1;
-			flag = !flag;
-			character.CrossFade(r.addressPath, fadeIn);
+			var i = flag ? nextIdx : idx;
+			self.Editor_AnimationClip(i);
+
+			//r.LoadVRMA((vrma) =>
+			//{
+			//	var vrm = character.GetComponent<Vrm10Instance>();
+			//	var glt = character.GetComponent<RuntimeGltfInstance>();
+			//	vrm.Runtime.VrmAnimation = vrma;
+			//	vrm.Runtime.Process();
+			//},
+			//Debug.LogError);
+
+		}
+
+		private void TriggerVRMA()
+		{
+			
 		}
 	}
 }

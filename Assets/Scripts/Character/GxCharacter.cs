@@ -1,9 +1,11 @@
+using Kit2;
+using Kit2.ObjectPool;
+using Kit2.Tasks;
 using System.Collections;
 using System.Collections.Generic;
+using UniGLTF;
 using UnityEngine;
-using Kit2.Tasks;
-using Kit2.ObjectPool;
-using Kit2;
+using UniVRM10;
 namespace Gaia
 {
     public class GxCharacter : MonoBehaviour
@@ -42,17 +44,17 @@ namespace Gaia
 		#endregion Task Management
 
 		#region Object Pooling
-		[SerializeField] kObjectPool m_Pool;
+		[SerializeField] KxObjectPool m_Pool;
         private void Editor_ObjectPoolCreate()
         {
 			// m_Pool = transform.GetOrAddComponent<kObjectPool>();
-			m_Pool = GetComponentInChildren<kObjectPool>();
+			m_Pool = GetComponentInChildren<KxObjectPool>();
 			if (m_Pool == null)
 			{
 				var tran = new GameObject("Loader").transform;
 				tran.SetParent(transform, false);
 				tran.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-				m_Pool = tran.gameObject.AddComponent<kObjectPool>();
+				m_Pool = tran.gameObject.AddComponent<KxObjectPool>();
 			}
 		}
 		#endregion Object Pooling
@@ -108,11 +110,124 @@ namespace Gaia
             m_Tasks.Add(aniTask);
         }
 
-		public void CrossFade(string timelineAssetPath, float fadeIn, bool realTime = false)
-        {
+		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
+
+
+
+		public void CrossFade(string timelineAssetPath, float fadeIn, eSrcType type, bool realTime = false)
+		{
 			if (string.IsNullOrEmpty(timelineAssetPath))
-                throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
-            var timelineAssetGo = m_Pool.Spawn(timelineAssetPath, true, null, false);
+				throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
+
+			var isVrmaPath = timelineAssetPath.EndsWith(".vrma", IGNORE);
+			if (isVrmaPath)
+			{
+				// Force to GameObject for VRMA assets
+				CrossFade_VRMA(timelineAssetPath, fadeIn, eSrcType.GameObject, realTime);
+				return; // stop here, wait for VRMA loaded.
+			}
+			else
+			{
+				var timelineAssetGo = m_Pool.Spawn(timelineAssetPath, type, null, false);
+				_CrossFade_Timeline(timelineAssetGo, timelineAssetPath, fadeIn, realTime);
+			}
+		}
+
+		private Dictionary<string, GameObject /* prefab */> m_VrmaDict = new Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
+
+		private void CrossFade_VRMA(string timelineAssetPath, float fadeIn, eSrcType type, bool realTime = false)
+		{
+  			if (string.IsNullOrEmpty(timelineAssetPath))
+				throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
+			// Force to GameObject for VRMA assets
+			type = eSrcType.GameObject;
+			if (!m_VrmaDict.TryGetValue(timelineAssetPath, out var _vrmaPrefab))
+			{
+				// load VRMA asset directly if not in pool
+				_InternalLoadVRMA(timelineAssetPath, (gltf) =>
+				{
+					var prefab = gltf.gameObject;
+					if (prefab == null)
+						throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
+					SetupVRMAPrefab(prefab);
+
+					m_VrmaDict.Add(timelineAssetPath, _vrmaPrefab = prefab);
+					var token = m_Pool.Spawn(prefab, eSrcType.GameObject, m_Pool.transform, false);
+					_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
+
+				}, Debug.LogException);
+				return; // stop here, wait for VRMA loaded.
+			}
+			else
+			{
+				// Use exist prefab to spawn
+				var token = m_Pool.Spawn(_vrmaPrefab, eSrcType.GameObject, m_Pool.transform, false);
+				_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
+			}
+			return;
+
+			void SetupVRMAPrefab(GameObject prefab)
+			{
+				if (prefab == null)
+					throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
+				prefab.SetActive(false); // ensure prefab is inactive before spawning
+
+				var vrma = prefab.GetComponent<Vrm10AnimationInstance>();
+				if (vrma)
+				{
+					vrma.ShowBoxMan(false); // hide debug mesh if exists
+				}
+
+				var animator = prefab.GetComponentInChildren<Animator>();
+				var on = animator.enabled;
+				animator.enabled = false;
+				Debug.Assert(animator != null, "Animator component not found in the VRMA instance.");
+				var retargeting = animator.gameObject.AddComponent<GxRetargeting>();
+				retargeting.ForceTPose();
+				animator.enabled = on; // restore animator state
+
+				var animation = prefab.GetComponent<Animation>();
+				animation.cullingType = AnimationCullingType.AlwaysAnimate;
+			}
+
+			async void _InternalLoadVRMA(string path,
+				System.Action<RuntimeGltfInstance> loaded,
+				System.Action<System.Exception> fail = null)
+			{
+				try
+				{
+					if (string.IsNullOrEmpty(path))
+						throw new System.ArgumentNullException(nameof(path), "VRMA path cannot be null or empty.");
+					using (GltfData data = new AutoGltfFileParser(path).Parse())
+					using (var loader = new VrmAnimationImporter(new VrmAnimationData(data)))
+					{
+						var instance = await loader.LoadAsync(new ImmediateCaller());
+						loaded?.Invoke(instance);
+					}
+				}
+				catch (System.Exception ex)
+				{
+					if (fail == null)
+					{
+						Debug.LogException(ex);
+						return;
+					}
+					fail.Invoke(ex);
+				}
+			}
+
+			void _OnVRMATokenLoaded(GameObject token, string timelineAssetPath, float fadeIn, bool realTime)
+			{
+				var gltf = token.GetComponent<RuntimeGltfInstance>();
+				if (gltf == null)
+					throw new System.Exception($"{nameof(RuntimeGltfInstance)} not found.");
+				var aniTask = new GxVRMA(this, gltf, 0.25f, false, m_Pool, token);
+				m_Tasks.Add(aniTask);
+			}
+		}
+
+		private void _CrossFade_Timeline(GameObject timelineAssetGo, string timelineAssetPath, float fadeIn, bool realTime)
+		{
             if (timelineAssetGo == null)
             {
                 Debug.LogError($"Failed to spawn timeline asset from path: {timelineAssetPath}");
@@ -129,7 +244,7 @@ namespace Gaia
 
         /// <summary>Called by <see cref="GxAnimationTask"/></summary>
         /// <param name="ani"></param>
-        internal void BoardcastWillPlayAnimation(GxAnimationTask ani)
+        internal void BoardcastWillPlayAnimation(IRetarget ani)
         {
             foreach (var at in GetActiveAnimations())
             {
@@ -140,18 +255,18 @@ namespace Gaia
         }
 
 		/// <summary>Called by <see cref="GxAnimationTask"/></summary>
-		internal void BoardCastPlayedOnce(GxAnimationTask ani)
+		internal void BoardCastPlayedOnce(IRetarget ani)
         {
             
 		}
 
-        public IEnumerable<GxAnimationTask> GetActiveAnimations()
+        public IEnumerable<IRetarget> GetActiveAnimations()
         {
             foreach (var task in m_Tasks)
             {
-                if (task is not GxAnimationTask aniTask)
+                if (task is not IRetarget aniTask)
                     continue;
-                if (aniTask.isCompleted)
+                if (task is MyTask t && t.isCompleted)
                     continue;
                 yield return aniTask;
 			}

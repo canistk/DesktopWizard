@@ -42,6 +42,10 @@ namespace DesktopWizard
 
         private const byte AC_SRC_OVER = 0x00;
         private const byte AC_SRC_ALPHA = 0x01;
+		
+        private const int WM_MOUSEMOVE = 0x0200;
+        private const int WM_MOUSELEAVE = 0x02A3;
+		private const int WM_MOUSEWHEEL = 0x020A;
 		#endregion Const
 
 		private static List<DwForm> s_Forms = new List<DwForm>(8);
@@ -445,7 +449,12 @@ namespace DesktopWizard
 		/// <param name="opacity"></param>
 		public void Repaint(System.Drawing.Bitmap bitmap, byte opacity)
         {
-            var screenDc    = DwCore._GetDC(IntPtr.Zero);
+            if (bitmap == null)
+            {
+                Debug.LogError("Repaint(), bitmap is null.");
+                return;
+			}
+			var screenDc    = DwCore._GetDC(IntPtr.Zero);
             if (screenDc == IntPtr.Zero)
             {
                 Debug.LogError("Repaint(), screenDc not found.");
@@ -501,7 +510,12 @@ namespace DesktopWizard
 			// m.Result = (IntPtr)1; //HTCAPTION
 
 			// Handle mouse wheel scroll event
-			CacheHorizontalScroll(ref m);
+			if (m.Msg == WM_MOUSEMOVE ||
+                m.Msg == WM_MOUSEHWHEEL ||
+                m.Msg == WM_MOUSELEAVE)
+            {
+                CacheHorizontalScroll(ref m);
+            }
 
             base.WndProc(ref m);
         }

@@ -9,7 +9,7 @@ namespace UniVRM10.Sample
     public class Sample : MonoBehaviour
     {
         [SerializeField]
-        string m_vrmPath = "Tests/Models/Alicia_vrm-0.51/AliciaSolid_vrm-0.51.vrm";
+        string m_vrmPath = "Assets/StreamingAssets/AliciaSolid_vrm-0.51.vrm";
 
         [SerializeField]
         UniGLTF.GltfExportSettings m_settings = new();
