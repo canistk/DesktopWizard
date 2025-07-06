@@ -305,8 +305,8 @@ namespace Gaia
 			RuntimeAnimatorController tPose,
 			AnimationClip clip, string outputPrefabPath)
 		{
-			if (animator != null)
-				GenerateVRMA(animator, clip);
+			//if (animator != null)
+			//	ConvertVRMA2Ani(animator, clip);
 
 			using (var cp = new CreatePrefab(outputPrefabPath, afterSave: _CovertToAddressable))
 			{
@@ -404,9 +404,14 @@ namespace Gaia
 			}
 		}
 
-		private void GenerateVRMA(Animator animator, AnimationClip clip)
+		// TODO: Convert VRMA to AnimationClip, make a export function for this.
+		// to allow exporting a AnimationClip in to a VRMA file.
+		private void ConvertVRMA2Ani(Animator animator, AnimationClip clip)
 		{
-			var path = Path.Combine(s_OutputPath, $"{clip.name}_vrma.glb");
+			// if we use ".glb" extension, it will be treated as a GLB file.
+			const string EXTENSION = ".vrma";
+
+			var path = Path.Combine(s_OutputPath, $"{clip.name}{EXTENSION}");
 			EditorExtend.ResolvePath(path, out var absolutePath, out _);
 			EditorExtend.EnsureFolderExist(path);
 			/// <see cref="AnimationClipToVrmaAssetCommand.ConvertAnimationClipToVrmAnimation"/>

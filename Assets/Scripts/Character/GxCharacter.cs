@@ -142,7 +142,6 @@ namespace Gaia
 			// Force to GameObject for VRMA assets
 			type = eSrcType.GameObject;
 			if (!m_VrmaDict.TryGetValue(timelineAssetPath, out var _vrmaPrefab))
-			// if (!m_Pool.TryGetPrefab(timelineAssetPath, eSrcType.GameObject, out var _vrmaPrefab))
 			{
 				// load VRMA asset directly if not in pool
 				_InternalLoadVRMA(timelineAssetPath, (gltf) =>
@@ -150,8 +149,8 @@ namespace Gaia
 					var prefab = gltf.gameObject;
 					if (prefab == null)
 						throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
-					prefab.SetActive(false); // ensure prefab is inactive before spawning
-					
+					SetupVRMAPrefab(prefab);
+
 					m_VrmaDict.Add(timelineAssetPath, _vrmaPrefab = prefab);
 					var token = m_Pool.Spawn(prefab, eSrcType.GameObject, m_Pool.transform, false);
 					_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
@@ -166,6 +165,30 @@ namespace Gaia
 				_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
 			}
 			return;
+
+			void SetupVRMAPrefab(GameObject prefab)
+			{
+				if (prefab == null)
+					throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
+				prefab.SetActive(false); // ensure prefab is inactive before spawning
+
+				var vrma = prefab.GetComponent<Vrm10AnimationInstance>();
+				if (vrma)
+				{
+					vrma.ShowBoxMan(false); // hide debug mesh if exists
+				}
+
+				var animator = prefab.GetComponentInChildren<Animator>();
+				var on = animator.enabled;
+				animator.enabled = false;
+				Debug.Assert(animator != null, "Animator component not found in the VRMA instance.");
+				var retargeting = animator.gameObject.AddComponent<GxRetargeting>();
+				retargeting.ForceTPose();
+				animator.enabled = on; // restore animator state
+
+				var animation = prefab.GetComponent<Animation>();
+				animation.cullingType = AnimationCullingType.AlwaysAnimate;
+			}
 
 			async void _InternalLoadVRMA(string path,
 				System.Action<RuntimeGltfInstance> loaded,
@@ -196,33 +219,10 @@ namespace Gaia
 			void _OnVRMATokenLoaded(GameObject token, string timelineAssetPath, float fadeIn, bool realTime)
 			{
 				var gltf = token.GetComponent<RuntimeGltfInstance>();
-
-				gltf.EnableUpdateWhenOffscreen();
-				gltf.ShowMeshes();
-
-				var vrma = gltf.GetComponent<Vrm10AnimationInstance>();
-				if (vrma)
-				{
-					vrma.ShowBoxMan(true);
-				}
-
-				var animator = gltf.GetComponentInChildren<Animator>();
-				if (animator)
-				{
-					var retargeting = animator.GetOrAddComponent<GxRetargeting>();
-					retargeting.ForceTPose();
-
-					//if (m_Character != null)
-					//{
-					//	m_Character.AddAnimationRetarget(retargeting);
-					//}
-				}
-
-				var animation = gltf.GetComponent<Animation>();
-				if (animation)
-				{
-					animation.Play();
-				}
+				if (gltf == null)
+					throw new System.Exception($"{nameof(RuntimeGltfInstance)} not found.");
+				var aniTask = new GxVRMA(this, gltf, 0.25f, false, m_Pool, token);
+				m_Tasks.Add(aniTask);
 			}
 		}
 
@@ -264,9 +264,9 @@ namespace Gaia
         {
             foreach (var task in m_Tasks)
             {
-                if (task is not GxAnimationTask aniTask)
+                if (task is not IRetarget aniTask)
                     continue;
-                if (aniTask.isCompleted)
+                if (task is MyTask t && t.isCompleted)
                     continue;
                 yield return aniTask;
 			}
