@@ -15,11 +15,10 @@ namespace Gaia
 	/// </summary>
 	public class GxVRMA : GxCharacterTask, IRetarget
     {
-        private GxRetargeting m_from;
 		[SerializeField, Range(0f, 1f)] private float m_Weight01 = 1f;
 
 		private readonly RuntimeGltfInstance gltf;
-		public GxRetargeting GetTarget() => m_from;
+		public GxRetargeting GetTarget() => m_VRMA.Retargeting;
 		public float GetWeight01() => m_Weight01;
 
 #if NO_BLENDING
@@ -50,7 +49,7 @@ namespace Gaia
 #endif
 		private readonly GxCharacter character;
 		private KeyValuePair<ISpawner, GameObject> m_Spawner;
-		private Animation m_Animation;
+		private GxVRMAToken m_VRMA;
 		private float m_StartTime = 0f;
 		public bool IsRealtime { get; private set; } = false;
 		public GxVRMA(GxCharacter character, RuntimeGltfInstance gltf, float blendTime, bool isRealTime,
@@ -127,41 +126,22 @@ namespace Gaia
 
 		private void PlayAnimationOnLoad()
 		{
-			gltf.EnableUpdateWhenOffscreen();
-
-			//var animator = gltf.GetComponentInChildren<Animator>();
-			//Debug.Assert(animator != null, "Animator component not found in the VRMA instance.");
-			m_from = gltf.GetComponentInChildren<GxRetargeting>(true);
-			//if (m_from == null)
-			//{
-			//	// only apply on first time (object pooling)
-			//	m_from = animator.gameObject.AddComponent<GxRetargeting>();
-			//	m_from.ForceTPose();
-			//}
-
+			/// Assume prefab is already loaded and contains a GxVRMAToken component.
+			/// <see cref="GxCharacter.SetupVRMAPrefab(GameObject, string)"/>
+			m_VRMA = gltf.GetComponentInChildren<GxVRMAToken>(true);
+			
 			character.AddAnimationRetarget(this);
 			character.BoardcastWillPlayAnimation(this);
 
-			m_Animation = gltf.GetComponent<Animation>();
-			Debug.Assert(m_Animation != null, "Animation component not found in the VRMA instance.");
-			m_Animation.cullingType = AnimationCullingType.AlwaysAnimate;
-			m_Animation.Play();
+			m_VRMA.Animation.Play();
 			m_StartTime = Time.timeSinceLevelLoad;
 			state = eState.PlayAni;
 
 #if SHOW_DEBUG_MESH
 			gltf.ShowMeshes();
-			var vrma = gltf.GetComponent<Vrm10AnimationInstance>();
-			if (vrma)
-			{
-				vrma .ShowBoxMan(true);
-			}
+			m_VRMA.Vrm10AnimationInstance.ShowBoxMan(true);
 #else
-			var vrma = gltf.GetComponent<Vrm10AnimationInstance>();
-			if (vrma)
-			{
-				vrma.ShowBoxMan(false);
-			}
+			m_VRMA.Vrm10AnimationInstance.ShowBoxMan(false);
 #endif
 		}
 
@@ -169,8 +149,9 @@ namespace Gaia
 		{
 			if (state != eState.Hold)
 				return; // Not in hold state, do nothing.
-
-			var total = m_Animation.clip.length;
+			if (m_VRMA.Animation.clip.wrapMode == WrapMode.Loop)
+				return; // Looping animation, do nothing.
+			var total = m_VRMA.Animation.clip.length;
 			var elapsed = Time.timeSinceLevelLoad - m_StartTime;
 			if (elapsed < total)
 				return; // Still playing, do nothing.
@@ -228,10 +209,10 @@ namespace Gaia
 		{
 			if (m_Spawner.Key == null || m_Spawner.Value == null)
 				return; // No valid spawner or token to despawn.
-			m_Animation.Stop(); // Stop the animation before despawning.
+			m_VRMA.Animation.Stop(); // Stop the animation before despawning.
 			m_Spawner.Key.Despawn(m_Spawner.Value);
 			m_Spawner = default; // Clear the spawner reference.
-								 // gltf.Dispose(); // Dispose the gltf instance.
+			// gltf.Dispose(); // Dispose the gltf instance.
 		}
 	}
 }

@@ -1,3 +1,4 @@
+//#define HIDE_VRMA_PREFAB
 using Kit2;
 using Kit2.ObjectPool;
 using Kit2.Tasks;
@@ -17,6 +18,20 @@ namespace Gaia
 			Editor_ObjectPoolCreate();
 		}
 
+		private void OnDestroy()
+		{
+			if (m_VrmaDict != null)
+			{
+				foreach (var kv in m_VrmaDict)
+				{
+					if (kv.Value != null)
+					{
+						Destroy(kv.Value);
+					}
+				}
+				m_VrmaDict.Clear();
+			}
+		}
 		public void RuntimeCreation()
 		{
 			Editor_RetargetingCreate();
@@ -149,7 +164,8 @@ namespace Gaia
 					var prefab = gltf.gameObject;
 					if (prefab == null)
 						throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
-					SetupVRMAPrefab(prefab);
+					var clipName = KxPath.GetFileNameWithoutExtension(timelineAssetPath);
+					SetupVRMAPrefab(prefab, clipName);
 
 					m_VrmaDict.Add(timelineAssetPath, _vrmaPrefab = prefab);
 					var token = m_Pool.Spawn(prefab, eSrcType.GameObject, m_Pool.transform, false);
@@ -166,28 +182,23 @@ namespace Gaia
 			}
 			return;
 
-			void SetupVRMAPrefab(GameObject prefab)
+			void SetupVRMAPrefab(GameObject prefab, string clipName)
 			{
 				if (prefab == null)
 					throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
 				prefab.SetActive(false); // ensure prefab is inactive before spawning
 
-				var vrma = prefab.GetComponent<Vrm10AnimationInstance>();
-				if (vrma)
-				{
-					vrma.ShowBoxMan(false); // hide debug mesh if exists
-				}
+				var hdlr = prefab.AddComponent<GxVRMAToken>();
+				if (hdlr.Animation.clip.wrapMode == WrapMode.Loop)
+					clipName = $"{clipName}(loop)";
+				// Name the prefab based on the clip name
+				hdlr.Setup(clipName);
 
-				var animator = prefab.GetComponentInChildren<Animator>();
-				var on = animator.enabled;
-				animator.enabled = false;
-				Debug.Assert(animator != null, "Animator component not found in the VRMA instance.");
-				var retargeting = animator.gameObject.AddComponent<GxRetargeting>();
-				retargeting.ForceTPose();
-				animator.enabled = on; // restore animator state
-
-				var animation = prefab.GetComponent<Animation>();
-				animation.cullingType = AnimationCullingType.AlwaysAnimate;
+#if HIDE_VRMA_PREFAB
+				prefab.hideFlags = HideFlags.HideAndDontSave;
+#else
+				prefab.hideFlags = HideFlags.DontSave; // ensure prefab is visible in hierarchy
+#endif
 			}
 
 			async void _InternalLoadVRMA(string path,
