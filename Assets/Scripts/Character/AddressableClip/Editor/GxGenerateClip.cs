@@ -306,7 +306,7 @@ namespace Gaia
 			AnimationClip clip, string outputPrefabPath)
 		{
 			//if (animator != null)
-			//	ConvertVRMA2Ani(animator, clip);
+			//	ConvertClip2VRMA(animator, clip);
 
 			using (var cp = new CreatePrefab(outputPrefabPath, afterSave: _CovertToAddressable))
 			{
@@ -404,9 +404,9 @@ namespace Gaia
 			}
 		}
 
-		// TODO: Convert VRMA to AnimationClip, make a export function for this.
+		// TODO: Convert AnimationClip to VRMA, make a export function for this.
 		// to allow exporting a AnimationClip in to a VRMA file.
-		private void ConvertVRMA2Ani(Animator animator, AnimationClip clip)
+		private void ConvertClip2VRMA(Animator animator, AnimationClip clip)
 		{
 			// if we use ".glb" extension, it will be treated as a GLB file.
 			const string EXTENSION = ".vrma";
