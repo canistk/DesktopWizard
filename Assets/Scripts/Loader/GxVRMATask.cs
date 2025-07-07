@@ -13,7 +13,7 @@ namespace Gaia
 	/// GxVRMA is <see cref="IRetarget"/> & <see cref="GxRetargeting"/>
 	/// just like <see cref="GxAnimationTask"/> but for VRMA (VRM Animation) files.
 	/// </summary>
-	public class GxVRMA : GxCharacterTask, IRetarget
+	public class GxVRMATask : GxCharacterTask, IRetarget
     {
 		[SerializeField, Range(0f, 1f)] private float m_Weight01 = 1f;
 
@@ -52,7 +52,7 @@ namespace Gaia
 		private GxVRMAToken m_VRMA;
 		private float m_StartTime = 0f;
 		public bool IsRealtime { get; private set; } = false;
-		public GxVRMA(GxCharacter character, RuntimeGltfInstance gltf, float blendTime, bool isRealTime,
+		public GxVRMATask(GxCharacter character, RuntimeGltfInstance gltf, float blendTime, bool isRealTime,
 			ISpawner spawner, GameObject token) : base(character)
 		{
 			if (character == null)

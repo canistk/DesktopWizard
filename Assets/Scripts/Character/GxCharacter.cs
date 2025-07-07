@@ -232,7 +232,7 @@ namespace Gaia
 				var gltf = token.GetComponent<RuntimeGltfInstance>();
 				if (gltf == null)
 					throw new System.Exception($"{nameof(RuntimeGltfInstance)} not found.");
-				var aniTask = new GxVRMA(this, gltf, 0.25f, false, m_Pool, token);
+				var aniTask = new GxVRMATask(this, gltf, 0.25f, false, m_Pool, token);
 				m_Tasks.Add(aniTask);
 			}
 		}
