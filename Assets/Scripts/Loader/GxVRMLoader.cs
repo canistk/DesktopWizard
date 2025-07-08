@@ -25,6 +25,15 @@ namespace Gaia
             LoadModel(KxPath.Combine(Application.streamingAssetsPath,m_ModelPath), OnModelLoaded, Debug.LogException);
 		}
 
+		[ContextMenu("Streaming Assets")]
+		private void GotoStreamingAssets()
+		{
+			Kit2.Platform.CommandLine("explorer.exe", KxPath.Fix(Application.streamingAssetsPath), (feedback) =>
+			{
+				Debug.Log(feedback);
+			});
+		}
+
 		#region Charcter
 		private GxCharacter m_Character;
 		private async void LoadModel(string path,

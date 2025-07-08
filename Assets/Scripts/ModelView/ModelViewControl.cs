@@ -137,9 +137,9 @@ namespace Gaia
 	}
 
 	/// <summary>
-	/// A Binding wrapper design for <see cref="AxUISpawnRoot"/> in order to carry the virtual selection data
+	/// A Binding wrapper design for <see cref="UISpawnRoot"/> in order to carry the virtual selection data
 	/// for those non-exist UI, due to optimization.
-	/// since <see cref="AxUISpawnRoot"/> handle the mess UI element(s) spawn feature, the element out of viewport will be auto despawn,
+	/// since <see cref="UISpawnRoot"/> handle the mess UI element(s) spawn feature, the element out of viewport will be auto despawn,
 	/// therefore the UI's information will be missing the handler, such as { Toggle, Selection, UI change...etc }
 	/// the <see cref="AxDataWrapper{SRC}"/> served as the UI data container.
 	/// </summary>
