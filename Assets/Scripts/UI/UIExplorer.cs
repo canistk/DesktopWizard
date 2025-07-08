@@ -225,14 +225,28 @@ namespace Gaia
 			}
 		}
 
+
+		private GxCharacter m_Character;
 		private void LoadVRM(string path)
 		{
-			
+			Debug.LogWarning($"TODO: load VRM {path}");
+			GxVRMLoader.LoadModel(path, (ch, vrm) =>
+			{
+				Debug.Log($"Loaded {ch.name}", ch);
+				m_Character = ch;
+			}, Debug.LogException);
 		}
 
 		private void LoadVRMA(string path)
 		{
+			Debug.LogWarning($"TODO: load VRMA {path}");
+			if (m_Character == null)
+			{
+				Debug.LogError("Character not exist. abort request.");
+				return;
+			}
 
+			m_Character.CrossFade(path, 0.25f, eSrcType.GameObject, false);
 		}
 	}
 }
