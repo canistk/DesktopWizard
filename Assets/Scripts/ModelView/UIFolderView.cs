@@ -9,6 +9,15 @@ namespace Gaia
 	{
 		[SerializeField] Image m_Icon;
 		[SerializeField] UIText m_Label;
+		[SerializeField] UIButton m_Button;
+
+		private void Reset()
+		{
+			m_Icon = GetComponentInChildren<Image>();
+			m_Label = GetComponentInChildren<UIText>();
+			m_Button = GetComponentInChildren<UIButton>();
+		}
+
 		protected override void OnViewUpdate(DirectoryInfo data)
 		{
 			if (m_Label)

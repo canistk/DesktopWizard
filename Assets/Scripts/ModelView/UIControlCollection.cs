@@ -49,7 +49,7 @@ namespace Gaia
 		}
 
 		//gameobjects here are assumed to be under the same parent
-		private Dictionary<object/* the data control */, BindingBase /* control of the spawned GameObject */> _dataToControl = new Dictionary<object, BindingBase>();
+		private Dictionary<BindingBase, object> m_SpawnedDict = new Dictionary<BindingBase, object>();
 		
 		#region Filter
 		private System.Func<object, bool> filteringMethod = null;
@@ -68,17 +68,17 @@ namespace Gaia
 			if (filteringMethod is null)
 			{
 				//no filtering method, show all
-				foreach (var kvp in _dataToControl)
+				foreach (var kvp in m_SpawnedDict)
 				{
-					kvp.Value.gameObject.SetActive(true);
+					kvp.Key.gameObject.SetActive(true);
 				}
 				return;
 			}
 
-			foreach (var kvp in _dataToControl)
+			foreach (var kvp in m_SpawnedDict)
 			{
-				var data = kvp.Key;
-				var control = kvp.Value;
+				var control = kvp.Key;
+				var data = kvp.Value;
 				control.gameObject.SetActive(filteringMethod(data));
 			}
 		}
@@ -99,14 +99,14 @@ namespace Gaia
 				return;
 			}
 
-			var kvps = _dataToControl.ToList();
+			var kvps = m_SpawnedDict.ToList();
 
-			kvps.Sort((a, b) => sortingMethod(a.Key, b.Key));
+			kvps.Sort((a, b) => sortingMethod(a.Value, b.Value));
 
 			//assume all the gameobjects in the same parent is inside _dataToControl
 			for (int i = 0; i < kvps.Count; ++i)
 			{
-				kvps[i].Value.transform.SetSiblingIndex(i);
+				kvps[i].Key.transform.SetSiblingIndex(i);
 			}
 		}
 
@@ -134,10 +134,39 @@ namespace Gaia
 		{
 			if (m_SortByAlphabet && sortingMethod == null)
 				sortingMethod = DefaultSortingMethod;
+			pool.Event_Spawn += Pool_Event_Spawn;
+			pool.Event_Despawn += Pool_Event_Despawn;
 		}
 
-		public delegate void TokenMapping<T>(T data, GameObject token) where T : class;
-		public GameObject SpawnByData<T>(T data, TokenMapping<T> onSpawned = null, int siblingIndex = -1)
+		private void OnDestroy()
+		{
+			pool.Event_Spawn -= Pool_Event_Spawn;
+			pool.Event_Despawn -= Pool_Event_Despawn;
+		}
+
+		private System.Action<object, GameObject> m_SpawnedCallback, m_DespawnCallback;
+		public void SetDespawnCallback(System.Action<object, GameObject> callback) { m_DespawnCallback = callback; }
+		private void Pool_Event_Despawn(GameObject token)
+		{
+			if (m_DespawnCallback == null)
+				return;
+
+			foreach ((var comp, var data) in m_SpawnedDict)
+			{
+				if (comp.gameObject != token)
+					continue;
+				m_DespawnCallback.Invoke(data, comp.gameObject);
+				m_SpawnedDict.Remove(comp);
+				return;
+			}
+		}
+
+		public void SetSpawnedCallback(System.Action<object, GameObject> callback) { m_SpawnedCallback = callback; }
+		private void Pool_Event_Spawn(GameObject token)
+		{
+		}
+
+		public GameObject Spawn<T>(T data, int siblingIndex = -1)
 			where T : class
 		{
 
@@ -151,11 +180,13 @@ namespace Gaia
 						token.transform.SetSiblingIndex(siblingIndex);
 					}
 					BindingBase handle = token.GetComponent<BindingBase>();
-					_dataToControl.Add(data, handle);
+					Debug.Assert(handle != null);
+					Debug.Assert(!m_SpawnedDict.ContainsKey(handle));
+					m_SpawnedDict.Add(handle, data);
 					handle.Assign(data, false);
 
-					onSpawned?.Invoke(data, token);
-
+					if (m_SpawnedCallback != null)
+						m_SpawnedCallback.Invoke(data, token);
 					return token;
 				}
 			}
@@ -163,7 +194,7 @@ namespace Gaia
 			return null;
 		}
 
-		public void SpawnByDataList<T>(IEnumerable<T> data, TokenMapping<T> onSpawned = null, bool despawnOld = true)
+		public void SpawnByDataList<T>(IEnumerable<T> data, bool despawnOld = true)
 			where T : class
 		{
 			if (despawnOld)
@@ -172,7 +203,7 @@ namespace Gaia
 			}
 			foreach (var d in data)
 			{
-				SpawnByData(d, onSpawned);
+				Spawn(d);
 			}
 			SortAll();
 			FilterAll();
@@ -187,7 +218,7 @@ namespace Gaia
 				pool.Despawn(list[i]);
 			}
 			list.Clear();
-			_dataToControl.Clear();
+			m_SpawnedDict.Clear();
 		}
 	}
 }
