@@ -504,6 +504,8 @@ namespace Gaia
 				// Calculate the final rotation
 				var finalRotation = QuaternionExtend.WeightedAverage(cacheRots.ToArray(), cacheWeights.ToArray());
 				var bone = animator.GetBoneTransform(b);
+				if (bone == null)
+					continue;
 				if (m_SmoothPose)
 				{
 					var lastRot = m_LastPose.rotations[(int)b];
