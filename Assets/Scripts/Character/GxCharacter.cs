@@ -59,7 +59,7 @@ namespace Gaia
 		#endregion Task Management
 
 		#region Object Pooling
-		[SerializeField] KxObjectPool m_Pool;
+		private KxObjectPool m_Pool;
         private void Editor_ObjectPoolCreate()
         {
 			// m_Pool = transform.GetOrAddComponent<kObjectPool>();

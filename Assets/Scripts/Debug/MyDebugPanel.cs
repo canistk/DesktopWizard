@@ -99,7 +99,7 @@ namespace Gaia
 
 		private void OnPoseBtnClicked(UIButton obj)
 		{
-			var _animator = m_ModelView?.bodyLayout?.animator;
+			var _animator = m_ModelView?.Character?.animator;
 			if (_animator == null)
 			{
 				Debug.LogError("Animator not found");
@@ -133,7 +133,7 @@ namespace Gaia
 			if (m_ModelView == null)
 				return;
 			Debug.Log("ToggleDebugMode");
-			var _animator = m_ModelView.bodyLayout.animator;
+			var _animator = m_ModelView.Character.animator;
 			_animator.enabled = !_animator.enabled;
 
 			var handler = _animator.GetOrAddComponent<HumanoidHandler>();

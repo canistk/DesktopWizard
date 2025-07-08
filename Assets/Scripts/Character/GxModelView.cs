@@ -5,12 +5,15 @@ using UnityEngine.EventSystems;
 using UnityEngine;
 //using Kit2;
 using Kit2.Tasks;
+using Unity.VisualScripting;
+using System.Threading.Tasks;
 namespace Gaia
 {
     public class GxModelView : MonoBehaviour
     {
         [SerializeField] DwCamera m_DwCamera;
-        [SerializeField] BodyLayout m_BodyLayout;
+
+        [SerializeField] Transform m_CharacterPivot;
 
 		public uint id => dwForm.id;
         public DwCamera dwCamera => m_DwCamera;
@@ -25,16 +28,6 @@ namespace Gaia
 		// ****/
 		public DwWindow dwWindow => m_DwCamera?.dwWindow;
 
-		[System.Obsolete("Use GxCharacter instead.")]
-		public BodyLayout bodyLayout
-        {
-            get
-            {
-                if (m_BodyLayout == null)
-                    m_BodyLayout = GetComponent<BodyLayout>();
-                return m_BodyLayout;
-            }
-        }
 
 		private KeyValuePair<bool, GxCharacter> m_Character;
 		/// <summary>Try get character component in this model view. (nullable)</summary>
@@ -50,7 +43,19 @@ namespace Gaia
 				return m_Character.Value;
 			}
 		}
-
+		public async void Assign(GxCharacter character)
+		{
+			if (m_Character.Value != null)
+			{
+				Debug.LogError($"Already assigned character {m_Character.Value.name}", m_Character.Value);
+				return;
+			}
+			character.transform.SetParent(transform, false);
+			character.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+			await Task.Delay(1);
+			character.transform.SetParent(m_CharacterPivot, true);
+			m_Character = new KeyValuePair<bool, GxCharacter>(true, character);
+		}
 
 		private KeyValuePair<bool, GxCameraCtrl> m_CameraCtrl;
 		public GxCameraCtrl CameraCtrl
@@ -94,7 +99,6 @@ namespace Gaia
 		private void Reset()
 		{
 			m_DwCamera = GetComponentInChildren<DwCamera>(true);
-            m_BodyLayout = GetComponentInChildren<BodyLayout>(true);
 		}
 
 		private void Awake()

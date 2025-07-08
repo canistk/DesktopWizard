@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using System.IO;
 using Kit2.ObjectPool;
 using System.Linq;
+using Unity.VisualScripting;
 namespace Gaia
 {
     public class UIExplorer : MonoBehaviour
@@ -229,17 +230,30 @@ namespace Gaia
 		private GxCharacter m_Character;
 		private void LoadVRM(string path)
 		{
-			Debug.LogWarning($"TODO: load VRM {path}");
+			Debug.Log($"Loading VRM {path}");
 			GxVRMLoader.LoadModel(path, (ch, vrm) =>
 			{
 				Debug.Log($"Loaded {ch.name}", ch);
 				m_Character = ch;
+
+				try
+				{
+					Debug.Log($"Regist desktop wizard {ch.name}");
+					var prefab = Resources.Load("DWTemplate");
+					var token = GameObject.Instantiate(prefab);
+					var modelView = token.GetComponentInChildren<GxModelView>();
+					modelView.Assign(ch);
+				}
+				catch (System.Exception ex)
+				{
+					throw ex;
+				}
 			}, Debug.LogException);
 		}
 
 		private void LoadVRMA(string path)
 		{
-			Debug.LogWarning($"TODO: load VRMA {path}");
+			Debug.Log($"Loading VRMA {path}");
 			if (m_Character == null)
 			{
 				Debug.LogError("Character not exist. abort request.");

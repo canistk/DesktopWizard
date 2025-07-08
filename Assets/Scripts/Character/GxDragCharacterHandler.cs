@@ -15,7 +15,7 @@ namespace Gaia
 		[SerializeField, LayerField] private string m_CharacterLayerName = "Character";
 		[SerializeField] GxModelView m_ModelView;
 		[SerializeField] Animator m_Animator;
-		private BodyLayout bodyLayout => m_ModelView?.bodyLayout;
+		private GxCharacter Character => m_ModelView?.Character;
 		private const float s_Distance = 1000f;
 		private int m_CharacterLayerMask;
 
@@ -49,14 +49,14 @@ namespace Gaia
 				return;
 			}
 
-			if (bodyLayout == null)
+			if (Character == null)
 				return;
-			var shoulder0 = bodyLayout.animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
-			var shoulder1 = bodyLayout.animator.GetBoneTransform(HumanBodyBones.RightShoulder);
+			var shoulder0 = Character.animator.GetBoneTransform(HumanBodyBones.LeftShoulder);
+			var shoulder1 = Character.animator.GetBoneTransform(HumanBodyBones.RightShoulder);
 			var hips = new[]
 			{
-				bodyLayout.animator.GetBoneTransform(HumanBodyBones.Hips),
-				bodyLayout.animator.GetBoneTransform(HumanBodyBones.Spine)
+				Character.animator.GetBoneTransform(HumanBodyBones.Hips),
+				Character.animator.GetBoneTransform(HumanBodyBones.Spine)
 			};
 
 			var isDragHand = 
@@ -83,11 +83,11 @@ namespace Gaia
 			DebugExtend.DrawRay(ray.origin, ray.direction * hitInfo.distance, Color.red, 5f, true);
 
 			if (isDragBack)
-				bodyLayout.animator.CrossFadeInFixedTime(m_DragBackState.m_SelectedHash, LayerNo, m_CrossFadeFixed);
+				Character.animator.CrossFadeInFixedTime(m_DragBackState.m_SelectedHash, LayerNo, m_CrossFadeFixed);
 			if (isDragHip)
-				bodyLayout.animator.CrossFadeInFixedTime(m_DragHipState.m_SelectedHash, LayerNo, m_CrossFadeFixed);
+				Character.animator.CrossFadeInFixedTime(m_DragHipState.m_SelectedHash, LayerNo, m_CrossFadeFixed);
 			if (isDragHand)
-				bodyLayout.animator.CrossFadeInFixedTime(m_DragHandState.m_SelectedHash, LayerNo, m_CrossFadeFixed);
+				Character.animator.CrossFadeInFixedTime(m_DragHandState.m_SelectedHash, LayerNo, m_CrossFadeFixed);
 			m_FixVector = Vector2.zero;
 		}
 
@@ -143,8 +143,8 @@ namespace Gaia
 
 		protected override void OnEndDrag(GxModelView win, GxPointerEventData evt)
 		{
-			if (bodyLayout)
-				bodyLayout.animator.CrossFade(m_Idle.m_SelectedHash, 0.15f);
+			if (Character)
+				Character.animator.CrossFade(m_Idle.m_SelectedHash, 0.15f);
 
 			m_FixVector = Vector2.zero;
 
