@@ -18,21 +18,52 @@ namespace Gaia
 		}
 
 		[SerializeField] UIControlCollection m_Collection;
-		
-		private string rootFolder => Application.streamingAssetsPath;
+		[SerializeField] UIButton m_BackParentFolder;
+		private DirectoryInfo rootFolder;
 
 		private void Awake()
 		{
-			if (!KxDirectory.Exists(rootFolder))
-				Debug.LogError($"Folder {rootFolder} not exist.");
+			if (!KxDirectory.Exists(Application.streamingAssetsPath))
+				Debug.LogError($"Folder {Application.streamingAssetsPath} not exist.");
+
+			if (m_BackParentFolder)
+			{
+				m_BackParentFolder.EVENT_OnClick += BackParentFolder;
+			}
+
+
+			rootFolder = new DirectoryInfo(Application.streamingAssetsPath);
 			m_Collection.SetSpawnedCallback(OnSpawnedToken);
 			m_Collection.SetDespawnCallback(OnDespawnToken);
-			DisplayFolder(rootFolder);
+			DisplayFolder(rootFolder.FullName);
 		}
 
+		private void OnDestroy()
+		{
+			if (m_BackParentFolder)
+			{
+				m_BackParentFolder.EVENT_OnClick -= BackParentFolder;
+			}
+		}
+
+		private DirectoryInfo m_CurrentPath = default;
 		private void DisplayFolder(string path)
 		{
-			Debug.Assert(Directory.Exists(path), $"path \"{path}\" not exist.");
+			if (!Directory.Exists(path))
+			{
+				Debug.LogError($"path \"{path}\" not exist.");
+				return;
+			}
+
+			var next = new DirectoryInfo(path);
+			var isSubFolder = next.FullName.Length > rootFolder.FullName.Length && path.Substring(0, rootFolder.FullName.Length).Equals(rootFolder.FullName, IGNORE);
+			if (m_BackParentFolder)
+			{
+				m_BackParentFolder.gameObject.SetActive(isSubFolder);
+			}
+
+			m_CurrentPath = next;
+
 			List<FileSystemInfo> data = new List<FileSystemInfo>();
 			foreach (var dir in KxDirectory.EnumerateDirectories(path))
 			{
@@ -49,15 +80,42 @@ namespace Gaia
 				FileInfo fileInfo = new FileInfo(file);
 				data.Add(fileInfo);
 			}
-
+			m_Collection.SetSorting(_FileSorting);
 			m_Collection.SpawnByDataList(data);
 
 			// Select the first item.
 			TrySelectFirstItem();
 		}
 
+		private int _FileSorting(object a, object b)
+		{
+			if (a is DirectoryInfo a0 && b is DirectoryInfo b0)
+			{
+				return a0.Name.CompareTo(b0.Name);
+			}
+			else if (a is DirectoryInfo a1 && b is FileInfo b1)
+			{
+				return -1;
+			}
+			else if (a is FileInfo a2 && b is DirectoryInfo b2)
+			{
+				return 1;
+			}
+			else if (a is FileInfo a3 && b is FileInfo b3)
+			{
+				return a3.Name.CompareTo(b3.Name);
+			}
+			return 0;
+		}
+
 		private bool TrySelectFirstItem()
 		{
+			if (m_BackParentFolder && m_BackParentFolder.isActiveAndEnabled)
+			{
+				m_BackParentFolder.button.Select();
+				m_BackParentFolder.transform.SetAsFirstSibling();
+				return true;
+			}
 			foreach (var obj in m_Collection.pool.GetSpawnedObjects())
 			{
 				// assume all prefab had UIButton
@@ -89,6 +147,7 @@ namespace Gaia
 			if (fileCtrl != null)
 			{
 				// TODO: Load file.
+				TryExecuteFile(fileCtrl.data);
 				return;
 			}
 
@@ -104,6 +163,76 @@ namespace Gaia
 				DisplayFolder(data.FullName);
 				return;
 			}
+		}
+
+		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
+		private void BackParentFolder()
+		{
+			if (!m_CurrentPath.Exists)
+				return;
+
+			var back = m_CurrentPath.Parent.FullName;
+			DisplayFolder(back);
+		}
+
+		private bool TryExecuteFile(FileInfo data)
+		{
+			var path = KxPath.Fix(data.FullName);
+
+			try
+			{
+				if (!KxFile.Exists(path))
+					throw new System.Exception($"Path {path}, not exist.");
+				var ext = KxPath.GetExtension(path);
+				if (string.IsNullOrEmpty(ext))
+					throw new System.Exception($"Unknown file type, extension not found.");
+				switch (ext)
+				{
+					case ".vrm": LoadVRM(path); break;
+					case ".vrma": LoadVRMA(path); break;
+					default: throw new System.Exception($"Unknown file type, extension \"{ext}\"");
+				}
+				return true;
+			}
+			catch (System.Exception ex)
+			{
+				Debug.LogError(ex);
+				return false;
+			}
+		}
+
+		private bool TryReadText(FileInfo data, out string content)
+		{
+			var path = KxPath.Fix(data.FullName);
+			if (!KxFile.Exists(path))
+			{
+				content = default;
+				return false;
+			}
+
+			try
+			{
+				using (var reader = data.OpenText())
+				{
+					content = reader.ReadToEnd();
+					return true;
+				}
+			}
+			catch (System.Exception ex)
+			{
+				content = ex.Message;
+				return false;
+			}
+		}
+
+		private void LoadVRM(string path)
+		{
+			
+		}
+
+		private void LoadVRMA(string path)
+		{
+
 		}
 	}
 }
