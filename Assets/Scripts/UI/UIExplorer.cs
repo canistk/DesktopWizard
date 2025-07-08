@@ -262,5 +262,14 @@ namespace Gaia
 
 			m_Character.CrossFade(path, 0.25f, eSrcType.GameObject, false);
 		}
+
+		[ContextMenu("Head to Streaming Assets")]
+		private void GotoStreamingAssets()
+		{
+			Kit2.Platform.CommandLine("explorer.exe", KxPath.Fix(Application.streamingAssetsPath), (feedback) =>
+			{
+				Debug.Log(feedback);
+			});
+		}
 	}
 }

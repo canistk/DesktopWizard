@@ -43,17 +43,18 @@ namespace Gaia
 				return m_Character.Value;
 			}
 		}
-		public async void Assign(GxCharacter character)
+		public void Assign(GxCharacter character)
 		{
 			if (m_Character.Value != null)
 			{
 				Debug.LogError($"Already assigned character {m_Character.Value.name}", m_Character.Value);
 				return;
 			}
-			character.transform.SetParent(transform, false);
-			character.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-			await Task.Delay(1);
-			character.transform.SetParent(m_CharacterPivot, true);
+			
+			// Align  ModelView, but parent pivot (due to camera orbit control)
+			character.transform.SetParent(m_CharacterPivot, false);
+			character.transform.SetPositionAndRotation(transform.position, transform.rotation);
+
 			m_Character = new KeyValuePair<bool, GxCharacter>(true, character);
 		}
 
