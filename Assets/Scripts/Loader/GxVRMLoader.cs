@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UniGLTF;
-using UnityEngine;
 using UniVRM10;
 namespace Gaia
 {
@@ -17,7 +16,7 @@ namespace Gaia
 			InternalLoadModel(path, success, fail);
 		}
 
-		public static bool Unload(GxCharacter ch)
+		public static bool UnloadModel(GxCharacter ch)
 		{
 			if (!s_Characters.Contains(ch))
 				return false;

@@ -226,16 +226,15 @@ namespace Gaia
 			}
 		}
 
-
-		private GxCharacter m_Character;
+		private GxCharacter m_LastCharacter;
+		private Dictionary<GxCharacter, GxModelView> m_CharacterDict = new Dictionary<GxCharacter, GxModelView>();
 		private void LoadVRM(string path)
 		{
 			Debug.Log($"Loading VRM {path}");
 			GxVRMLoader.LoadModel(path, (ch, vrm) =>
 			{
 				Debug.Log($"Loaded {ch.name}", ch);
-				m_Character = ch;
-
+				m_LastCharacter = ch;
 				try
 				{
 					Debug.Log($"Regist desktop wizard {ch.name}");
@@ -243,6 +242,11 @@ namespace Gaia
 					var token = GameObject.Instantiate(prefab);
 					var modelView = token.GetComponentInChildren<GxModelView>();
 					modelView.Assign(ch);
+					m_CharacterDict.Add(ch, modelView);
+					modelView.dwForm.FormClosed += (sender, e) =>
+					{
+						UnloadVRM(ch, modelView);
+					};
 				}
 				catch (System.Exception ex)
 				{
@@ -251,16 +255,31 @@ namespace Gaia
 			}, Debug.LogException);
 		}
 
+		private void UnloadVRM(GxCharacter character, GxModelView modelView)
+		{
+			Debug.Log($"Desktop wizard closed {character.name}");
+			if (m_CharacterDict.ContainsKey(character))
+			{
+				m_CharacterDict.Remove(character);
+			}
+			else
+			{
+				Debug.LogWarning($"Character {character.name} not found in dictionary.");
+			}
+			GxVRMLoader.UnloadModel(character);
+			GameObject.Destroy(modelView.gameObject);
+		}
+
 		private void LoadVRMA(string path)
 		{
 			Debug.Log($"Loading VRMA {path}");
-			if (m_Character == null)
+			if (m_LastCharacter == null)
 			{
-				Debug.LogError("Character not exist. abort request.");
+				Debug.LogError("Character not loaded, cannot load VRMA.");
 				return;
 			}
 
-			m_Character.CrossFade(path, 0.25f, eSrcType.GameObject, false);
+			m_LastCharacter.CrossFade(path, 0.25f, eSrcType.GameObject, false);
 		}
 
 		[ContextMenu("Head to Streaming Assets")]

@@ -81,11 +81,22 @@ namespace Gaia
 
 		public event System.Action EVENT_OnClick;
 		public event System.Action<UIButton> EVENT_OnClickButton;
+		public event System.Action<UIButton> EVENT_OnDoubleClicked;
 		[SerializeField] bool m_SpamBlocker = true;
 		private const float s_BlockPeriod = 0.3f;
 		private float m_LastClick = -s_BlockPeriod;
+
+		private const float s_DoubleClickPeriod = 0.3f;
+		private float m_LastRawClick = -s_DoubleClickPeriod;
 		private void InternalOnClick()
 		{
+			var isDoubleClick = Time.realtimeSinceStartup - m_LastRawClick < s_DoubleClickPeriod;
+			m_LastRawClick = Time.realtimeSinceStartup;
+			if (isDoubleClick)
+			{
+				EVENT_OnDoubleClicked?.Invoke(this);
+				return;
+			}
 
 			if (m_SpamBlocker && Time.realtimeSinceStartup - m_LastClick < s_BlockPeriod)
 			{
@@ -125,7 +136,7 @@ namespace Gaia
 
 		private void OnEnable()
 		{
-			m_LastClick = 0;
+			m_LastClick = -s_BlockPeriod;
 		}
 
 		private void OnDisable()
