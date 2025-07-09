@@ -227,21 +227,26 @@ namespace Gaia
 		}
 
 		private GxCharacter m_LastCharacter;
+		private int m_SpawnedCount = 0;
 		private Dictionary<GxCharacter, GxModelView> m_CharacterDict = new Dictionary<GxCharacter, GxModelView>();
 		private void LoadVRM(string path)
 		{
 			Debug.Log($"Loading VRM {path}");
 			GxVRMLoader.LoadModel(path, (ch, vrm) =>
 			{
-				Debug.Log($"Loaded {ch.name}", ch);
+				var _name = KxPath.GetFileNameWithoutExtension(path);
+				Debug.Log($"Loaded {_name}", ch);
 				m_LastCharacter = ch;
 				try
 				{
-					Debug.Log($"Regist desktop wizard {ch.name}");
+					Debug.Log($"Regist desktop wizard {_name}");
 					var prefab = Resources.Load("DWTemplate");
-					var token = GameObject.Instantiate(prefab);
+					var pos = new Vector3(0f, 3f * m_SpawnedCount, 0f);
+					var token = GameObject.Instantiate(prefab, pos, Quaternion.identity);
+					token.name = $"MV-{_name}";
 					var modelView = token.GetComponentInChildren<GxModelView>();
 					modelView.Assign(ch);
+					++m_SpawnedCount;
 					m_CharacterDict.Add(ch, modelView);
 					modelView.dwForm.FormClosed += (sender, e) =>
 					{
