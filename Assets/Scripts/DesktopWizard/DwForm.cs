@@ -423,7 +423,7 @@ namespace DesktopWizard
             Event_Move;
         private void Form_LoseFocus(object sender, EventArgs e)
 		{
-			m_Events.Enqueue(new EventPacket(() => Event_LostFocus.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
+            m_Events.Enqueue(new EventPacket(() => Event_LostFocus.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
 			//Event_LostFocus?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, e));
         }
 

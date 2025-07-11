@@ -29,7 +29,6 @@ namespace Gaia
 				{
 					{ typeof(UIPopupInfo),              new AssetPath("UIs/UIPopupInfo", false) },
 					{ typeof(UIExplorer),               new AssetPath("UIs/UIExplorer", false) },
-					{ typeof(UIPopupCharacterMenu),		new AssetPath("UIs/UIPopupCharacterMenu", false) },
 				};
 				return s_Type2Path;
 			}
@@ -69,20 +68,6 @@ namespace Gaia
 				return (null, null);
 			}
 			comp.Init(path, ext, fileSelected);
-			return (token, comp);
-		}
-
-		[System.Obsolete("move to GxModelView.DisplayCharacterMenu")]
-		public static (GameObject token, UIPopupCharacterMenu popup) CharacterMenu(GxModelView modelView, GxCharacter character)
-		{
-			// TODO: this shouldn't bind with UIPopup, since we want ModelView to hand over. 
-			(var token, var comp) = InternalSpawn<UIPopupCharacterMenu>();
-			if (comp == null)
-			{
-				Debug.LogError($"Fail to spawn UIPopupCharacterMenu, prefab path: {type2Path[typeof(UIPopupCharacterMenu)].path}");
-				return (null, null);
-			}
-			comp.Init(modelView, character);
 			return (token, comp);
 		}
 	}

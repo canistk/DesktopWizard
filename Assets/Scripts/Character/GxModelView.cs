@@ -423,16 +423,11 @@ namespace Gaia
 				var prefab = Resources.Load("UIs/UIPopupCharacterMenu");
 				var pos = new Vector3(0f, 3f * s_SpawnedVRMCount, 0f);
 				var token = (GameObject)GameObject.Instantiate(prefab, pos, Quaternion.identity);
-				token.name = $"MV-{character.name}";
 				m_CharacterMenu = token.GetComponentInChildren<UIPopupCharacterMenu>();
 				if (m_CharacterMenu == null)
 					throw new System.NullReferenceException("UIPopupCharacterMenu not found on prefab.");
 			}
-			var form = m_CharacterMenu?.modelView?.dwForm;
-			if (form == null)
-				throw new System.Exception();
-			form.Left = Left;
-			form.Top = Top;
+			m_CharacterMenu.Init(Left, Top, modelView, character);
 			return m_CharacterMenu;
 		}
 		#endregion Runtime Creation

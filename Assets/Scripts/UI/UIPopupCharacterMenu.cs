@@ -19,14 +19,12 @@ namespace Gaia
         private GxCharacter m_Character;
 		public GxCharacter Character => m_Character;
 
-		private void Awake()
+		private void Start()
 		{
 			if (m_LoadVRMA != null)
             {
 				m_LoadVRMA.EVENT_OnClick += M_LoadVRMA_EVENT_OnClick;
             }
-			modelView.dwForm.Event_LostFocus += DwForm_Event_LostFocus;
-			modelView.dwForm.FormClosed += DwForm_FormClosed;
 		}
 
 
@@ -37,8 +35,6 @@ namespace Gaia
 				m_LoadVRMA.EVENT_OnClick -= M_LoadVRMA_EVENT_OnClick;
 			}
 
-			modelView.dwForm.Event_LostFocus -= DwForm_Event_LostFocus;
-			modelView.dwForm.FormClosed -= DwForm_FormClosed;
 		}
 
 		private void M_LoadVRMA_EVENT_OnClick()
@@ -56,29 +52,53 @@ namespace Gaia
 
 		}
 
-		public void Init(GxModelView modelView, GxCharacter character)
+		private bool m_Initialized = false;
+		public void Init(int Left, int Top, GxModelView modelView, GxCharacter character)
         {
             this.m_LinkedModelView = modelView;
             this.m_Character = character;
             Debug.Assert(m_LinkedModelView != null, "ModelView cannot be null");
             Debug.Assert(m_Character != null, "Character cannot be null");
+			this.gameObject.SetActive(true);
+			this.gameObject.name = $"Menu: {character.name}";
 
 			if (m_Title != null)
             {
                 m_Title.Text = $"Menu: {character.name}";
 			}
 
-			modelView.dwForm.Focus();
-			gameObject.SetActive(true);
+			var form = this.modelView.dwForm;
+			if (form != null)
+			{
+				form.Event_LostFocus += DwForm_Event_LostFocus;
+				form.FormClosed += DwForm_FormClosed;
+				form.Focus();
+				form.Left = Left;
+				form.Top = Top;
+			}
+			m_Initialized = true;
 		}
 
 		private void DwForm_FormClosed(object sender, System.Windows.Forms.FormClosedEventArgs e) => SelfDespawn();
-		private void DwForm_Event_LostFocus(uint hWnd, System.EventArgs evt) => SelfDespawn();
+		private void DwForm_Event_LostFocus(uint hWnd, System.EventArgs evt)
+		{
+			Debug.Log("Lost focus, despawning character menu. [1/2]");
+			SelfDespawn();
+		}
 
 		public override void SelfDespawn()
 		{
 			// base.SelfDespawn();
-			gameObject.SetActive(false);
+			if (!m_Initialized)
+				return;
+			m_Initialized = false;
+			Debug.Log("Lost focus, despawning character menu [2/2].");
+			this.modelView.gameObject.SetActive(false);
+			if (this.modelView?.dwForm != null)
+			{
+				modelView.dwForm.Event_LostFocus -= DwForm_Event_LostFocus;
+				modelView.dwForm.FormClosed -= DwForm_FormClosed;
+			}
 			OnDespawn();
 		}
 
