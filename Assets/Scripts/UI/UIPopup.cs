@@ -27,7 +27,8 @@ namespace Gaia
 
 				s_Type2Path = new Dictionary<System.Type, AssetPath>
 				{
-					{ typeof(UIPopupInfo),              new AssetPath("UIPopupInfo", false) },
+					{ typeof(UIPopupInfo),              new AssetPath("UIs/UIPopupInfo", false) },
+					{ typeof(UIExplorer),               new AssetPath("UIs/UIExplorer", false) },
 				};
 				return s_Type2Path;
 			}
@@ -56,6 +57,18 @@ namespace Gaia
 			comp.Init(title, content, confirm, callback);
 			return (token, comp);
 
+		}
+
+		public static (GameObject token, UIExplorer popup) Explorer(string path, params string[] ext)
+		{
+			(var token, var comp) = InternalSpawn<UIExplorer>();
+			if (comp == null)
+			{
+				Debug.LogError($"Fail to spawn UIExplorer, prefab path: {type2Path[typeof(UIExplorer)].path}");
+				return (null, null);
+			}
+			comp.Init(path, ext);
+			return (token, comp);
 		}
 
 	}

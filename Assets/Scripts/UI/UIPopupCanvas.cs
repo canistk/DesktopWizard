@@ -9,7 +9,7 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 namespace Gaia
 {
-	[MonoSingletonConfig(LoadPath = "UIPopupCanvas")]
+	[MonoSingletonConfig(LoadPath = "UIs/UIPopupCanvas")]
 	public class UIPopupCanvas : MonoSingleton<UIPopupCanvas>
 	{
 		private static readonly Vector3 s_Pos = new Vector3(0f, 100f, -100f);

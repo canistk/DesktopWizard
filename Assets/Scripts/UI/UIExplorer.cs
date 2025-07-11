@@ -9,8 +9,8 @@ using System.Linq;
 using Unity.VisualScripting;
 namespace Gaia
 {
-    public class UIExplorer : MonoBehaviour
-    {
+    public class UIExplorer : UIPopupBase
+	{
 		[SerializeField] UIText m_Title;
 		public string Title
 		{
@@ -21,7 +21,9 @@ namespace Gaia
 		[SerializeField] UIControlCollection m_Collection;
 		[SerializeField] UIButton m_BackParentFolder;
 		private DirectoryInfo rootFolder;
-
+		private const string VRM = ".vrm";
+		private const string VRMA = ".vrma";
+		private static readonly string[] VRM_VRMA = new string[]{ VRM, VRMA };
 		private void Awake()
 		{
 			if (!KxDirectory.Exists(Application.streamingAssetsPath))
@@ -32,11 +34,10 @@ namespace Gaia
 				m_BackParentFolder.EVENT_OnClick += BackParentFolder;
 			}
 
-
 			rootFolder = new DirectoryInfo(Application.streamingAssetsPath);
 			m_Collection.SetSpawnedCallback(OnSpawnedToken);
 			m_Collection.SetDespawnCallback(OnDespawnToken);
-			DisplayFolder(rootFolder.FullName);
+			Init(rootFolder.FullName, VRM, VRMA);
 		}
 
 		private void OnDestroy()
@@ -47,8 +48,25 @@ namespace Gaia
 			}
 		}
 
+		public void Init(string path, params string[] extension)
+		{
+			m_Filter = new FilterInfo(path, extension);
+			DisplayFolder(m_Filter.rootPath, m_Filter);
+		}
+
+		private struct FilterInfo
+		{
+			public string rootPath;
+			public string[] extensions;
+			public FilterInfo(string root, string[] exts)
+			{
+				rootPath = root;
+				extensions = exts;
+			}
+		}
+		private FilterInfo m_Filter;
 		private DirectoryInfo m_CurrentPath = default;
-		private void DisplayFolder(string path)
+		private void DisplayFolder(string path, in FilterInfo filter)
 		{
 			if (!Directory.Exists(path))
 			{
@@ -75,7 +93,7 @@ namespace Gaia
 
 			foreach (var file in KxDirectory.GetFiles(path))
 			{
-				if (KxPath.IsExtension(file, true, ".meta"))
+				if (!KxPath.IsExtension(file, true, filter.extensions))
 					continue;
 				Debug.Log($"File {file}");
 				FileInfo fileInfo = new FileInfo(file);
@@ -161,7 +179,7 @@ namespace Gaia
 				var path = data.FullName;
 				if (!KxDirectory.Exists(path))
 					Debug.LogError($"invalid path {path}");
-				DisplayFolder(data.FullName);
+				DisplayFolder(data.FullName, m_Filter);
 				return;
 			}
 		}
@@ -173,7 +191,7 @@ namespace Gaia
 				return;
 
 			var back = m_CurrentPath.Parent.FullName;
-			DisplayFolder(back);
+			DisplayFolder(back, m_Filter);
 		}
 
 		private bool TryExecuteFile(FileInfo data)
