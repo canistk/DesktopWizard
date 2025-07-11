@@ -8,7 +8,7 @@ using BoingKit;
 namespace Gaia
 {
 	using Chain = BoingKit.BoingBones.Chain;
-
+	[System.Obsolete("This class is deprecated, Heroine will be remove.")]
 	public class CreateJxHeroineHair : CreatePrefabBase
 	{
 		public readonly GameObject fbx;

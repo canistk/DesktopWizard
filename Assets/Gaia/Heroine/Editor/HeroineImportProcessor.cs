@@ -7,6 +7,7 @@ using Kit2;
 using Kit2.Tasks;
 namespace Gaia
 {
+	[System.Obsolete("This class is deprecated, Heroine will be remove.")]
 	public class HeroineImportProcessor : AssetPostprocessor
 	{
 		private const string s_JxDirectory = "Assets/Jx/Heroine/";

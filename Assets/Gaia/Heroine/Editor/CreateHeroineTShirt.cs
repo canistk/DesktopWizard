@@ -5,7 +5,8 @@ using System.IO;
 using Kit2;
 namespace Gaia
 {
-    public class CreateHeroineTShirt : CreatePrefabBase
+	[System.Obsolete("This class is deprecated, Heroine will be remove.")]
+	public class CreateHeroineTShirt : CreatePrefabBase
 	{
 		public readonly GameObject fbx;
 		public readonly string folder;

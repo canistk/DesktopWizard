@@ -7,7 +7,8 @@ using Kit2;
 using BoingKit;
 namespace Gaia
 {
-    public class CreateJxHeroineBody : CreatePrefabBase
+	[System.Obsolete("This class is deprecated, Heroine will be remove.")]
+	public class CreateJxHeroineBody : CreatePrefabBase
 	{
 		public readonly GameObject fbx;
 		public readonly string folder;
