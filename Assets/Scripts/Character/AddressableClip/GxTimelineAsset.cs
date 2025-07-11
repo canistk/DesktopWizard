@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.Timeline;
 using UnityEngine.Playables;
 using Kit2;
-using Kit2.Pooling;
 using Kit2.ObjectPool;
 
 namespace Gaia
