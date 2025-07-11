@@ -37,7 +37,7 @@ namespace Gaia
 			rootFolder = new DirectoryInfo(Application.streamingAssetsPath);
 			m_Collection.SetSpawnedCallback(OnSpawnedToken);
 			m_Collection.SetDespawnCallback(OnDespawnToken);
-			Init(rootFolder.FullName, VRM, VRMA);
+			// Init(rootFolder.FullName, VRM, VRMA);
 		}
 
 		private void OnDestroy()
@@ -48,12 +48,14 @@ namespace Gaia
 			}
 		}
 
-		public void Init(string path, params string[] extension)
+		private System.Action<string> m_FileSelectedCallback;
+		public void Init(string path, string[] extension, System.Action<string> fileSelected)
 		{
 			m_Filter = new FilterInfo(path, extension);
+			m_FileSelectedCallback = fileSelected;
 			DisplayFolder(m_Filter.rootPath, m_Filter);
 		}
-
+		
 		private struct FilterInfo
 		{
 			public string rootPath;
@@ -165,8 +167,16 @@ namespace Gaia
 			var fileCtrl = btn.gameObject.GetComponent<UIFileCtrl>();
 			if (fileCtrl != null)
 			{
-				// TODO: Load file.
-				TryExecuteFile(fileCtrl.data);
+				// Load file.
+				var path = fileCtrl.data.FullName;
+				if (!KxFile.Exists(path))
+					throw new System.Exception($"Path {path}, not exist.");
+				var ext = KxPath.GetExtension(path);
+				if (string.IsNullOrEmpty(ext))
+					throw new System.Exception($"Unknown file type, extension not found.");
+
+				m_FileSelectedCallback?.Invoke(path);
+				// TryExecuteFile(fileCtrl.data);
 				return;
 			}
 
@@ -207,8 +217,8 @@ namespace Gaia
 					throw new System.Exception($"Unknown file type, extension not found.");
 				switch (ext)
 				{
-					case ".vrm": LoadVRM(path); break;
-					case ".vrma": LoadVRMA(path); break;
+					case VRM: LoadVRM(path); break;
+					case VRMA: LoadVRMA(path); break;
 					default: throw new System.Exception($"Unknown file type, extension \"{ext}\"");
 				}
 				return true;
@@ -247,8 +257,11 @@ namespace Gaia
 		private GxCharacter m_LastCharacter;
 		private int m_SpawnedCount = 0;
 		private Dictionary<GxCharacter, GxModelView> m_CharacterDict = new Dictionary<GxCharacter, GxModelView>();
+		[System.Obsolete("Moved to GxModelView.LoadVRM")]
 		private void LoadVRM(string path)
 		{
+			GxModelView.LoadVRM(path);
+
 			Debug.Log($"Loading VRM {path}");
 			GxVRMLoader.LoadModel(path, (ch, vrm) =>
 			{
@@ -277,7 +290,7 @@ namespace Gaia
 				}
 			}, Debug.LogException);
 		}
-
+		[System.Obsolete("Moved to GxModelView.LoadVRM")]
 		private void UnloadVRM(GxCharacter character, GxModelView modelView)
 		{
 			Debug.Log($"Desktop wizard closed {character.name}");

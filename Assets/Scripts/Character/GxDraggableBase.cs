@@ -95,30 +95,30 @@ namespace Gaia
 
 	public abstract class GxMouseBase : MonoBehaviour
 	{
-		protected GxModelView win { get; private set; }
+		protected GxModelView modelView { get; private set; }
 
 
 		protected virtual void OnEnable()
 		{
-			win = GetComponentInParent<GxModelView>();
-			if (win == null)
+			modelView = GetComponentInParent<GxModelView>();
+			if (modelView == null)
 				return;
 			if (this is not IPointerFeature feature)
 			{
 				Debug.LogError($"GxMouseBase: {this} is not IPointerFeature, please check the code.");
 				return;
 			}
-			win.Register(feature);
+			modelView.Register(feature);
 		}
 
 		protected virtual void OnDisable()
 		{
-			if (win == null)
+			if (modelView == null)
 				return;
 			if (this is not IPointerFeature feature)
 				return;
-			win.Unregister(feature);
-			win = null;
+			modelView.Unregister(feature);
+			modelView = null;
 		}
 	}
 

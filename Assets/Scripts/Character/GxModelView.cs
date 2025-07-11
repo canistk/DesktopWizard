@@ -1,12 +1,12 @@
 using DesktopWizard;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine.EventSystems;
-using UnityEngine;
 //using Kit2;
 using Kit2.Tasks;
-using Unity.VisualScripting;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.EventSystems;
 namespace Gaia
 {
     public class GxModelView : MonoBehaviour
@@ -341,6 +341,101 @@ namespace Gaia
 			m_Tasks.Clear();
 		}
 		#endregion Movement
+
+		#region Runtime Creation
+		private static Dictionary<GxCharacter, GxModelView> s_CharacterDict = new Dictionary<GxCharacter, GxModelView>();
+		private static int s_SpawnedVRMCount = 0;
+		public static void LoadVRM(string vrmFilePath)
+		{
+			if (string.IsNullOrEmpty(vrmFilePath))
+			{
+				Debug.LogError("VRM file path is null or empty.");
+				return;
+			}
+
+			Debug.Log($"Loading VRM : {vrmFilePath}");
+			GxVRMLoader.LoadModel(vrmFilePath, (ch, vrm) =>
+			{
+				var _name = Kit2.KxPath.GetFileNameWithoutExtension(vrmFilePath);
+				Debug.Log($"Loaded {_name}", ch);
+				try
+				{
+					Debug.Log($"Regist desktop wizard {_name}");
+					var prefab = Resources.Load("DWTemplate");
+					var pos = new Vector3(0f, 3f * s_SpawnedVRMCount, 0f);
+					var token = (GameObject)GameObject.Instantiate(prefab, pos, Quaternion.identity);
+					token.name = $"MV-{_name}";
+					var modelView = token.GetComponentInChildren<GxModelView>();
+					modelView.Assign(ch);
+					++s_SpawnedVRMCount;
+					s_CharacterDict.Add(ch, modelView);
+					modelView.dwForm.FormClosed += (sender, e) =>
+					{
+						UnloadVRM(ch);
+					};
+					modelView.dwCamera.EVENT_MouseDown += DwCamera_EVENT_MouseRightClicked;
+				}
+				catch (System.Exception ex)
+				{
+					throw ex;
+				}
+			}, Debug.LogException);
+		}
+
+		private static void DwCamera_EVENT_MouseRightClicked(PointerEventData evt)
+		{
+			// check is right click
+			if (evt.pointerId != 2)
+			{
+				return;
+			}
+			Debug.LogWarning("Right clicked.");
+		}
+
+		private static bool UnloadVRM(GxCharacter character)
+		{
+			if (!s_CharacterDict.TryGetValue(character, out var modelView))
+			{
+				Debug.LogWarning($"Character {character.name} not found in model view dictionary.");
+				return false;
+			}
+
+			try
+			{
+				s_CharacterDict.Remove(character);
+				GxVRMLoader.UnloadModel(character);
+				GameObject.Destroy(modelView.gameObject);
+			}
+			catch (System.Exception ex)
+			{
+				Debug.LogError($"Failed to unload VRM for character {character.name}: {ex.Message}");
+				return false;
+			}
+			return true;
+		}
+
+
+		private static UIPopupCharacterMenu m_CharacterMenu;
+		public static UIPopupCharacterMenu DisplayCharacterMenu(int Left, int Top, GxModelView modelView, GxCharacter character)
+		{
+			if (m_CharacterMenu == null)
+			{
+				var prefab = Resources.Load("UIs/UIPopupCharacterMenu");
+				var pos = new Vector3(0f, 3f * s_SpawnedVRMCount, 0f);
+				var token = (GameObject)GameObject.Instantiate(prefab, pos, Quaternion.identity);
+				token.name = $"MV-{character.name}";
+				m_CharacterMenu = token.GetComponentInChildren<UIPopupCharacterMenu>();
+				if (m_CharacterMenu == null)
+					throw new System.NullReferenceException("UIPopupCharacterMenu not found on prefab.");
+			}
+			var form = m_CharacterMenu?.modelView?.dwForm;
+			if (form == null)
+				throw new System.Exception();
+			form.Left = Left;
+			form.Top = Top;
+			return m_CharacterMenu;
+		}
+		#endregion Runtime Creation
 	}
 
 	public enum eSpace

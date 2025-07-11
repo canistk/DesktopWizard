@@ -14,7 +14,7 @@ namespace Gaia
 			this.m_Spawner = pool;
 		}
 
-		public void SelfDespawn()
+		public virtual void SelfDespawn()
 		{
 			if (m_Spawner != null)
 			{
@@ -22,7 +22,7 @@ namespace Gaia
 				m_Spawner = null;
 			}
 		}
-		public void OnDespawn()
+		public virtual void OnDespawn()
 		{
 		}
 		#endregion ISpawnToken
