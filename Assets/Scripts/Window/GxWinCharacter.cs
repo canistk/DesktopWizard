@@ -24,6 +24,19 @@ namespace Gaia
 			}
 		}
 
+		private KeyValuePair<bool, GxCameraCtrl> m_CameraCtrl;
+		public GxCameraCtrl CameraCtrl
+		{
+			get
+			{
+				if (!m_CameraCtrl.Key)
+				{
+					m_CameraCtrl = new KeyValuePair<bool, GxCameraCtrl>(true, GetComponentInChildren<GxCameraCtrl>(true));
+				}
+				return m_CameraCtrl.Value;
+			}
+		}
+
 		protected override void Awake()
 		{
 			ReferenceEquals(Character, null); // Force initialization of Character
@@ -135,7 +148,7 @@ namespace Gaia
 		}
 		#endregion Runtime Creation
 
-		#region Create Model View 
+		#region API Shortcuts 
 		private static WinPopupCharacterMenu m_CharacterMenu;
 		public static WinPopupCharacterMenu DisplayCharacterMenu(int Left, int Top, GxWin modelView, GxCharacter character)
 		{
@@ -152,6 +165,6 @@ namespace Gaia
 			return m_CharacterMenu;
 		}
 
-		#endregion Create Model View
+		#endregion API Shortcuts
 	}
 }

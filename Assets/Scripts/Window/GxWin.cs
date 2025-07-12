@@ -14,31 +14,21 @@ namespace Gaia
         [SerializeField] DwCamera m_DwCamera;
 
 		public uint id => dwForm.id;
+		/// <summary>
+		/// The camera to render this from U3D to window platform.
+		/// </summary>
         public DwCamera dwCamera => m_DwCamera;
-        public DwForm dwForm => m_DwCamera?.dwForm;
-		
-		/****
-		// another way to get DwWindow
-		if (DwCore.instance.TryGetOS(out var os) &&
-			os.TryGetWindowById(this.id, out var win))
-		{
-		}
-		// ****/
+
+		/// <summary>
+		/// The System.Windows.Forms.Form that this window is associated with.
+		/// </summary>
+		public DwForm dwForm => m_DwCamera?.dwForm;
+
+		/// <summary>
+		/// The U3D world space window that can represent the coordinates of the form in the monitor.
+		/// </summary>
 		public DwWindow dwWindow => m_DwCamera?.dwWindow;
 
-
-		private KeyValuePair<bool, GxCameraCtrl> m_CameraCtrl;
-		public GxCameraCtrl CameraCtrl
-		{
-			get
-			{
-				if (!m_CameraCtrl.Key)
-				{
-					m_CameraCtrl = new KeyValuePair<bool, GxCameraCtrl>(true, GetComponentInChildren<GxCameraCtrl>(true));
-				}
-				return m_CameraCtrl.Value;
-			}
-		}
 
 		private List<GxWinPart> m_Parts = null;
 		public IList<GxWinPart> Parts

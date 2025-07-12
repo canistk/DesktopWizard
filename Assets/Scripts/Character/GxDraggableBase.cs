@@ -95,12 +95,12 @@ namespace Gaia
 
 	public abstract class GxMouseBase : MonoBehaviour
 	{
-		protected GxWin win { get; private set; }
+		protected GxWinCharacter win { get; private set; }
 
 
 		protected virtual void OnEnable()
 		{
-			win = GetComponentInParent<GxWin>();
+			win = GetComponentInParent<GxWinCharacter>();
 			if (win == null)
 				return;
 			if (this is not IPointerFeature feature)
