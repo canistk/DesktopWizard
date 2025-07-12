@@ -859,8 +859,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2809462730841684792}
-  - component: {fileID: 7865366286945485656}
   - component: {fileID: 6704946681295329786}
+  - component: {fileID: 7644964687465323116}
   m_Layer: 5
   m_Name: Deepseek Messager
   m_TagString: Untagged
@@ -888,19 +888,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &7865366286945485656
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2237004803381848191}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 40c9c659af8e82b4a8c261dc12f7670b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_PrefabPreloadSettings: []
 --- !u!114 &6704946681295329786
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -920,7 +907,21 @@ MonoBehaviour:
   m_InputField: {fileID: 759928899532693159}
   m_ScrollRect: {fileID: 1436211920952260689}
   m_AI: {fileID: 11400000, guid: 9f4c96deca25a704cadbaba7370d9202, type: 2}
+  m_Steam: 1
   m_SaveKey: TestSave0
+--- !u!114 &7644964687465323116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2237004803381848191}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d9a3c66c85f1d34083b0bd7afdfb1e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_PreloadConfig: []
 --- !u!1 &2639501323813131651
 GameObject:
   m_ObjectHideFlags: 0

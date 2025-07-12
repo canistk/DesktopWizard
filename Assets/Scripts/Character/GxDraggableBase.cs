@@ -12,7 +12,7 @@ namespace Gaia
 		public Vector2 monitorPosition, formPosition, scrollDelta, delta;
 		public Vector2Int osPosition;
 		public Ray ray;
-		public GxPointerEventData(GxModelView win, PointerEventData pointerEvent)
+		public GxPointerEventData(GxWin win, PointerEventData pointerEvent)
 		{
 			var o = win.dwCamera;
 			var v2i = DwCore.GetOSCursorPos();
@@ -43,7 +43,7 @@ namespace Gaia
 		public Vector2 LastPos { get; private set; }
 		public Vector2 Delta { get; private set; }
 
-		public GxDragInfo(GxModelView win, PointerEventData pointerEvent)
+		public GxDragInfo(GxWin win, PointerEventData pointerEvent)
 		{
 			this.inputButton = pointerEvent.button;
 			this.IsActive = true;
@@ -66,12 +66,12 @@ namespace Gaia
 			this.formOffset = m2f.MultiplyPoint3x4(monitorOffset);
 			this.formStartPos = m2f.MultiplyPoint3x4(monitorStartPos);
 		}
-		public void StartDrag(GxModelView win, PointerEventData pointerEvent)
+		public void StartDrag(GxWin win, PointerEventData pointerEvent)
 		{
 			this.IsDragging = true;
 		}
 
-		public void UpdateDrag(GxModelView win, PointerEventData pointerEvent)
+		public void UpdateDrag(GxWin win, PointerEventData pointerEvent)
 		{
 			if (pointerEvent.button != inputButton)
 				return;
@@ -95,12 +95,12 @@ namespace Gaia
 
 	public abstract class GxMouseBase : MonoBehaviour
 	{
-		protected GxModelView modelView { get; private set; }
+		protected GxWin modelView { get; private set; }
 
 
 		protected virtual void OnEnable()
 		{
-			modelView = GetComponentInParent<GxModelView>();
+			modelView = GetComponentInParent<GxWin>();
 			if (modelView == null)
 				return;
 			if (this is not IPointerFeature feature)
@@ -152,11 +152,11 @@ namespace Gaia
 			return pointerEventData.button == GetButtonRef();
 		}
 
-		protected abstract void OnStartDrag(GxModelView win, GxPointerEventData evt);
-		protected abstract void OnDragging(GxModelView win, GxPointerEventData evt);
-		protected abstract void OnEndDrag(GxModelView win, GxPointerEventData evt);
+		protected abstract void OnStartDrag(GxWin win, GxPointerEventData evt);
+		protected abstract void OnDragging(GxWin win, GxPointerEventData evt);
+		protected abstract void OnEndDrag(GxWin win, GxPointerEventData evt);
 
-		void IPointerFeature.MouseDown(GxModelView win, PointerEventData pointerEvent)
+		void IPointerFeature.MouseDown(GxWin win, PointerEventData pointerEvent)
 		{
 			if (!IsConditionPass(pointerEvent))
 				return;
@@ -179,7 +179,7 @@ namespace Gaia
 		/// <param name="evt"></param>
 		/// <returns></returns>
 		[System.Obsolete("Use GetDragInfo() instead.", true)]
-		protected Vector2Int CalculateFormOffsetInOSSpace(GxModelView win, GxPointerEventData evt)
+		protected Vector2Int CalculateFormOffsetInOSSpace(GxWin win, GxPointerEventData evt)
 		{
 			//var monPos = win.dwCamera.GetMousePosInMonitorSpace();
 			if (!m_DragInfo.IsActive)
@@ -195,7 +195,7 @@ namespace Gaia
 			return osFromPos;
 		}
 
-		void IPointerFeature.MouseMove(GxModelView win, PointerEventData pointerEvent)
+		void IPointerFeature.MouseMove(GxWin win, PointerEventData pointerEvent)
 		{
 			if (!IsHolding)
 				return;
@@ -217,7 +217,7 @@ namespace Gaia
 			OnDragging(win, evt);
 		}
 
-		void IPointerFeature.MouseUp(GxModelView win, PointerEventData pointerEvent)
+		void IPointerFeature.MouseUp(GxWin win, PointerEventData pointerEvent)
 		{
 			if (pointerEvent.button != GetButtonRef())
 				return;

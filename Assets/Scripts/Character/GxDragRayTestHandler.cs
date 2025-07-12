@@ -18,7 +18,7 @@ namespace Gaia
 		[SerializeField, Min(0f)] float m_ExtraDistance = 0f;
 
 		Vector3 m_StartPos = Vector3.zero;
-		protected override void OnStartDrag(GxModelView win, GxPointerEventData evt)
+		protected override void OnStartDrag(GxWin win, GxPointerEventData evt)
 		{
 			m_StartPos = (Vector3)evt.monitorPosition;
 			DebugExtend.DrawCircle(m_StartPos, Vector3.forward, m_Color, 10f, 3f, false);
@@ -26,7 +26,7 @@ namespace Gaia
 
 		[SerializeField] Vector2 m_OuterAnchor;
 		[SerializeField] Vector2 m_InnerAnchor;
-		protected override void OnDragging(GxModelView win, GxPointerEventData evt)
+		protected override void OnDragging(GxWin win, GxPointerEventData evt)
 		{
 			var toPos = (Vector3)evt.monitorPosition;
 			
@@ -77,7 +77,7 @@ namespace Gaia
 			}
 		}
 
-		protected override void OnEndDrag(GxModelView win, GxPointerEventData evt)
+		protected override void OnEndDrag(GxWin win, GxPointerEventData evt)
 		{
 		}
 	}

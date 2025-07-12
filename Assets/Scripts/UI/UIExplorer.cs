@@ -256,11 +256,11 @@ namespace Gaia
 
 		private GxCharacter m_LastCharacter;
 		private int m_SpawnedCount = 0;
-		private Dictionary<GxCharacter, GxModelView> m_CharacterDict = new Dictionary<GxCharacter, GxModelView>();
+		private Dictionary<GxCharacter, GxWin> m_CharacterDict = new Dictionary<GxCharacter, GxWin>();
 		[System.Obsolete("Moved to GxModelView.LoadVRM")]
 		private void LoadVRM(string path)
 		{
-			GxModelView.LoadVRM(path);
+			GxWinCharacter.LoadVRM(path);
 
 			Debug.Log($"Loading VRM {path}");
 			GxVRMLoader.LoadModel(path, (ch, vrm) =>
@@ -275,7 +275,7 @@ namespace Gaia
 					var pos = new Vector3(0f, 3f * m_SpawnedCount, 0f);
 					var token = GameObject.Instantiate(prefab, pos, Quaternion.identity);
 					token.name = $"MV-{_name}";
-					var modelView = token.GetComponentInChildren<GxModelView>();
+					var modelView = token.GetComponentInChildren<GxWinCharacter>();
 					modelView.Assign(ch);
 					++m_SpawnedCount;
 					m_CharacterDict.Add(ch, modelView);
@@ -291,7 +291,7 @@ namespace Gaia
 			}, Debug.LogException);
 		}
 		[System.Obsolete("Moved to GxModelView.LoadVRM")]
-		private void UnloadVRM(GxCharacter character, GxModelView modelView)
+		private void UnloadVRM(GxCharacter character, GxWin modelView)
 		{
 			Debug.Log($"Desktop wizard closed {character.name}");
 			if (m_CharacterDict.ContainsKey(character))

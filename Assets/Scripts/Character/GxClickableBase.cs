@@ -18,25 +18,25 @@ namespace Gaia
 
 		bool IPointerFeature.isActive => gameObject.activeInHierarchy;
 
-		void IPointerFeature.MouseDown(GxModelView ch, PointerEventData pointerEvent)
+		void IPointerFeature.MouseDown(GxWin ch, PointerEventData pointerEvent)
 		{
 			if (!IsConditionPass(pointerEvent))
 				return;
 			InternalMouseDown(ch, pointerEvent);
 		}
-		protected abstract void InternalMouseDown(GxModelView ch, PointerEventData pointerEvent);
+		protected abstract void InternalMouseDown(GxWin ch, PointerEventData pointerEvent);
 
-		void IPointerFeature.MouseMove(GxModelView ch, PointerEventData pointerEventpointerEvent)
+		void IPointerFeature.MouseMove(GxWin ch, PointerEventData pointerEventpointerEvent)
 		{}
 		// => protected abstract void InternalMouseMove(GxModelView ch, PointerEventData pointerEvent);
 
-		void IPointerFeature.MouseUp(GxModelView ch, PointerEventData pointerEvent)
+		void IPointerFeature.MouseUp(GxWin ch, PointerEventData pointerEvent)
 		{
 			if (!IsConditionPass(pointerEvent))
 				return;
 			InternalMouseUp(ch, pointerEvent);
 		}
-		protected abstract void InternalMouseUp(GxModelView ch, PointerEventData pointerEvent);
+		protected abstract void InternalMouseUp(GxWin ch, PointerEventData pointerEvent);
 		bool IEquatable<object>.Equals(object other)
 		{
 			if (other is not GxClickableBase o)

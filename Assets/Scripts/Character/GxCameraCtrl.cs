@@ -18,9 +18,9 @@ namespace Gaia
 	public interface IPointerFeature : IEquatable<object>
 	{
 		bool isActive { get; }
-		void MouseDown(GxModelView ch, PointerEventData pointerEventData);
-		void MouseMove(GxModelView ch, PointerEventData pointerEventData);
-		void MouseUp(GxModelView ch, PointerEventData pointerEventData);
+		void MouseDown(GxWin ch, PointerEventData pointerEventData);
+		void MouseMove(GxWin ch, PointerEventData pointerEventData);
+		void MouseUp(GxWin ch, PointerEventData pointerEventData);
 	}
 
 	public interface IPointerDraggableFeature :

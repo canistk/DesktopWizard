@@ -6,13 +6,13 @@ namespace Gaia
 {
     public class GxModelPart : MonoBehaviour
     {
-        private KeyValuePair<bool, GxModelView> m_ModelView;
-        public GxModelView modelView
+        private KeyValuePair<bool, GxWin> m_ModelView;
+        public GxWin modelView
         {
             get
             {
                 if (!m_ModelView.Key)
-                    m_ModelView = new KeyValuePair<bool, GxModelView>(true, GetComponentInParent<GxModelView>(includeInactive: true));
+                    m_ModelView = new KeyValuePair<bool, GxWin>(true, GetComponentInParent<GxWin>(includeInactive: true));
                 return m_ModelView.Value;
             }
         }

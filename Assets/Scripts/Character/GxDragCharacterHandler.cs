@@ -13,7 +13,7 @@ namespace Gaia
 			m_Hand;
 
 		[SerializeField, LayerField] private string m_CharacterLayerName = "Character";
-		[SerializeField] GxModelView m_ModelView;
+		[SerializeField] GxWinCharacter m_ModelView;
 		[SerializeField] Animator m_Animator;
 		private GxCharacter Character => m_ModelView?.Character;
 		private const float s_Distance = 1000f;
@@ -35,11 +35,11 @@ namespace Gaia
 			m_CharacterLayerMask = LayerMask.GetMask(m_CharacterLayerName);
 			if (m_ModelView == null)
 			{
-				m_ModelView = gameObject.GetComponentInParent<GxModelView>();
+				m_ModelView = gameObject.GetComponentInParent<GxWinCharacter>();
 			}
 		}
 
-		protected override void OnStartDrag(GxModelView win, GxPointerEventData evt)
+		protected override void OnStartDrag(GxWin win, GxPointerEventData evt)
 		{	
 			var ray = evt.ray;
 			if (!Physics.Raycast(ray, out var hitInfo, s_Distance, m_CharacterLayerMask, QueryTriggerInteraction.Ignore))
@@ -91,7 +91,7 @@ namespace Gaia
 			m_FixVector = Vector2.zero;
 		}
 
-		protected override void OnDragging(GxModelView win, GxPointerEventData evt)
+		protected override void OnDragging(GxWin win, GxPointerEventData evt)
 		{
 			if (!TryGetDragInfo(out var dragInfo))
 				return;
@@ -141,7 +141,7 @@ namespace Gaia
 			}
 		}
 
-		protected override void OnEndDrag(GxModelView win, GxPointerEventData evt)
+		protected override void OnEndDrag(GxWin win, GxPointerEventData evt)
 		{
 			if (Character)
 				Character.animator.CrossFade(m_Idle.m_SelectedHash, 0.15f);

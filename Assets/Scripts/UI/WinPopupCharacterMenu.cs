@@ -3,19 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-    public class UIPopupCharacterMenu : UIPopupBase
+    public class WinPopupCharacterMenu : UIPopupBase
     {
         [SerializeField] private Camera m_Camera;
         [SerializeField] private Canvas m_Canvas;
 
 		[Space]
-		[SerializeField] GxModelView m_ModelView;
+		[SerializeField] GxWin m_Win;
         [SerializeField] private UIText m_Title;
         [SerializeField] private UIButton m_LoadVRMA;
 
-		public GxModelView modelView => m_ModelView;
-		private GxModelView m_LinkedModelView;
-		public GxModelView LinkedModelView => m_LinkedModelView;
+		public GxWin win => m_Win;
+		private GxWin m_LinkedWin;
+		public GxWin LinkedWin => m_LinkedWin;
         private GxCharacter m_Character;
 		public GxCharacter Character => m_Character;
 
@@ -41,7 +41,8 @@ namespace Gaia
 		{
 			(var token, var popup) = UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrma" },
 				(path) => {
-
+				// Character
+				
 			});
 			if (popup == null)
 			{
@@ -53,21 +54,21 @@ namespace Gaia
 		}
 
 		private bool m_Initialized = false;
-		public void Init(int Left, int Top, GxModelView modelView, GxCharacter character)
+		public void Init(int Left, int Top, GxWin modelView, GxCharacter character)
         {
-            this.m_LinkedModelView = modelView;
+            this.m_LinkedWin = modelView;
             this.m_Character = character;
-            Debug.Assert(m_LinkedModelView != null, "ModelView cannot be null");
+            Debug.Assert(m_LinkedWin != null, "ModelView cannot be null");
             Debug.Assert(m_Character != null, "Character cannot be null");
 			this.gameObject.SetActive(true);
-			this.gameObject.name = $"Menu: {character.name}";
+			this.gameObject.name = $"Menu: {modelView.name}";
 
 			if (m_Title != null)
             {
-                m_Title.Text = $"Menu: {character.name}";
+                m_Title.Text = $"Menu: {modelView.name}";
 			}
 
-			var form = this.modelView.dwForm;
+			var form = this.win.dwForm;
 			if (form != null)
 			{
 				form.Event_LostFocus += DwForm_Event_LostFocus;
@@ -93,11 +94,11 @@ namespace Gaia
 				return;
 			m_Initialized = false;
 			Debug.Log("Lost focus, despawning character menu [2/2].");
-			this.modelView.gameObject.SetActive(false);
-			if (this.modelView?.dwForm != null)
+			this.win.gameObject.SetActive(false);
+			if (this.win?.dwForm != null)
 			{
-				modelView.dwForm.Event_LostFocus -= DwForm_Event_LostFocus;
-				modelView.dwForm.FormClosed -= DwForm_FormClosed;
+				win.dwForm.Event_LostFocus -= DwForm_Event_LostFocus;
+				win.dwForm.FormClosed -= DwForm_FormClosed;
 			}
 			OnDespawn();
 		}
@@ -105,7 +106,7 @@ namespace Gaia
 		public override void OnDespawn()
 		{
 			base.OnDespawn();
-			m_LinkedModelView = null;
+			m_LinkedWin = null;
             m_Character = null;
 		}
 	}

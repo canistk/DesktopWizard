@@ -50,14 +50,14 @@ namespace Gaia
 			//helper.elevation = m_TargetElevation;
 		}
 
-		protected override void OnStartDrag(GxModelView ch, GxPointerEventData evt)
+		protected override void OnStartDrag(GxWin ch, GxPointerEventData evt)
 		{
 			// Debug.Log($"{evt.button} On Start Drag");
 			m_TargetElevation = helper.elevation;
 			m_TargetPolar = helper.polar;
 		}
 
-		protected override void OnDragging(GxModelView ch, GxPointerEventData evt)
+		protected override void OnDragging(GxWin ch, GxPointerEventData evt)
 		{	
 			m_TargetPolar += m_FlipX ?
 				-evt.delta.x :
@@ -70,7 +70,7 @@ namespace Gaia
 			m_T01 = 0f;
 		}
 
-		protected override void OnEndDrag(GxModelView ch, GxPointerEventData evt)
+		protected override void OnEndDrag(GxWin ch, GxPointerEventData evt)
 		{
 		}
 	}

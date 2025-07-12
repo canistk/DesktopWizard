@@ -33,7 +33,7 @@ namespace Gaia
         public static HeroineCore instance => m_Instance;
 
 		[Header("Required")]
-		[SerializeField] GxModelView m_ModelView;
+		[SerializeField] GxWin m_ModelView;
 		[SerializeField] BehaviorTree m_BehaviorTree;
         [SerializeField] Animator m_Animator;
         [SerializeField] DwCamera m_Camera;
@@ -51,7 +51,7 @@ namespace Gaia
         [Header("ContextMenu")]
 		[SerializeField] DwCamera m_ContextMenu = null;
 
-		public GxModelView modelView => m_ModelView;
+		public GxWin modelView => m_ModelView;
 
 		/// <summary>The behavior tree for the heroine.</summary>
 		public BehaviorTree behaviorTree => m_BehaviorTree;

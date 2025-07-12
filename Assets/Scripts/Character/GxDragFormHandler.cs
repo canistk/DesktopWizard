@@ -8,10 +8,10 @@ namespace Gaia
 	/// </summary>
 	public class GxDragFormHandler : GxDraggableForm
 	{
-		protected override void OnStartDrag(GxModelView win, GxPointerEventData evt)
+		protected override void OnStartDrag(GxWin win, GxPointerEventData evt)
 		{
 		}
-		protected override void OnDragging(GxModelView win, GxPointerEventData evt)
+		protected override void OnDragging(GxWin win, GxPointerEventData evt)
 		{
 			if (!TryGetDragInfo(out var info))
 				return;
@@ -26,7 +26,7 @@ namespace Gaia
 			win.dwForm.MoveTo_OS((int)dragPos.x, (int)dragPos.y);
 		}
 
-		protected override void OnEndDrag(GxModelView win, GxPointerEventData evt)
+		protected override void OnEndDrag(GxWin win, GxPointerEventData evt)
 		{
 		}
 	}

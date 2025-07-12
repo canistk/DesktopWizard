@@ -11,7 +11,7 @@ namespace Gaia
 			UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrm" },
 			(path) =>
 				{
-					GxModelView.LoadVRM(path);
+					GxWinCharacter.LoadVRM(path);
 				}
 			);
 		}

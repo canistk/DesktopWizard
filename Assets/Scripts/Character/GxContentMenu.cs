@@ -7,25 +7,26 @@ namespace Gaia
 {
 	public class GxContentMenu : GxClickableBase
 	{
-		protected override void InternalMouseDown(GxModelView ch, PointerEventData pointerEvent)
+		protected override void InternalMouseDown(GxWin ch, PointerEventData pointerEvent)
 		{
 			//if (IsShowContextMenu)
 			//	return;
 			InternalShowContextMenu();
 		}
 
-		protected override void InternalMouseUp(GxModelView ch, PointerEventData pointerEvent)
+		protected override void InternalMouseUp(GxWin ch, PointerEventData pointerEvent)
 		{
 			
 		}
 
-		private UIPopupCharacterMenu m_ContextMenu;
+		private WinPopupCharacterMenu m_ContextMenu;
 		public bool IsShowContextMenu => m_ContextMenu != null && m_ContextMenu.gameObject.activeSelf;
 
 		private void InternalShowContextMenu()
 		{
-			var osPos = modelView.dwCamera.GetMousePosInOSSpace();
-			m_ContextMenu = GxModelView.DisplayCharacterMenu(osPos.x, osPos.y, modelView, modelView.Character);
+			var mv = modelView as GxWinCharacter;
+			var osPos = mv.dwCamera.GetMousePosInOSSpace();
+			m_ContextMenu = GxWinCharacter.DisplayCharacterMenu(osPos.x, osPos.y, modelView, mv.Character);
 		}
 	}
 }

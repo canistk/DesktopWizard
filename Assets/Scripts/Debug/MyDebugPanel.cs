@@ -11,7 +11,7 @@ namespace Gaia
 		[Header("Required")]
 		[SerializeField] DwCamera m_DwCamera;
 		
-		[SerializeField] GxModelView m_ModelView;
+		[SerializeField] GxWinCharacter m_ModelView;
 
 		[SerializeField] UIButton m_DebugModel;
 

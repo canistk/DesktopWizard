@@ -9,11 +9,14 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 namespace Gaia
 {
-    public class GxModelView : MonoBehaviour
-    {
-        [SerializeField] DwCamera m_DwCamera;
+	public class GxModelViewWinow : GxWin
+	{
+		 
+	}
 
-        [SerializeField] Transform m_CharacterPivot;
+	public abstract class GxWin : MonoBehaviour
+	{
+        [SerializeField] DwCamera m_DwCamera;
 
 		public uint id => dwForm.id;
         public DwCamera dwCamera => m_DwCamera;
@@ -28,35 +31,6 @@ namespace Gaia
 		// ****/
 		public DwWindow dwWindow => m_DwCamera?.dwWindow;
 
-
-		private KeyValuePair<bool, GxCharacter> m_Character;
-		/// <summary>Try get character component in this model view. (nullable)</summary>
-		/// </summary>
-		public GxCharacter Character
-		{
-			get
-			{
-				if (!m_Character.Key)
-				{
-					m_Character = new KeyValuePair<bool, GxCharacter>(true, GetComponentInChildren<GxCharacter>(true));
-				}
-				return m_Character.Value;
-			}
-		}
-		public void Assign(GxCharacter character)
-		{
-			if (m_Character.Value != null)
-			{
-				Debug.LogError($"Already assigned character {m_Character.Value.name}", m_Character.Value);
-				return;
-			}
-			
-			// Align  ModelView, but parent pivot (due to camera orbit control)
-			character.transform.SetParent(m_CharacterPivot, false);
-			character.transform.SetPositionAndRotation(transform.position, transform.rotation);
-
-			m_Character = new KeyValuePair<bool, GxCharacter>(true, character);
-		}
 
 		private KeyValuePair<bool, GxCameraCtrl> m_CameraCtrl;
 		public GxCameraCtrl CameraCtrl
@@ -102,9 +76,8 @@ namespace Gaia
 			m_DwCamera = GetComponentInChildren<DwCamera>(true);
 		}
 
-		private void Awake()
+		protected virtual void Awake()
 		{
-			ReferenceEquals(Character, null); // Force initialization of Character
 			AddListener();
 		}
 
@@ -342,95 +315,6 @@ namespace Gaia
 		}
 		#endregion Movement
 
-		#region Runtime Creation
-		private static Dictionary<GxCharacter, GxModelView> s_CharacterDict = new Dictionary<GxCharacter, GxModelView>();
-		private static int s_SpawnedVRMCount = 0;
-		public static void LoadVRM(string vrmFilePath)
-		{
-			if (string.IsNullOrEmpty(vrmFilePath))
-			{
-				Debug.LogError("VRM file path is null or empty.");
-				return;
-			}
-
-			Debug.Log($"Loading VRM : {vrmFilePath}");
-			GxVRMLoader.LoadModel(vrmFilePath, (ch, vrm) =>
-			{
-				var _name = Kit2.KxPath.GetFileNameWithoutExtension(vrmFilePath);
-				Debug.Log($"Loaded {_name}", ch);
-				try
-				{
-					Debug.Log($"Regist desktop wizard {_name}");
-					var prefab = Resources.Load("DWTemplate");
-					var pos = new Vector3(0f, 3f * s_SpawnedVRMCount, 0f);
-					var token = (GameObject)GameObject.Instantiate(prefab, pos, Quaternion.identity);
-					token.name = $"MV-{_name}";
-					var modelView = token.GetComponentInChildren<GxModelView>();
-					modelView.Assign(ch);
-					++s_SpawnedVRMCount;
-					s_CharacterDict.Add(ch, modelView);
-					modelView.dwForm.FormClosed += (sender, e) =>
-					{
-						UnloadVRM(ch);
-					};
-					modelView.dwCamera.EVENT_MouseDown += DwCamera_EVENT_MouseRightClicked;
-				}
-				catch (System.Exception ex)
-				{
-					throw ex;
-				}
-			}, Debug.LogException);
-		}
-
-		private static void DwCamera_EVENT_MouseRightClicked(PointerEventData evt)
-		{
-			// check is right click
-			if (evt.pointerId != 2)
-			{
-				return;
-			}
-			Debug.LogWarning("Right clicked.");
-		}
-
-		private static bool UnloadVRM(GxCharacter character)
-		{
-			if (!s_CharacterDict.TryGetValue(character, out var modelView))
-			{
-				Debug.LogWarning($"Character {character.name} not found in model view dictionary.");
-				return false;
-			}
-
-			try
-			{
-				s_CharacterDict.Remove(character);
-				GxVRMLoader.UnloadModel(character);
-				GameObject.Destroy(modelView.gameObject);
-			}
-			catch (System.Exception ex)
-			{
-				Debug.LogError($"Failed to unload VRM for character {character.name}: {ex.Message}");
-				return false;
-			}
-			return true;
-		}
-
-
-		private static UIPopupCharacterMenu m_CharacterMenu;
-		public static UIPopupCharacterMenu DisplayCharacterMenu(int Left, int Top, GxModelView modelView, GxCharacter character)
-		{
-			if (m_CharacterMenu == null)
-			{
-				var prefab = Resources.Load("UIs/UIPopupCharacterMenu");
-				var pos = new Vector3(0f, 3f * s_SpawnedVRMCount, 0f);
-				var token = (GameObject)GameObject.Instantiate(prefab, pos, Quaternion.identity);
-				m_CharacterMenu = token.GetComponentInChildren<UIPopupCharacterMenu>();
-				if (m_CharacterMenu == null)
-					throw new System.NullReferenceException("UIPopupCharacterMenu not found on prefab.");
-			}
-			m_CharacterMenu.Init(Left, Top, modelView, character);
-			return m_CharacterMenu;
-		}
-		#endregion Runtime Creation
 	}
 
 	public enum eSpace
