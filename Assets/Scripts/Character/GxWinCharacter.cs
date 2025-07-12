@@ -65,7 +65,7 @@ namespace Gaia
 				try
 				{
 					Debug.Log($"Regist desktop wizard {_name}");
-					const string P_Name = "DWTemplate";
+					const string P_Name = "UIs/DWTemplate";
 					var prefab = Resources.Load(P_Name);
 					if (prefab == null)
 					{
