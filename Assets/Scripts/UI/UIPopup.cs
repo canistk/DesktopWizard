@@ -42,7 +42,9 @@ namespace Gaia
 				throw new System.Exception($"Prefab for {t} not exist.");
 			
 			var src = o.isAddressable ? eSrcType.Addressable : eSrcType.Resources;
-			return UIPopupCanvas.Instance.Spawn<TYPE>(o.path, src);
+			(var token, var popup) = UIPopupCanvas.Instance.Spawn<TYPE>(o.path, src);
+			token.transform.SetAsLastSibling(); // ensure popup is on top of others
+			return (token, popup);
 		}
 
 		public static (GameObject token, UIPopupInfo popup) Info(string title, string content, string confirm = "Confirm", System.Action callback = null)

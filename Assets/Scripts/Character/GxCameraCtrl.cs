@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 
 namespace Gaia
 {
-    public class GxCameraCtrl : GxModelPart
+    public class GxCameraCtrl : GxWinPart
 	{
 		[SerializeField] DwCamera m_DwCamera;
 		[SerializeField] SphericalCoordinatesMono m_Helper;

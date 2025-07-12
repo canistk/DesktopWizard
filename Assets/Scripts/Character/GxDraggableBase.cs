@@ -95,30 +95,30 @@ namespace Gaia
 
 	public abstract class GxMouseBase : MonoBehaviour
 	{
-		protected GxWin modelView { get; private set; }
+		protected GxWin win { get; private set; }
 
 
 		protected virtual void OnEnable()
 		{
-			modelView = GetComponentInParent<GxWin>();
-			if (modelView == null)
+			win = GetComponentInParent<GxWin>();
+			if (win == null)
 				return;
 			if (this is not IPointerFeature feature)
 			{
 				Debug.LogError($"GxMouseBase: {this} is not IPointerFeature, please check the code.");
 				return;
 			}
-			modelView.Register(feature);
+			win.Register(feature);
 		}
 
 		protected virtual void OnDisable()
 		{
-			if (modelView == null)
+			if (win == null)
 				return;
 			if (this is not IPointerFeature feature)
 				return;
-			modelView.Unregister(feature);
-			modelView = null;
+			win.Unregister(feature);
+			win = null;
 		}
 	}
 
@@ -169,30 +169,6 @@ namespace Gaia
 
 			m_DragInfo = new GxDragInfo(win, pointerEvent);
 			// Debug.Log($"Mouse Down, monPos={m_DragInfo.LastPos:F2} IsHolding={IsHolding},IsDragging={IsDragging}");
-		}
-
-		/// <summary>
-		/// Assume the dragging Form are related to the mouse init position.
-		/// calculate the offset in monitor space and convert back to OS space.
-		/// </summary>
-		/// <param name="win"></param>
-		/// <param name="evt"></param>
-		/// <returns></returns>
-		[System.Obsolete("Use GetDragInfo() instead.", true)]
-		protected Vector2Int CalculateFormOffsetInOSSpace(GxWin win, GxPointerEventData evt)
-		{
-			//var monPos = win.dwCamera.GetMousePosInMonitorSpace();
-			if (!m_DragInfo.IsActive)
-				throw new System.Exception("m_Drag.IsActive is false, please check the code.");
-			if (!m_DragInfo.IsDragging)
-				throw new System.Exception("m_Drag.IsDragging is false, please check the code.");
-
-			var monPos = evt.monitorPosition;
-			// var monFromPos = new Vector3(monPos.x + m_DragInfo.monitorOffset.x, monPos.y + m_DragInfo.monitorOffset.y);
-			var monFromPos = monPos + m_DragInfo.monitorOffset;
-			var r = this.m_DragInfo.m2o.MultiplyPoint3x4(monFromPos);
-			var osFromPos = new Vector2Int((int)r.x, (int)r.y);
-			return osFromPos;
 		}
 
 		void IPointerFeature.MouseMove(GxWin win, PointerEventData pointerEvent)

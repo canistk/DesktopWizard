@@ -8,12 +8,22 @@ namespace Gaia
 		private void Start()
 		{
 			// TODO: tutorial flow, on first 2 runs.
-			UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrm" },
-			(path) =>
-				{
-					GxWinCharacter.LoadVRM(path);
-				}
-			);
+			(var token, var popup) = UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrm" }, _OnExplorerSelected);
+			m_Explorer = popup as UIExplorer;
+		}
+
+		UIExplorer m_Explorer;
+
+		private void _OnExplorerSelected(string path)
+		{
+			if (string.IsNullOrEmpty(path))
+			{
+				Debug.LogError("Selected path is null or empty.");
+				return;
+			}
+			Debug.Log($"Selected VRM file: {path}");
+			GxWinCharacter.LoadVRM(path);
+			m_Explorer.SelfDespawn();
 		}
 	}
 }

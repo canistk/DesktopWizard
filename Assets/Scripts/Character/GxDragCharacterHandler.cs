@@ -13,9 +13,9 @@ namespace Gaia
 			m_Hand;
 
 		[SerializeField, LayerField] private string m_CharacterLayerName = "Character";
-		[SerializeField] GxWinCharacter m_ModelView;
+		[SerializeField] GxWinCharacter m_WinCharacter;
 		[SerializeField] Animator m_Animator;
-		private GxCharacter Character => m_ModelView?.Character;
+		private GxCharacter Character => m_WinCharacter?.Character;
 		private const float s_Distance = 1000f;
 		private int m_CharacterLayerMask;
 
@@ -33,9 +33,9 @@ namespace Gaia
 		private void Awake()
 		{
 			m_CharacterLayerMask = LayerMask.GetMask(m_CharacterLayerName);
-			if (m_ModelView == null)
+			if (m_WinCharacter == null)
 			{
-				m_ModelView = gameObject.GetComponentInParent<GxWinCharacter>();
+				m_WinCharacter = gameObject.GetComponentInParent<GxWinCharacter>();
 			}
 		}
 

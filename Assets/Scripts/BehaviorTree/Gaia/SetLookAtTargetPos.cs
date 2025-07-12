@@ -9,7 +9,7 @@ namespace Gaia
 	[TaskName("Set Look At")]
 	[TaskDescription("Set Avatar's look at Pos in (ModelSpace).")]
 	[System.Obsolete]
-	public class SetLookAtTargetPos : ModelViewBase
+	public class SetLookAtTargetPos : WinBase
 	{
         [SerializeField] SharedVector3 m_TargetPos;
 

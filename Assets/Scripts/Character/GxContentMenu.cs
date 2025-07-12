@@ -24,9 +24,9 @@ namespace Gaia
 
 		private void InternalShowContextMenu()
 		{
-			var mv = modelView as GxWinCharacter;
+			var mv = win as GxWinCharacter;
 			var osPos = mv.dwCamera.GetMousePosInOSSpace();
-			m_ContextMenu = GxWinCharacter.DisplayCharacterMenu(osPos.x, osPos.y, modelView, mv.Character);
+			m_ContextMenu = GxWinCharacter.DisplayCharacterMenu(osPos.x, osPos.y, win, mv.Character);
 		}
 	}
 }

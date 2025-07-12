@@ -8,7 +8,7 @@ namespace Gaia
 	[TaskCategory("Gaia")]
 	[TaskName("Get Cursor Pos (ModelSpace).")]
 	[TaskDescription("Get Cursor Pos.")]
-	public class GetCursorPos : ModelViewBase
+	public class GetCursorPos : WinBase
 	{
 		[Header("Cursor Pos - Output")]
 		[SerializeField] SharedVector2Int m_OS_Pos;

@@ -11,7 +11,7 @@ namespace Gaia
 	/// </summary>
 	public class GxDragCameraHandler : GxDraggableForm
 	{
-		private SphericalCoordinatesMono helper => modelView?.CameraCtrl?.coordinate;
+		private SphericalCoordinatesMono helper => win?.CameraCtrl?.coordinate;
 
 		[SerializeField] float m_MaxSpeed = 1.0f;
 
@@ -28,7 +28,7 @@ namespace Gaia
 			if (!m_Inited)
 			{
 				// Delay init, use coordinate init position values.
-				var h = modelView?.CameraCtrl?.coordinate;
+				var h = win?.CameraCtrl?.coordinate;
 				if (h == null)
 					return;
 				m_TargetElevation = h.elevation;

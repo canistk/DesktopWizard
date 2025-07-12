@@ -2,19 +2,19 @@ using DesktopWizard;
 using System.Collections.Generic;
 namespace Gaia
 {
-    public abstract class ModelViewBase : ActionBase
+    public abstract class WinBase : ActionBase
     {
-        private KeyValuePair<bool, GxWin> m_ModelView;
+        private KeyValuePair<bool, GxWin> m_Win;
         protected GxWin ModelView
         {
             get
             {
-                if (!m_ModelView.Key)
+                if (!m_Win.Key)
                 {
                     var comp = gameObject.GetComponent<GxWin>();
-                    m_ModelView = new KeyValuePair<bool, GxWin>(true, comp);
+                    m_Win = new KeyValuePair<bool, GxWin>(true, comp);
                 }
-                return m_ModelView.Value;
+                return m_Win.Value;
             }
         }
 		protected DwCamera dwCamera => ModelView.dwCamera;

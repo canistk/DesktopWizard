@@ -9,11 +9,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 namespace Gaia
 {
-	public class GxModelViewWinow : GxWin
-	{
-		 
-	}
-
 	public abstract class GxWin : MonoBehaviour
 	{
         [SerializeField] DwCamera m_DwCamera;
@@ -45,20 +40,20 @@ namespace Gaia
 			}
 		}
 
-		private List<GxModelPart> m_Parts = null;
-		public IList<GxModelPart> Parts
+		private List<GxWinPart> m_Parts = null;
+		public IList<GxWinPart> Parts
 		{
 			get
 			{
 				if (m_Parts == null)
 				{
-					m_Parts = new List<GxModelPart>(GetComponentsInChildren<GxModelPart>());
+					m_Parts = new List<GxWinPart>(GetComponentsInChildren<GxWinPart>());
 				}
 				return m_Parts;
 			}
 		}
 
-		public bool TryGetPart<T>(out T part) where T : GxModelPart
+		public bool TryGetPart<T>(out T part) where T : GxWinPart
 		{
 			foreach (var p in Parts)
 			{
@@ -325,7 +320,7 @@ namespace Gaia
 		World,
 	}
 
-	public abstract class GxAppearHandler : GxModelPart
+	public abstract class GxAppearHandler : GxWinPart
 	{
 		public enum eState
 		{

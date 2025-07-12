@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Gaia
 {
 
-	public abstract class CharacterBase : ModelViewBase
+	public abstract class CharacterBase : WinBase
     {
 		protected GxCharacter Character
 		{

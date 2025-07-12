@@ -59,15 +59,15 @@ namespace Gaia
 		[SerializeField] AnimationCurve m_DisappearCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 		private float LOD
 		{
-			get => modelView.dwCamera.m_Lod;
-			set => modelView.dwCamera.m_Lod = value;
+			get => win.dwCamera.m_Lod;
+			set => win.dwCamera.m_Lod = value;
 		}
 		protected override void StartAppearing()
 		{
 			m_FadeIn.Start();
 			m_Opacity = 0f;
 			LOD = m_DisappearLOD;
-			modelView.dwCamera.AddOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.AddOpacityModifier(new OpacityModifier(this));
 		}
 		protected override bool InternalAppearing()
 		{
@@ -83,7 +83,7 @@ namespace Gaia
 		{
 			m_Opacity = 1f;
 			LOD = m_AppearLOD;
-			modelView.dwCamera.RemoveOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.RemoveOpacityModifier(new OpacityModifier(this));
 			m_FadeIn.Reset();
 		}
 
@@ -93,7 +93,7 @@ namespace Gaia
 			m_FadeOut.Start();
 			m_Opacity = 1f;
 			LOD = m_AppearLOD;
-			modelView.dwCamera.AddOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.AddOpacityModifier(new OpacityModifier(this));
 		}
 
 		protected override bool InternalDisappearing()
@@ -110,7 +110,7 @@ namespace Gaia
 		{
 			m_Opacity = 0f;
 			LOD = m_DisappearLOD;
-			modelView.dwCamera.RemoveOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.RemoveOpacityModifier(new OpacityModifier(this));
 			m_FadeOut.Reset();
 		}
 	}

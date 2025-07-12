@@ -6,7 +6,8 @@ using UnityEngine;
 using UnityEngine.UI;
 namespace Gaia
 {
-    public class MyDebugPanel : MonoBehaviour
+	[System.Obsolete("Old debug panel.", true)]
+	public class MyDebugPanel : MonoBehaviour
     {
 		[Header("Required")]
 		[SerializeField] DwCamera m_DwCamera;

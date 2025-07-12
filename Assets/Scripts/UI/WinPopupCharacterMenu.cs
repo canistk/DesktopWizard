@@ -39,18 +39,29 @@ namespace Gaia
 
 		private void M_LoadVRMA_EVENT_OnClick()
 		{
-			(var token, var popup) = UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrma" },
-				(path) => {
-				// Character
-				
-			});
-			if (popup == null)
+			(var token, var popup) = UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrma" }, OnVRMASelected);
+			m_Explorer = popup as UIExplorer;
+		}
+		UIExplorer m_Explorer;
+		private void OnVRMASelected(string path)
+		{
+			if (string.IsNullOrEmpty(path))
 			{
-				Debug.LogError("Failed to open explorer for VRMA files.");
+				Debug.LogError("VRMA path cannot be null.", this);
 				return;
 			}
-			
+			if (m_Character == null)
+			{
+				Debug.LogError("Character is not initialized.");
+				return;
+			}
+			if (m_Explorer)
+			{
+				m_Explorer.SelfDespawn();
+				m_Explorer = null;
+			}
 
+			m_Character.CrossFadeVRMA(path);
 		}
 
 		private bool m_Initialized = false;

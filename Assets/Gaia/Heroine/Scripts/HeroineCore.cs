@@ -26,7 +26,7 @@ namespace Gaia
     /// Window camera <see cref="m_Camera"/>
     /// </summary>
     [RequireComponent(typeof(BehaviorTree))]
-	[System.Obsolete("change to puzzle programming style", false)]
+	[System.Obsolete("change to puzzle programming style", true)]
 	public class HeroineCore : MonoBehaviour
     {
         private static HeroineCore m_Instance;
