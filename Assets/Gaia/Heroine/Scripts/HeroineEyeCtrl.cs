@@ -8,7 +8,7 @@ namespace Gaia
 	{
 		
 	}
-	[System.Obsolete("Use FaceRig instead.")]
+	[System.Obsolete("Use FaceRig instead.", true)]
 	public class HeroineEyeCtrl : EyeCtrl, IBlendShapeRequest
 	{
 		const float s_MaxWeight = 1f;

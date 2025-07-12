@@ -5,7 +5,8 @@ using UnityEngine;
 using UnityEngine.Analytics;
 namespace Gaia
 {
-    public class EmotionWheel : MonoBehaviour, IBlendShapeRequest
+	[System.Obsolete("Avoid model specify script.", true)]
+	public class EmotionWheel : MonoBehaviour, IBlendShapeRequest
     {
 		public FaceRig m_FaceRig = null;
         [Header("Wheel of Emotions")]

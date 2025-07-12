@@ -4,7 +4,8 @@ using UnityEngine;
 using Kit2;
 namespace Gaia
 {
-    public class TShirtCtrlV2 : MonoBehaviour
+	[System.Obsolete("Avoid model specify script.", true)]
+	public class TShirtCtrlV2 : MonoBehaviour
 	{
 		[SerializeField] public GxCtrlBone shirtFL, shirtBL, shirtFR, shirtBR;
 		[SerializeField] public float speed = 1f;

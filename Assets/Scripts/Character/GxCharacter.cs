@@ -324,6 +324,7 @@ namespace Gaia
 
 		#endregion Face Rig
 
+		/*
 		#region Emotion Wheel
 		private KeyValuePair<bool, EmotionWheel> m_EmotionWheel;
 		public EmotionWheel EmotionWheel
@@ -339,5 +340,6 @@ namespace Gaia
 			}
 		}
 		#endregion Emotion Wheel
+		*/
 	}
 } 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	[System.Obsolete("This class is deprecated, please use GxRetargeting from Kit2 instead.", false)]
+	[System.Obsolete("This class is deprecated, please use GxRetargeting from Kit2 instead.", true)]
 	public class RetargetBones : MonoBehaviour
 	{
 		[SerializeField] Animator m_Self = null;

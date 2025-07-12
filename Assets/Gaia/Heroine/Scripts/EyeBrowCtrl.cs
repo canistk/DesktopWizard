@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
+	[System.Obsolete("Avoid model specify script.", true)]
 	public class EyeBrowCtrl : MonoBehaviour, IBlendShapeRequest
 	{
 		private void InternalEyeBrowCtrl() 

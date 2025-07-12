@@ -4,7 +4,8 @@ using UnityEngine;
 using Kit2;
 namespace Gaia
 {
-    public class TeethHotfix : MonoBehaviour, IBlendShapeRequest
+	[System.Obsolete("Avoid model specify script.", true)]
+	public class TeethHotfix : MonoBehaviour, IBlendShapeRequest
 	{
 		public FaceRig m_FaceRig = null;
 		private void OnEnable()

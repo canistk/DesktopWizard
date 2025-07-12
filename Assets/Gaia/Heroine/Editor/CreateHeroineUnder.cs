@@ -6,7 +6,7 @@ using Kit2;
 using UnityEditor;
 namespace Gaia
 {
-	[System.Obsolete("This class is deprecated, Heroine will be remove.")]
+	[System.Obsolete("This class is deprecated, Heroine will be remove.", true)]
 	public class CreateHeroineUnder : CreatePrefabBase
 	{
 		public readonly GameObject fbx;
