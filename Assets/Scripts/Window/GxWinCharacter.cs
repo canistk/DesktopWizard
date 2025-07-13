@@ -5,7 +5,14 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 namespace Gaia
 {
-    public class GxWinCharacter : GxWin
+	/// <summary>
+	/// Load VRM character and display it in a window.
+	/// handle System.Windows.Forms creation and destruction.
+	/// define the model view position in world space & OS space.
+	/// and relocate the character pivot to the model view position.
+	/// <see cref="GxVRMLoader.LoadModel(string, System.Action{GxCharacter, UniVRM10.Vrm10Instance}, System.Action{System.Exception})"/>
+	/// </summary>
+	public class GxWinCharacter : GxWin
     {
 		[SerializeField] Transform m_CharacterPivot;
 
