@@ -28,11 +28,6 @@ namespace Gaia
 		public static void Test()
 		{
 			ReferenceEquals(UIPopupCanvas.Instance, null);
-
-			UIPopup.Info("Test", "This is a test popup canvas.", "OK", () =>
-			{
-				Debug.Log("Test popup closed.");
-			});
 		}
 
 		protected override void Awake()

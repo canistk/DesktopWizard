@@ -10,7 +10,7 @@ namespace Gaia
 	/// An explorer for UI, can be used to select files, support nested folders.
 	/// call <see cref="Init(string, string[], System.Action{string})"/> and wait for the callback to be invoked when a file is selected.
 	/// </summary>
-	public class UIExplorer : MonoBehaviour, ISpawnToken, ISelfDespawnable
+	public class UIExplorer : MonoBehaviour, ISpawnToken, ISelfDespawnable, IWinPopupContent
 	{
 		[SerializeField] UIText m_Title;
 		public string Title
@@ -232,6 +232,11 @@ namespace Gaia
 				m_Spawner.Despawn(gameObject);
 				m_Spawner = null;
 			}
+			if (m_Parent != null)
+			{
+				m_Parent.SelfDespawn();
+				m_Parent = null;
+			}
 		}
 		public virtual void OnDespawn() { }
 		#endregion ISpawnToken
@@ -246,6 +251,14 @@ namespace Gaia
 			});
 		}
 		#endregion Helper Methods
+
+		#region Win Popup Content
+		private GxWinPopup m_Parent;
+		public void Assign2Popup(GxWinPopup parent)
+		{
+			this.m_Parent = parent;
+		}
+		#endregion Win Popup Content
 
 		[System.Obsolete("Implement somewhere else, not here.")]
 		private bool TryExecuteFile(FileInfo data)

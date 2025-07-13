@@ -117,5 +117,40 @@ namespace Gaia
 			}
 			return popup != null && contentPage != null;
 		}
+
+
+		public static void Explorer(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize, out GxWinPopup popup, out UIExplorer explorer)
+		{
+			popup = CreateWindow(worldSpace, osSpace, osSize);
+			var path = "UIs/UIExplorer";
+			var token = Pool.Spawn(path, eSrcType.Resources, popup.canvas.transform, false);
+			if (token == null)
+			{
+				Debug.LogError($"Failed to spawn UIExplorer from resource '{path}'.");
+				explorer = null;
+				return;
+			}
+			token.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+			token.transform.localScale = Vector3.one;
+			if (token.transform is RectTransform rectTransform)
+			{
+				rectTransform.anchorMin = Vector2.zero;
+				rectTransform.anchorMax = Vector2.one;
+				rectTransform.offsetMin = Vector2.zero;
+				rectTransform.offsetMax = Vector2.zero;
+				rectTransform.pivot = Vector2.one * 0.5f;
+				rectTransform.localScale = Vector3.one;
+			}
+
+			explorer = token.GetComponent<UIExplorer>();
+			if (explorer == null)
+			{
+				Debug.LogError($"UIExplorer component not found in spawned object from resource '{path}'.");
+				Pool.Despawn(token);
+				explorer = null;
+				return;
+			}
+			explorer.Assign2Popup(popup);
+		}
 	}
 }

@@ -33,18 +33,42 @@ namespace Gaia
 
 		private void M_LoadVRMA_EVENT_OnClick()
 		{
-			(var token, var popup) = UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrma" }, OnVRMASelected);
-			m_Explorer = popup as UIExplorer;
+			//(var token, var popup) = UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrma" }, OnVRMASelected);
+			//m_Explorer = popup as UIExplorer;
+
+			var pos = new Vector3(0f, 0f, -20f);
+			var osPos = LinkedWin.dwCamera.GetMousePosInOSSpace();
+			var osSize = new Vector2Int(300, 500);
+			GxWinPopup.Explorer(pos, osPos, osSize, out var popup, out var explorer);
+			if (explorer != null)
+			{
+				var files = new[] { ".vrma" };
+				var info = new SelectedData(LinkedWin.Character);
+				explorer.Init(Application.streamingAssetsPath, files, (path) =>
+				{
+					OnVRMASelected(path, info);
+				});
+			}
+		}
+
+		private struct SelectedData
+		{
+			public GxCharacter Character;
+			public SelectedData(GxCharacter character)
+			{
+				Character = character;
+			}
 		}
 		UIExplorer m_Explorer;
-		private void OnVRMASelected(string path)
+		private void OnVRMASelected(string path, SelectedData data)
 		{
 			if (string.IsNullOrEmpty(path))
 			{
 				Debug.LogError("VRMA path cannot be null.", this);
 				return;
 			}
-			if (Character == null)
+			var ch = Character == null ? data.Character : Character;
+			if (ch == null)
 			{
 				Debug.LogError("Character is not initialized.");
 				return;
@@ -55,7 +79,7 @@ namespace Gaia
 				m_Explorer = null;
 			}
 
-			Character.CrossFadeVRMA(path);
+			ch.CrossFadeVRMA(path);
 		}
 
 		public bool Initialized 

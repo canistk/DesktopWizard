@@ -23,7 +23,7 @@ namespace Gaia
 			}
 			Debug.Log($"Selected VRM file: {path}");
 			GxWinCharacter.LoadVRM(path);
-			m_Explorer.SelfDespawn();
+			// m_Explorer.SelfDespawn();
 		}
 	}
 }
