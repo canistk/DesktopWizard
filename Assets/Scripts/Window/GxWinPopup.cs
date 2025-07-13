@@ -4,10 +4,9 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	public interface IWinPopupContent
+	public interface IWinPopupContent : ISelfDespawnable
 	{
 		public void Assign2Popup(GxWinPopup parent);
-		public void SelfDespawn();
 	}
 
     public class GxWinPopup : GxWin
@@ -80,20 +79,15 @@ namespace Gaia
 				if (contentPage == null)
 					throw new System.Exception($"Prefab '{resourcePath}' not found in Resources.", null);
 
+				contentPage.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 				if (contentPage.transform is RectTransform rectTransform)
 				{
-					rectTransform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 					rectTransform.anchorMin = Vector2.zero;
 					rectTransform.anchorMax = Vector2.one;
 					rectTransform.offsetMin = Vector2.zero;
 					rectTransform.offsetMax = Vector2.zero;
 					rectTransform.pivot = Vector2.one * 0.5f;
 					rectTransform.localScale = Vector3.one;
-				}
-				else
-				{
-					contentPage.transform.localPosition = Vector3.zero;
-					contentPage.transform.localScale = Vector3.one;
 				}
 
 				content = contentPage.GetComponent<IWinPopupContent>();

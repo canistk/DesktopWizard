@@ -44,6 +44,17 @@ namespace Gaia
 			var src = o.isAddressable ? eSrcType.Addressable : eSrcType.Resources;
 			(var token, var popup) = UIPopupCanvas.Instance.Spawn<TYPE>(o.path, src);
 			token.transform.SetAsLastSibling(); // ensure popup is on top of others
+			token.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+			if (token.transform is RectTransform rectTransform)
+			{
+				rectTransform.anchorMin = Vector2.zero;
+				rectTransform.anchorMax = Vector2.one;
+				rectTransform.offsetMin = Vector2.zero;
+				rectTransform.offsetMax = Vector2.zero;
+				rectTransform.pivot = Vector2.one * 0.5f;
+				rectTransform.localScale = Vector3.one;
+			}
+
 			return (token, popup);
 		}
 

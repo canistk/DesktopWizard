@@ -11,7 +11,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 namespace Gaia
 {
-	public abstract class GxWin : MonoBehaviour, ISpawnToken
+	public abstract class GxWin : MonoBehaviour, ISpawnToken, ISelfDespawnable
 	{
 		[SerializeField] DwCamera m_DwCamera;
 

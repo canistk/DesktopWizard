@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	public class UIPopupBase : MonoBehaviour, ISpawnToken
+	public class UIPopupBase : MonoBehaviour, ISpawnToken, ISelfDespawnable
 	{
 		#region ISpawnToken
 		private ISpawner m_Spawner;

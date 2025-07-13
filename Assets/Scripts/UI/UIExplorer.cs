@@ -9,7 +9,7 @@ using System.Linq;
 using Unity.VisualScripting;
 namespace Gaia
 {
-    public class UIExplorer : UIPopupBase
+    public class UIExplorer : MonoBehaviour, ISpawnToken, ISelfDespawnable
 	{
 		[SerializeField] UIText m_Title;
 		public string Title
@@ -317,6 +317,27 @@ namespace Gaia
 
 			m_LastCharacter.CrossFade(path, 0.25f, eSrcType.GameObject, false);
 		}
+
+		#region ISpawnToken
+		private ISpawner m_Spawner;
+
+		public void OnSpawn(ISpawner pool)
+		{
+			this.m_Spawner = pool;
+		}
+
+		public virtual void SelfDespawn()
+		{
+			if (m_Spawner != null)
+			{
+				m_Spawner.Despawn(gameObject);
+				m_Spawner = null;
+			}
+		}
+		public virtual void OnDespawn()
+		{
+		}
+		#endregion ISpawnToken
 
 		[ContextMenu("Head to Streaming Assets")]
 		private void GotoStreamingAssets()
