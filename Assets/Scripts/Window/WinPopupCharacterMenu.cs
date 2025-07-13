@@ -1,23 +1,17 @@
+using Kit2.ObjectPool;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-    public class WinPopupCharacterMenu : UIPopupBase
-    {
-        [SerializeField] private Camera m_Camera;
-        [SerializeField] private Canvas m_Canvas;
-
-		[Space]
-		[SerializeField] GxWin m_Win;
+    public class WinPopupCharacterMenu : MonoBehaviour, IWinPopupContent, ISpawnToken
+	{
         [SerializeField] private UIText m_Title;
         [SerializeField] private UIButton m_LoadVRMA;
 
-		public GxWin win => m_Win;
-		private GxWin m_LinkedWin;
-		public GxWin LinkedWin => m_LinkedWin;
-        private GxCharacter m_Character;
-		public GxCharacter Character => m_Character;
+		private GxWinCharacter m_LinkedWin;
+		public GxWinCharacter LinkedWin => m_LinkedWin;
+		public GxCharacter Character => m_LinkedWin?.Character;
 
 		private void Start()
 		{
@@ -50,7 +44,7 @@ namespace Gaia
 				Debug.LogError("VRMA path cannot be null.", this);
 				return;
 			}
-			if (m_Character == null)
+			if (Character == null)
 			{
 				Debug.LogError("Character is not initialized.");
 				return;
@@ -61,34 +55,83 @@ namespace Gaia
 				m_Explorer = null;
 			}
 
-			m_Character.CrossFadeVRMA(path);
+			Character.CrossFadeVRMA(path);
 		}
 
-		private bool m_Initialized = false;
-		public void Init(int Left, int Top, GxWin modelView, GxCharacter character)
+		public bool Initialized 
+		{
+			get
+			{
+				return m_LinkedWin != null && m_Parent != null;
+			}
+		}
+		public void Init(GxWinCharacter winChar)
         {
-            this.m_LinkedWin = modelView;
-            this.m_Character = character;
+            this.m_LinkedWin = winChar;
             Debug.Assert(m_LinkedWin != null, "ModelView cannot be null");
-            Debug.Assert(m_Character != null, "Character cannot be null");
+			var _name = winChar.gameObject.name;
+
 			this.gameObject.SetActive(true);
-			this.gameObject.name = $"Menu: {modelView.name}";
+			this.gameObject.name = $"Menu: {_name}";
 
 			if (m_Title != null)
             {
-                m_Title.Text = $"Menu: {modelView.name}";
+                m_Title.Text = $"Menu: {_name}";
 			}
+		}
 
-			var form = this.win.dwForm;
+		private GxWinPopup m_Parent;
+		public void Assign2Popup(GxWinPopup parent)
+		{
+			this.m_Parent = parent;
+			if (m_Parent == null)
+				return;
+
+			var form = m_Parent.dwForm;
 			if (form != null)
 			{
+				Debug.Log("linking character menu to form focus event.");
+				form.Focus();
 				form.Event_LostFocus += DwForm_Event_LostFocus;
 				form.FormClosed += DwForm_FormClosed;
-				form.Focus();
-				form.Left = Left;
-				form.Top = Top;
 			}
-			m_Initialized = true;
+		}
+
+		private ISpawner m_Pool;
+		public void OnSpawn(ISpawner pool)
+		{
+			this.m_Pool = pool;
+		}
+		public void SelfDespawn()
+		{
+			if (m_Pool == null)
+				return;
+			if (!Initialized)
+				return;
+			Debug.Log("despawning character menu [2/2].");
+			m_Pool.Despawn(this.gameObject);
+			m_Pool = null;
+			if (m_LinkedWin != null)
+			{
+				var form = m_LinkedWin.dwForm;
+				if (form != null)
+				{
+					form.Event_LostFocus -= DwForm_Event_LostFocus;
+					form.FormClosed -= DwForm_FormClosed;
+				}
+			}
+			m_LinkedWin = null;
+			if (m_Parent != null)
+			{
+				m_Parent.SelfDespawn();
+				m_Parent = null;
+			}
+			m_Parent = null;
+		}
+
+		public void OnDespawn()
+		{
+			m_Pool = null;
 		}
 
 		private void DwForm_FormClosed(object sender, System.Windows.Forms.FormClosedEventArgs e) => SelfDespawn();
@@ -96,29 +139,6 @@ namespace Gaia
 		{
 			Debug.Log("Lost focus, despawning character menu. [1/2]");
 			SelfDespawn();
-		}
-
-		public override void SelfDespawn()
-		{
-			// base.SelfDespawn();
-			if (!m_Initialized)
-				return;
-			m_Initialized = false;
-			Debug.Log("Lost focus, despawning character menu [2/2].");
-			this.win.gameObject.SetActive(false);
-			if (this.win?.dwForm != null)
-			{
-				win.dwForm.Event_LostFocus -= DwForm_Event_LostFocus;
-				win.dwForm.FormClosed -= DwForm_FormClosed;
-			}
-			OnDespawn();
-		}
-
-		public override void OnDespawn()
-		{
-			base.OnDespawn();
-			m_LinkedWin = null;
-            m_Character = null;
 		}
 	}
 }

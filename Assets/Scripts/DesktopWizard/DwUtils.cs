@@ -1,3 +1,4 @@
+//#define ENABLE_DEBUG_LOG
 using Kit2;
 using System;
 using System.Text;
@@ -488,11 +489,15 @@ namespace DesktopWizard
 		{
 			this.name = name;
 			this.uobj = uobj;
+#if ENABLE_DEBUG_LOG
 			UnityEngine.Debug.Log($"[{name}] Start", uobj);
+#endif
 		}
 		public void Dispose()
 		{
+#if ENABLE_DEBUG_LOG
 			UnityEngine.Debug.Log($"[{name}] End", uobj);
+#endif
 		}
 	}
 }

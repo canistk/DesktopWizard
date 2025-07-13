@@ -147,24 +147,5 @@ namespace Gaia
 			return true;
 		}
 		#endregion Runtime Creation
-
-		#region API Shortcuts 
-		private static WinPopupCharacterMenu m_CharacterMenu;
-		public static WinPopupCharacterMenu DisplayCharacterMenu(int Left, int Top, GxWin modelView, GxCharacter character)
-		{
-			if (m_CharacterMenu == null)
-			{
-				var prefab = Resources.Load("UIs/WinPopupCharacterMenu");
-				var pos = new Vector3(0f, 3f * s_SpawnedVRMCount, 0f);
-				var token = (GameObject)GameObject.Instantiate(prefab, pos, Quaternion.identity);
-				m_CharacterMenu = token.GetComponentInChildren<WinPopupCharacterMenu>();
-				if (m_CharacterMenu == null)
-					throw new System.NullReferenceException("UIPopupCharacterMenu not found on prefab.");
-			}
-			m_CharacterMenu.Init(Left, Top, modelView, character);
-			return m_CharacterMenu;
-		}
-
-		#endregion API Shortcuts
 	}
 }

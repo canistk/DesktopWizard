@@ -1,4 +1,6 @@
 using DesktopWizard;
+using Kit2.ObjectPool;
+
 //using Kit2;
 using Kit2.Tasks;
 using System.Collections;
@@ -9,15 +11,15 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 namespace Gaia
 {
-	public abstract class GxWin : MonoBehaviour
+	public abstract class GxWin : MonoBehaviour, ISpawnToken
 	{
-        [SerializeField] DwCamera m_DwCamera;
+		[SerializeField] DwCamera m_DwCamera;
 
 		public uint id => dwForm.id;
 		/// <summary>
 		/// The camera to render this from U3D to window platform.
 		/// </summary>
-        public DwCamera dwCamera => m_DwCamera;
+		public DwCamera dwCamera => m_DwCamera;
 
 		/// <summary>
 		/// The System.Windows.Forms.Form that this window is associated with.
@@ -117,6 +119,8 @@ namespace Gaia
 			dwCamera.EVENT_MouseUp += DwCamera_EVENT_MouseUp;
 			dwCamera.EVENT_MouseDown += DwCamera_EVENT_MouseDown;
 			dwCamera.EVENT_MouseMove += DwCamera_EVENT_MouseMove;
+			dwCamera.EVENT_GotFocus += DwCamera_EVENT_GotFocus;
+			dwCamera.EVENT_LostFocus += DwCamera_EVENT_LostFocus;
 		}
 
 		private void RemoveListener()
@@ -126,6 +130,8 @@ namespace Gaia
 			dwCamera.EVENT_MouseUp -= DwCamera_EVENT_MouseUp;
 			dwCamera.EVENT_MouseDown -= DwCamera_EVENT_MouseDown;
 			dwCamera.EVENT_MouseMove -= DwCamera_EVENT_MouseMove;
+			dwCamera.EVENT_GotFocus += DwCamera_EVENT_GotFocus;
+			dwCamera.EVENT_LostFocus += DwCamera_EVENT_LostFocus;
 		}
 
 		private void DwCamera_EVENT_MouseMove(PointerEventData evt)
@@ -321,6 +327,49 @@ namespace Gaia
 		}
 		#endregion Movement
 
+		#region Self Despawn
+		protected ISpawner m_Spawner;
+		public virtual void OnSpawn(ISpawner pool)
+		{
+			m_Spawner = pool;
+		}
+		public virtual void OnDespawn()
+		{
+		}
+		public void SelfDespawn()
+		{
+			if (m_Spawner == null)
+				return;
+			m_Spawner.Despawn(gameObject);
+		}
+		#endregion Self Despawn
+
+		#region Focus
+		private GxWin m_TranferFocus;
+		public void TransferFocus(GxWin win)
+		{
+			if (win == null)
+			{
+				m_TranferFocus = null;
+				return;
+			}
+			if (m_TranferFocus == win)
+				return;
+			m_TranferFocus = win;
+		}
+		public void StopTransferFocus()
+		{
+			m_TranferFocus = null;
+		}
+
+		private void DwCamera_EVENT_GotFocus()
+		{
+			if (m_TranferFocus == null)
+				return;
+			m_TranferFocus.dwForm.Focus();
+		}
+		private void DwCamera_EVENT_LostFocus() { }
+		#endregion Focus
 	}
 
 	public enum eSpace
