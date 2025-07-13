@@ -759,7 +759,16 @@ namespace DesktopWizard
 
             public void Dispose()
 			{
-				// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+				// Workaround for Unity's RenderTexture active state.
+				// ISSUE : Releasing render texture that is set to be RenderTexture.active!
+				if (renderTexture == RenderTexture.active)
+				{
+					RenderTexture.active = null;
+				}
+				
+				// Release render texture and GPU worker.
+				renderTexture?.Release();
+				renderTexture = null;
 				Dispose(disposing: true);
 				GC.SuppressFinalize(this);
 			}
@@ -787,7 +796,10 @@ namespace DesktopWizard
 		}
         private void DeinitGPU()
         {
-            if (m_GPU01 != null)
+			// prepare to release render textures and GPU workers.
+			linkCamera.targetTexture = null;
+
+			if (m_GPU01 != null)
                 m_GPU01.Dispose();
             m_GPU01 = null;
 
