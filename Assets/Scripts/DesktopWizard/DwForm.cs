@@ -174,15 +174,11 @@ namespace DesktopWizard
             KeyUp,
         }
 		/// <summary>Cache Window Form events into queue, and wait for unity's main thread update.</summary>
-		private class EventPacket
+		private abstract class EventPacket
         {
             private System.Action callback;
             public EventPacket(System.Action callback) => this.callback = callback;
             public void Resolve() { this.callback.Invoke(); }
-        }
-        private class MouseEventPacket : EventPacket
-        {
-            public MouseEventPacket(System.Action callback) : base(callback) { }
         }
         private Queue<EventPacket> m_Events = new Queue<EventPacket>();
 
@@ -195,9 +191,13 @@ namespace DesktopWizard
                 var evt = m_Events.Dequeue();
                 if (evt is MouseEventPacket mouse)
                 {
-					hadMouse = true;
-				}
-                evt.Resolve();
+                    hadMouse = true;
+                }
+				evt.Resolve();
+
+                // Debug session
+				//Debug.Log($"DwForm[{id}]::Dispatching event {evt.GetType().Name}");
+				// Debug session end
             }
 
             if (!hadMouse &&
@@ -250,12 +250,12 @@ namespace DesktopWizard
             var m2f = MatrixMonitorToForm();
             var v2i = DwCore.GetOSCursorPos();
 			var v3f = new Vector3(v2i.x, v2i.y, 0f);
-			var monPos = o2m.MultiplyPoint3x4(v3f); // correct, Cyan (faster)
-			var formPos = (m2f * o2m).MultiplyPoint3x4(v3f); // correct, Yellow (faster)
+            var monPos = o2m.MultiplyPoint3x4(v3f); // correct, Cyan (faster)
+            var formPos = (m2f * o2m).MultiplyPoint3x4(v3f); // correct, Yellow (faster)
             //var monPos = dwCamera.GetMousePosInMonitorSpace(); // correct
-			//var formPos = dwCamera.MatrixOSToForm().MultiplyPoint3x4(osV3f); // correct
+            //var formPos = dwCamera.MatrixOSToForm().MultiplyPoint3x4(new Vector3(v2i.x, v2i.y, 0f)); // correct
 
-			const float PERIOD = 1f;
+            const float PERIOD = 1f;
             if (dwCamera.m_Config.debug.HasFlag(DwCamera.eDebug.DrawClickPosFormSpace))
             {
                 DrawPoint(formPos, UnityEngine.Color.yellow, 25f, PERIOD, false);
@@ -325,46 +325,43 @@ namespace DesktopWizard
             Event_MouseMove,
             Event_MouseWheel;
 
-        private void Form_MouseDown(object sender, MouseEventArgs e)
+		private class MouseEventPacket : EventPacket { public MouseEventPacket(System.Action callback) : base(callback) { } }
+		private class MouseButtonEventPacket : MouseEventPacket { public MouseButtonEventPacket(System.Action callback) : base(callback) { } }
+		private class MouseMovePacket : MouseEventPacket { public MouseMovePacket(System.Action callback) : base(callback) { } }
+		private void Form_MouseDown(object sender, MouseEventArgs e)
         {
             var evt = Convert2MouseEvent(e);
-            m_Events.Enqueue(new MouseEventPacket(() => Event_MouseDown.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, evt))));
+            m_Events.Enqueue(new MouseButtonEventPacket(() => Event_MouseDown.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, evt))));
 			// Event_MouseDown?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt));
         }
         
         private void Form_MouseUp(object sender, MouseEventArgs e)
         {
             var evt = Convert2MouseEvent(e);
-            m_Events.Enqueue(new MouseEventPacket(() => Event_MouseUp.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
+            m_Events.Enqueue(new MouseButtonEventPacket(() => Event_MouseUp.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
             //Event_MouseUp?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt));
         }
 
         private void Form_MouseClick(object sender, MouseEventArgs e)
         {
             var evt = Convert2MouseEvent(e);
-			m_Events.Enqueue(new MouseEventPacket(() => Event_MouseClick.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
+			m_Events.Enqueue(new MouseButtonEventPacket(() => Event_MouseClick.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
 			//Event_MouseClick?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt));
         }
 
         private void Form_MouseMove(object sender, MouseEventArgs e)
         {
             var evt = Convert2MouseEvent(e);
-			m_Events.Enqueue(new MouseEventPacket(() => Event_MouseMove.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
+			m_Events.Enqueue(new MouseMovePacket(() => Event_MouseMove.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
 			//Event_MouseMove?.TryCatchDispatchEventError(o=> o?.Invoke(this.hWnd, evt));
         }
 
         private void Form_MouseWheel(object sender, MouseEventArgs e)
         {
             var evt = Convert2MouseEvent(e);
-			m_Events.Enqueue(new MouseEventPacket(() => Event_MouseWheel.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
+			m_Events.Enqueue(new MouseButtonEventPacket(() => Event_MouseWheel.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt))));
 			//Event_MouseWheel?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt));
         }
-
-		private void From_Move(object sender, EventArgs e)
-		{
-            m_Events.Enqueue(new MouseEventPacket(() => Event_Move.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
-			//Event_Move?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, e));
-		}
 
 		#endregion Mouse Events
 
@@ -398,11 +395,12 @@ namespace DesktopWizard
         public event KeyEventDelegate
             Event_KeyDown,
             Event_KeyUp;
-        private void Form_KeyUp(object sender, KeyEventArgs e)
+		private class KeyPacket : EventPacket { public KeyPacket(System.Action callback) : base(callback) { } }
+		private void Form_KeyUp(object sender, KeyEventArgs e)
         {
             if (!Convert2KeyEvent(e, isKeyUp: true, out var evt))
                 return;
-			m_Events.Enqueue(new EventPacket(() => Event_KeyUp.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, evt))));
+			m_Events.Enqueue(new KeyPacket(() => Event_KeyUp.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, evt))));
 			// Event_KeyUp?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt));
         }
 
@@ -410,28 +408,39 @@ namespace DesktopWizard
         {
             if (!Convert2KeyEvent(e, isKeyUp: false, out var evt))
                 return;
-			m_Events.Enqueue(new EventPacket(() => Event_KeyDown.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, evt))));
+			m_Events.Enqueue(new KeyPacket(() => Event_KeyDown.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, evt))));
 			//Event_KeyDown?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, evt));
         }
         #endregion Key Events
 
         #region Focus Events
         public delegate void EventDelegate(uint hWnd, EventArgs evt);
-        public event EventDelegate
+		private class FormPacket : EventPacket { public FormPacket(System.Action callback) : base(callback) { } }
+		private class FocusPacket : FormPacket { public FocusPacket(System.Action callback) : base(callback) { } }
+		private class LoseFocusPacket : FormPacket { public LoseFocusPacket(System.Action callback) : base(callback) { } }
+		private class FormMovePacket : FormPacket { public FormMovePacket(System.Action callback) : base(callback) { } }
+
+		public event EventDelegate
             Event_GotFocus,
             Event_LostFocus,
             Event_Move;
         private void Form_LoseFocus(object sender, EventArgs e)
 		{
-            m_Events.Enqueue(new EventPacket(() => Event_LostFocus.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
+            m_Events.Enqueue(new LoseFocusPacket(() => Event_LostFocus.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
 			//Event_LostFocus?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, e));
         }
 
         private void Form_GotFocus(object sender, EventArgs e)
         {
-			m_Events.Enqueue(new EventPacket(() => Event_GotFocus.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
+			m_Events.Enqueue(new FocusPacket(() => Event_GotFocus.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
 			//Event_GotFocus?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, e));
         }
+
+		private void From_Move(object sender, EventArgs e)
+		{
+			m_Events.Enqueue(new FormMovePacket(() => Event_Move.TryCatchDispatchEventError(o => o.Invoke(this.hWnd, e))));
+			//Event_Move?.TryCatchDispatchEventError(o => o?.Invoke(this.hWnd, e));
+		}
 		#endregion Focus Events
 
 		#region Vision
