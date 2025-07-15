@@ -1,17 +1,17 @@
 #define TRY_CATCH
+using Kit2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
-using Kit2;
 
 namespace DesktopWizard
 {
-    using Size = System.Drawing.Size;
     using Bitmap = System.Drawing.Bitmap;
     using InputButton = PointerEventData.InputButton;
+    using Size = System.Drawing.Size;
 	[RequireComponent(typeof(MeshRenderer))]
 	[RequireComponent(typeof(Camera))]
     public class DwCamera : MonoBehaviour
@@ -124,13 +124,11 @@ namespace DesktopWizard
             }
             set
             {
-				if (dwForm == null)
+				setting.StartPos = new Vector2Int(value, Top);
+				if (dwForm != null)
 				{
-					setting.StartPos = new Vector2Int(value, Top);
-					return;
+					dwForm.Left = value;
 				}
-
-				dwForm.Left = value;
             }
         }
 
@@ -150,13 +148,11 @@ namespace DesktopWizard
             }
             set
             {
-                if (dwForm == null)
+                setting.StartPos = new Vector2Int(Left, value);
+                if (dwForm != null)
                 {
-                    setting.StartPos = new Vector2Int(Left, value);
-					return;
+					dwForm.Top = value;
                 }
-                
-                dwForm.Top = value;
             }
         }
 
@@ -168,7 +164,14 @@ namespace DesktopWizard
                     return setting.Size.x;
                 return dwForm.Width; // sync after update
             } 
-            set { if (dwForm != null) setting.Size.x = value; }
+            set
+			{
+				setting.Size.x = value;
+				if (dwForm != null)
+				{
+					dwForm.Width = value;
+				}
+			}
         }
 
         public int Height
@@ -179,7 +182,14 @@ namespace DesktopWizard
                     return setting.Size.y;
                 return dwForm.Height; // sync after update
             }
-            set { if (dwForm != null) setting.Size.y = value; }
+			set
+			{
+				setting.Size.y = value;
+				if (dwForm != null)
+				{
+					dwForm.Height = value;
+				}
+			}
         }
 
 		/// <summary>
@@ -1977,8 +1987,11 @@ namespace DesktopWizard
 					continue;
 				if (cam != raycaster.eventCamera)
 					continue;
-
 				raycaster.Raycast(evt, s_RaycastResultList);
+
+				// Do we had multiple raycasters on the same camera cases ?
+				// Nope, they should have the same result.
+				break;
 			}
 			s_RaycastResultList.Sort(s_RaycastComparer);
 			// return s_RaycastResultList.ToArray();
