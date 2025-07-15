@@ -3,6 +3,7 @@ using Kit2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
@@ -253,7 +254,7 @@ namespace DesktopWizard
         }
         /// <summary>Drag control form <see cref="DwForm"/></summary>
         private DragDwFormInfo m_DragFormInfo = new DragDwFormInfo();
-        public bool IsDragging => m_DragFormInfo?.isDragging ?? false;
+        public bool IsFormDragging => m_DragFormInfo?.isDragging ?? false;
 
         [SerializeField] private FormSetting m_Setting;
         public FormSetting setting
@@ -1053,8 +1054,8 @@ namespace DesktopWizard
 			{
 				pointerEvent.eligibleForClick = true;
 				pointerEvent.delta = Vector2.zero;
-				pointerEvent.dragging = false;
 				pointerEvent.useDragThreshold = true; // Mouse Down
+				pointerEvent.dragging = false;
 				pointerEvent.pointerPress = currentOverGo;
 				pointerEvent.pointerPressRaycast = pointerEvent.pointerCurrentRaycast;
 			}
@@ -1144,6 +1145,7 @@ namespace DesktopWizard
 				pointerEvent.eligibleForClick = true;
 				pointerEvent.delta = Vector2.zero;
 				pointerEvent.dragging = false;
+				pointerEvent.pointerDrag = null; // reset dragging object
 				pointerEvent.useDragThreshold = false; // Mouse Up
 			}
 
@@ -1274,6 +1276,11 @@ namespace DesktopWizard
 			}
 			
 			var hoverGo = pointerEvent.pointerCurrentRaycast.gameObject;
+			//if (!IsDragging)
+			//{
+			//	Debug.LogWarning($"PointerEnter = {hoverGo}");
+			//	pointerEvent.pointerEnter = hoverGo;
+			//}
 			HandlePointerExitAndEnter(pointerEvent, hoverGo);
 
 			/**
@@ -1615,6 +1622,7 @@ namespace DesktopWizard
 		private EventSystem eventSystem => EventSystem.current;
 		private int m_ConsecutiveMoveCount = 0;
 		private PointerEventData m_InputPointerEvent;
+		public bool IsDragging => m_InputPointerEvent.dragging;
 
 		// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L277
 		private void HandlerSelectedObjectEvents()
@@ -1816,6 +1824,7 @@ namespace DesktopWizard
 				if (_d) Debug.Log($"DeselectIfSelectionChanged, ISelectHandler = {selectHandlerGO}");
 			}
 		}
+
 		// walk up the tree till a common root between the last entered and the current entered is foung
 		// send exit events up to (but not inluding) the common root. Then send enter events up to
 		// (but not including the common root).
@@ -1827,10 +1836,12 @@ namespace DesktopWizard
 			if (newEnterTarget == null || currentPointerData.pointerEnter == null)
 			{
 				for (var i = 0; i < currentPointerData.hovered.Count; ++i)
+				{
 					ExecuteEvents.Execute(currentPointerData.hovered[i], currentPointerData, ExecuteEvents.pointerExitHandler);
-
+				}
+				
 				currentPointerData.hovered.Clear();
-
+				
 				if (newEnterTarget == null)
 				{
 					currentPointerData.pointerEnter = null;
@@ -1877,6 +1888,7 @@ namespace DesktopWizard
 				}
 			}
 		}
+
 		/// <summary>
 		/// Given 2 GameObjects, return a common root GameObject (or null).
 		/// </summary>
@@ -2054,6 +2066,11 @@ namespace DesktopWizard
 			m_MousePosition = raycastResult.screenPosition;
 			m_RawMoveVector = m_MousePosition - m_LastMousePosition;
 
+			// update pointer event data
+			pointerEvent.pointerCurrentRaycast = raycastResult;
+			pointerEvent.delta = m_RawMoveVector;
+
+			// Copy the pointer event data from m_InputPointerEvent if it exists.
 			if (m_InputPointerEvent != null)
 			{
 				var o = m_InputPointerEvent;
@@ -2063,10 +2080,10 @@ namespace DesktopWizard
 				pointerEvent.pointerPress		= o.pointerPress;
 				pointerEvent.pointerPressRaycast = o.pointerPressRaycast;
 				pointerEvent.rawPointerPress = o.rawPointerPress;
-			}
 
-			pointerEvent.pointerCurrentRaycast = raycastResult;
-			pointerEvent.delta = m_RawMoveVector;
+				pointerEvent.pointerEnter		= o.pointerEnter;
+				pointerEvent.hovered			= o.hovered;
+			}
 		}
 
 
