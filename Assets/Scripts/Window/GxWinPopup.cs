@@ -201,7 +201,7 @@ namespace Gaia
 			base.InitContent(parent);
 			var form = parent?.dwForm;
 			Debug.Assert(form != null, "GxWinPopup_LoseFocusDisable requires a valid parent GxWinPopup with a DwForm.");
-			form.Focus();
+			// form.Focus();
 			form.Event_LostFocus += Form_Event_LostFocus;
 			form.FormClosed += Form_FormClosed;
 		}

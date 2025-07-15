@@ -3,14 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
-using Kit2.ObjectPool;
 namespace Gaia
 {
 	/// <summary>
 	/// An explorer for UI, can be used to select files, support nested folders.
 	/// call <see cref="Init(string, string[], System.Action{string})"/> and wait for the callback to be invoked when a file is selected.
 	/// </summary>
-	public class UIExplorer : MonoBehaviour, ISpawnToken, ISelfDespawnable, IWinPopupContent
+	public class UIExplorer : GxWinPopup_LoseFocusDisable
 	{
 		[SerializeField] UIText m_Title;
 		public string Title
@@ -230,30 +229,6 @@ namespace Gaia
 			DisplayFolder(back, m_Filter);
 		}
 
-		#region ISpawnToken
-		private ISpawner m_Spawner;
-
-		public void OnSpawn(ISpawner pool)
-		{
-			this.m_Spawner = pool;
-		}
-
-		public virtual void SelfDespawn()
-		{
-			if (m_Spawner != null)
-			{
-				m_Spawner.Despawn(gameObject);
-				m_Spawner = null;
-			}
-			if (m_Parent != null)
-			{
-				m_Parent.SelfDespawn();
-				m_Parent = null;
-			}
-		}
-		public virtual void OnDespawn() { }
-		#endregion ISpawnToken
-
 		#region Helper Methods
 		[ContextMenu("Head to Streaming Assets")]
 		private void GotoStreamingAssets()
@@ -264,14 +239,6 @@ namespace Gaia
 			});
 		}
 		#endregion Helper Methods
-
-		#region Win Popup Content
-		private GxWinPopup m_Parent;
-		public void InitContent(GxWinPopup parent)
-		{
-			this.m_Parent = parent;
-		}
-		#endregion Win Popup Content
 
 		[System.Obsolete("Implement somewhere else, not here.")]
 		private bool TryExecuteFile(FileInfo data)

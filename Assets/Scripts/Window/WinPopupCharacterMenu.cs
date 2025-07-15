@@ -13,7 +13,7 @@ namespace Gaia
 		public GxWinCharacter LinkedWin => m_LinkedCharWin;
 		public GxCharacter Character => m_LinkedCharWin?.Character;
 
-		private void Start()
+		private void Awake()
 		{
 			if (m_LoadVRMA != null)
             {
