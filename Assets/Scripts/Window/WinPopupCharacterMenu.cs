@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-    public class WinPopupCharacterMenu : MonoBehaviour, IWinPopupContent, ISpawnToken
+    public class WinPopupCharacterMenu : GxWinPopup_LoseFocusDisable
 	{
         [SerializeField] private UIText m_Title;
         [SerializeField] private UIButton m_LoadVRMA;
 
-		private GxWinCharacter m_LinkedWin;
-		public GxWinCharacter LinkedWin => m_LinkedWin;
-		public GxCharacter Character => m_LinkedWin?.Character;
+		private GxWinCharacter m_LinkedCharWin;
+		public GxWinCharacter LinkedWin => m_LinkedCharWin;
+		public GxCharacter Character => m_LinkedCharWin?.Character;
 
 		private void Start()
 		{
@@ -39,12 +39,12 @@ namespace Gaia
 			var pos = new Vector3(0f, 0f, -20f);
 			var osPos = LinkedWin.dwCamera.GetMousePosInOSSpace();
 			var osSize = new Vector2Int(300, 500);
-			GxWinPopup.Explorer(pos, osPos, osSize, out var popup, out var explorer);
-			if (explorer != null)
+			GxWinPopup.Explorer(pos, osPos, osSize, out var popup, out m_Explorer);
+			if (m_Explorer != null)
 			{
 				var files = new[] { ".vrma" };
 				var info = new SelectedData(LinkedWin.Character);
-				explorer.Init(Application.streamingAssetsPath, files, (path) =>
+				m_Explorer.Init(Application.streamingAssetsPath, files, (path) =>
 				{
 					OnVRMASelected(path, info);
 				});
@@ -73,26 +73,29 @@ namespace Gaia
 				Debug.LogError("Character is not initialized.");
 				return;
 			}
-			if (m_Explorer)
-			{
-				m_Explorer.SelfDespawn();
-				m_Explorer = null;
-			}
 
+			// Play the VRMA animation
 			ch.CrossFadeVRMA(path);
+
+			// Auto close the explorer popup, after loading the VRMA
+			//if (m_Explorer)
+			//{
+			//	m_Explorer.SelfDespawn();
+			//	m_Explorer = null;
+			//}
 		}
 
-		public bool Initialized 
+		public override bool Initialized 
 		{
 			get
 			{
-				return m_LinkedWin != null && m_Parent != null;
+				return m_LinkedCharWin != null && base.Initialized;
 			}
 		}
 		public void Init(GxWinCharacter winChar)
         {
-            this.m_LinkedWin = winChar;
-            Debug.Assert(m_LinkedWin != null, "ModelView cannot be null");
+            this.m_LinkedCharWin = winChar;
+            Debug.Assert(m_LinkedCharWin != null, "ModelView cannot be null");
 			var _name = winChar.gameObject.name;
 
 			this.gameObject.SetActive(true);
@@ -102,67 +105,6 @@ namespace Gaia
             {
                 m_Title.Text = $"Menu: {_name}";
 			}
-		}
-
-		private GxWinPopup m_Parent;
-		public void Assign2Popup(GxWinPopup parent)
-		{
-			this.m_Parent = parent;
-			if (m_Parent == null)
-				return;
-
-			var form = m_Parent.dwForm;
-			if (form != null)
-			{
-				Debug.Log("linking character menu to form focus event.");
-				form.Focus();
-				form.Event_LostFocus += DwForm_Event_LostFocus;
-				form.FormClosed += DwForm_FormClosed;
-			}
-		}
-
-		private ISpawner m_Pool;
-		public void OnSpawn(ISpawner pool)
-		{
-			this.m_Pool = pool;
-		}
-		public void SelfDespawn()
-		{
-			if (m_Pool == null)
-				return;
-			if (!Initialized)
-				return;
-			Debug.Log("despawning character menu [2/2].");
-			m_Pool.Despawn(this.gameObject);
-			m_Pool = null;
-			if (m_LinkedWin != null)
-			{
-				var form = m_LinkedWin.dwForm;
-				if (form != null)
-				{
-					form.Event_LostFocus -= DwForm_Event_LostFocus;
-					form.FormClosed -= DwForm_FormClosed;
-				}
-			}
-			m_LinkedWin = null;
-			if (m_Parent != null)
-			{
-				m_Parent.SelfDespawn();
-				m_Parent = null;
-			}
-			m_Parent = null;
-		}
-
-		public void OnDespawn()
-		{
-			m_Pool = null;
-		}
-
-		private void DwForm_FormClosed(object sender, System.Windows.Forms.FormClosedEventArgs e) => SelfDespawn();
-		private void DwForm_Event_LostFocus(uint hWnd, System.EventArgs evt)
-		{
-			Debug.Log("Lost focus, despawning character menu. [1/2]");
-			SelfDespawn();
 		}
 	}
 }

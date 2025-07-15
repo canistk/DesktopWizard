@@ -1,3 +1,4 @@
+using DesktopWizard;
 using Kit2.ObjectPool;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,7 +7,9 @@ namespace Gaia
 {
 	public interface IWinPopupContent : ISelfDespawnable
 	{
-		public void Assign2Popup(GxWinPopup parent);
+		/// <summary>Received the parent popup window to which this content belongs.</summary>
+		/// <param name="parent">popup window instance</param>
+		public void InitContent(GxWinPopup parent);
 	}
 
     public class GxWinPopup : GxWin
@@ -97,7 +100,7 @@ namespace Gaia
 				}
 				else
 				{
-					content.Assign2Popup(popup);
+					content.InitContent(popup);
 				}
 			}
 			catch (System.Exception ex)
@@ -150,7 +153,78 @@ namespace Gaia
 				explorer = null;
 				return;
 			}
-			explorer.Assign2Popup(popup);
+			explorer.InitContent(popup);
+		}
+	}
+	
+	public abstract class GxWinPopupContent : MonoBehaviour, IWinPopupContent, ISpawnToken
+	{
+		protected GxWinPopup m_Parent { get; private set; } = null;
+		public virtual bool Initialized => m_Parent != null;
+		public virtual void InitContent(GxWinPopup parent)
+		{
+			this.m_Parent = parent;
+		}
+
+		private ISpawner m_Pool;
+		public void OnSpawn(ISpawner pool)
+		{
+			this.m_Pool = pool;
+		}
+		public void OnDespawn()
+		{
+			this.m_Pool = null;
+		}
+
+		public virtual void SelfDespawn()
+		{
+			if (m_Pool == null)
+				return;
+			if (!Initialized)
+				return;
+			
+			m_Pool.Despawn(this.gameObject);
+			m_Pool = null;
+			
+			if (m_Parent != null)
+			{
+				m_Parent.SelfDespawn();
+			}
+			m_Parent = null;
+		}
+	}
+
+	public abstract class GxWinPopup_LoseFocusDisable : GxWinPopupContent, ISelfDespawnable
+	{
+		public override void InitContent(GxWinPopup parent)
+		{
+			base.InitContent(parent);
+			var form = parent?.dwForm;
+			Debug.Assert(form != null, "GxWinPopup_LoseFocusDisable requires a valid parent GxWinPopup with a DwForm.");
+			form.Focus();
+			form.Event_LostFocus += Form_Event_LostFocus;
+			form.FormClosed += Form_FormClosed;
+		}
+
+		public override void SelfDespawn()
+		{
+			if (!Initialized && m_Parent != null && m_Parent.dwForm is DwForm form)
+			{
+				form.Event_LostFocus -= Form_Event_LostFocus;
+				form.FormClosed -= Form_FormClosed;
+			}
+			base.SelfDespawn();
+		}
+
+		private void Form_FormClosed(object sender, System.Windows.Forms.FormClosedEventArgs e)
+			=> Form_Close_or_LostFocus();
+
+		private void Form_Event_LostFocus(uint hWnd, System.EventArgs evt)
+			=> Form_Close_or_LostFocus();
+
+		private void Form_Close_or_LostFocus()
+		{
+			SelfDespawn();
 		}
 	}
 }

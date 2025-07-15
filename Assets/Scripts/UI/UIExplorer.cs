@@ -29,16 +29,7 @@ namespace Gaia
 		{
 			if (!KxDirectory.Exists(Application.streamingAssetsPath))
 				Debug.LogError($"Folder {Application.streamingAssetsPath} not exist.");
-
-			if (m_BackParentFolder)
-			{
-				m_BackParentFolder.EVENT_OnClick += BackParentFolder;
-			}
-
-			rootFolder = new DirectoryInfo(Application.streamingAssetsPath);
-			m_Collection.SetSpawnedCallback(OnSpawnedToken);
-			m_Collection.SetDespawnCallback(OnDespawnToken);
-			// Init(rootFolder.FullName, VRM, VRMA);
+			InternalInit();
 		}
 
 		private void OnDestroy()
@@ -49,6 +40,27 @@ namespace Gaia
 			}
 		}
 		#endregion Mono
+
+
+		private bool m_PrivateInit = false;
+		/// <summary>
+		/// Internal initialization method
+		/// solve the executing order issue, so that the UIExplorer can be used in other scripts before Awake();
+		/// </summary>
+		private void InternalInit()
+		{
+			if (m_PrivateInit)
+				return;
+			m_PrivateInit = true;
+			if (m_BackParentFolder)
+			{
+				m_BackParentFolder.EVENT_OnClick += BackParentFolder;
+			}
+
+			rootFolder = new DirectoryInfo(Application.streamingAssetsPath);
+			m_Collection.SetSpawnedCallback(OnSpawnedToken);
+			m_Collection.SetDespawnCallback(OnDespawnToken);
+		}
 
 		private struct FilterInfo
 		{
@@ -67,6 +79,7 @@ namespace Gaia
 		{
 			m_Filter = new FilterInfo(path, extension);
 			m_FileSelectedCallback = fileSelected;
+			InternalInit();
 			DisplayFolder(m_Filter.rootPath, m_Filter);
 		}
 		
@@ -254,7 +267,7 @@ namespace Gaia
 
 		#region Win Popup Content
 		private GxWinPopup m_Parent;
-		public void Assign2Popup(GxWinPopup parent)
+		public void InitContent(GxWinPopup parent)
 		{
 			this.m_Parent = parent;
 		}
