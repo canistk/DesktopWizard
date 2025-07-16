@@ -33,6 +33,12 @@ namespace Gaia
 			}
 		}
 
+		[RuntimeInitializeOnLoadMethod]
+		private static void AutoInit()
+		{
+			ReferenceEquals(Pool, null);
+		}
+
 		/// <summary>
 		/// creates a popup window at the specified world space position with the given OS space and size.
 		/// </summary>

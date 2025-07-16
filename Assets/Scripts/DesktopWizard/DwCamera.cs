@@ -703,7 +703,8 @@ namespace DesktopWizard
 
 				// Capture current render into texture
 				_renderer.sharedMaterial.mainTexture = _camera.targetTexture = uploadTexture;
-				_camera.Render();
+				_camera.RenderDontRestore();
+				// _camera.Render();
 
                 // pass setting.
                 HandleSettingSync();
@@ -860,7 +861,6 @@ namespace DesktopWizard
         {
 			if (dwForm == null || !dwForm.Visible)
 				return;
-
 			var _first = m_FirstUpdateCnt == 0;
 
 			// rendering
@@ -1622,7 +1622,7 @@ namespace DesktopWizard
 		private EventSystem eventSystem => EventSystem.current;
 		private int m_ConsecutiveMoveCount = 0;
 		private PointerEventData m_InputPointerEvent;
-		public bool IsDragging => m_InputPointerEvent.dragging;
+		public bool IsDragging => m_InputPointerEvent == null ? false : m_InputPointerEvent.dragging;
 
 		// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L277
 		private void HandlerSelectedObjectEvents()
@@ -1637,7 +1637,7 @@ namespace DesktopWizard
 			//	toSelect = eventSystem.firstSelectedGameObject;
 			//eventSystem.SetSelectedGameObject(toSelect, GetBaseEventData());
 
-			if (eventSystem.currentSelectedGameObject == null)
+			if (eventSystem?.currentSelectedGameObject == null)
 				return;
 
 			bool usedEvent = SendUpdateEventToSelectedObject();

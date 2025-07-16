@@ -144,11 +144,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_IgnoreReversedGraphics: 1
+  m_IgnoreReversedGraphics: 0
   m_BlockingObjects: 0
   m_BlockingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 33
 --- !u!1 &4010041290260397958
 GameObject:
   m_ObjectHideFlags: 0
@@ -247,12 +247,12 @@ MeshRenderer:
   m_ReceiveShadows: 0
   m_DynamicOccludee: 0
   m_StaticShadowCaster: 0
-  m_MotionVectors: 1
+  m_MotionVectors: 2
   m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 0
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
-  m_RenderingLayerMask: 1
+  m_RenderingLayerMask: 0
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 0}
@@ -334,20 +334,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Config:
-    debug: 1
+    debug: 0
   m_Setting:
     id: Popup
     TopMost: 1
     StartPos: {x: 300, y: 300}
-    Size: {x: 500, y: 800}
+    Size: {x: 100, y: 100}
     dragMethod: 0
     CaptureMouseMoveEventOnLoseFocus: 0
   UpdateFunc: 1
-  ChromaKeyCompositing: 0
+  ChromaKeyCompositing: 1
   ChromaKeyColor: {r: 0, g: 0, b: 0, a: 0}
   ChromaKeyRange: 0.002
   m_RemoveEffect: 1
-  m_OutputShader: {fileID: 7200000, guid: 647978a3b627baa4496f6a8bdaf24320, type: 3}
+  m_OutputShader: {fileID: 0}
   m_OpacityVal: 1
   m_GammaSpace: 1
   m_Lod: 0

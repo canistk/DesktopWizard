@@ -99,20 +99,25 @@ namespace Gaia
 
 				//*
 				// attempt 3
-				var _gltfData = await Task.Run(() =>
+				var tcs = new TaskCompletionSource<GltfData>();
+				await Task.Run(() =>
 				{
-					try
-					{
-						var rst = new GlbLowLevelParser(string.Empty, bytes).Parse();
-						return rst;
-					}
-					catch (System.Exception ex)
-					{
-						Debug.LogException(ex);
-						return null;
-					}
-				});
+					var rst = new GlbLowLevelParser(string.Empty, bytes).Parse();
+					tcs.SetResult(rst);
+				}).ConfigureAwait(true);
+				var _gltfData = tcs.Task.Result;
 				//*/
+
+				// attempt 4
+				/*
+				var _gltfData = await awaitCaller
+					.Run(() => new GlbLowLevelParser(string.Empty, bytes).Parse());
+				if (_gltfData == null)
+				{
+					Debug.LogError($"VRM loading failed: {path}");
+					return;
+				}
+				*/
 
 				Vrm10Instance vrm = null;
 				try
