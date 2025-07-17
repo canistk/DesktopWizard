@@ -22,15 +22,13 @@ namespace Gaia
 		private WinPopupCharacterMenu m_ContextMenu;
 		public bool IsShowContextMenu => m_ContextMenu != null && m_ContextMenu.gameObject.activeSelf;
 
-		private void InternalShowContextMenu()
+		private async void InternalShowContextMenu()
 		{
 			var mv = win as GxWinCharacter;
 			var osPos = mv.dwCamera.GetMousePosInOSSpace();
-			// m_ContextMenu = GxWinCharacter.DisplayCharacterMenu(osPos.x, osPos.y, win, mv.Character);
+			(var popup, var token, var content) = await GxWinPopup.TryDisplay("UIs/CharacterMenu", new Vector3(0f, 0f, -10f), osPos, new Vector2Int(300, 500));
 
-			if (!GxWinPopup.TryDisplay("UIs/CharacterMenu",
-				new Vector3(0f, 0f, -10f), osPos, new Vector2Int(300, 500),
-				out var popup, out GameObject page, out var content))
+			if (popup == null || token == null || content == null)
 			{
 				Debug.LogError("Failed to create WinPopupCharacterMenu.");
 				return;

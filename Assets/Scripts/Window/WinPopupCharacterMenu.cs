@@ -1,6 +1,7 @@
 using Kit2.ObjectPool;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 namespace Gaia
 {
@@ -33,13 +34,15 @@ namespace Gaia
 
 		private void M_LoadVRMA_EVENT_OnClick()
 		{
-			//(var token, var popup) = UIPopup.Explorer(Application.streamingAssetsPath, new[] { ".vrma" }, OnVRMASelected);
-			//m_Explorer = popup as UIExplorer;
-
+			_ = OpenExplorer();
+		}
+		private async Task OpenExplorer()
+		{
 			var pos = new Vector3(0f, 0f, -20f);
 			var osPos = LinkedWin.dwCamera.GetMousePosInOSSpace();
 			var osSize = new Vector2Int(300, 500);
-			GxWinPopup.Explorer(pos, osPos, osSize, out var popup, out m_Explorer);
+			(var popup, var explorer) = await GxWinPopup.Explorer(pos, osPos, osSize);
+			m_Explorer = explorer;
 			if (m_Explorer != null)
 			{
 				var files = new[] { ".vrma" };

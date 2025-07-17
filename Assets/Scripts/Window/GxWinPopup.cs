@@ -2,6 +2,7 @@ using DesktopWizard;
 using Kit2.ObjectPool;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 namespace Gaia
 {
@@ -17,8 +18,8 @@ namespace Gaia
 		[SerializeField] Canvas m_Canvas;
 		public Canvas canvas => m_Canvas;
 
-		private static KeyValuePair<bool, KxObjectPool> s_Pool = default;
-		private static KxObjectPool Pool
+		private static KeyValuePair<bool, AsyncObjectPool> s_Pool = default;
+		private static AsyncObjectPool Pool
 		{
 			get
 			{
@@ -26,8 +27,8 @@ namespace Gaia
 				{
 					var go = new GameObject("=== GxWinPopup Pool ===");
 					go.transform.position = Vector3.zero;
-					var pool = go.AddComponent<KxObjectPool>();
-					s_Pool = new KeyValuePair<bool, KxObjectPool>(true, pool);
+					var pool = go.AddComponent<AsyncObjectPool>();
+					s_Pool = new KeyValuePair<bool, AsyncObjectPool>(true, pool);
 				}
 				return s_Pool.Value;
 			}
@@ -46,10 +47,10 @@ namespace Gaia
 		/// <param name="osSpace"></param>
 		/// <param name="osSize"></param>
 		/// <returns></returns>
-		private static GxWinPopup CreateWindow(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize)
+		private static async Task<GxWinPopup> CreateWindow(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize)
 		{
 			const string path = "UIs/DwPopup";
-			var go = Pool.Spawn(path, eSrcType.Resources, worldSpace, Quaternion.identity, null, false);
+			var go = await Pool.Spawn(path, eSrcType.Resources, worldSpace, Quaternion.identity, null, true);
 			Debug.Assert(go != null, $"Failed to spawn GxWinPopup from resource '{path}'.");
 			var popup = go.GetComponent<GxWinPopup>();
 			Debug.Assert(popup != null, $"GxWinPopup component not found in spawned object from resource '{path}'.");
@@ -70,21 +71,20 @@ namespace Gaia
 		/// <param name="popup"></param>
 		/// <param name="contentPage"></param>
 		/// <returns></returns>
-		public static bool TryDisplay(string resourcePath, Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize,
-			out GxWinPopup popup, out GameObject contentPage, out IWinPopupContent content)
+		public static async Task<(GxWinPopup, GameObject, IWinPopupContent)> TryDisplay(string resourcePath, Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize)
 		{
-			popup = default;
-			contentPage = default;
-			content = default;
 			if (string.IsNullOrEmpty(resourcePath))
 			{
 				Debug.LogError("Resource path cannot be null or empty.", null);
-				return false;
+				return default;
 			}
+
+			var popup = default(GxWinPopup);
+			var contentPage = default(GameObject);
 			try
 			{
-				popup = CreateWindow(worldSpace, osSpace, osSize);
-				contentPage = Pool.Spawn(resourcePath, eSrcType.Resources, popup.canvas.transform, false);
+				popup = await CreateWindow(worldSpace, osSpace, osSize);
+				contentPage = await Pool.Spawn(resourcePath, eSrcType.Resources, popup.canvas.transform, false);
 				if (contentPage == null)
 					throw new System.Exception($"Prefab '{resourcePath}' not found in Resources.", null);
 
@@ -99,7 +99,7 @@ namespace Gaia
 					rectTransform.localScale = Vector3.one;
 				}
 
-				content = contentPage.GetComponent<IWinPopupContent>();
+				var content = contentPage.GetComponent<IWinPopupContent>();
 				if (content == null)
 				{
 					Debug.LogWarning($"Prefab '{resourcePath}' does not implement IWinPopupContent interface.", null);
@@ -108,6 +108,7 @@ namespace Gaia
 				{
 					content.InitContent(popup);
 				}
+				return (popup, contentPage, content);
 			}
 			catch (System.Exception ex)
 			{
@@ -122,22 +123,24 @@ namespace Gaia
 					popup.SelfDespawn();
 					popup = null;
 				}
-				return false;
+				return default;
 			}
-			return popup != null && contentPage != null;
 		}
 
 
-		public static void Explorer(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize, out GxWinPopup popup, out UIExplorer explorer)
+		public static async Task<(GxWinPopup, UIExplorer)> Explorer(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize)
 		{
-			popup = CreateWindow(worldSpace, osSpace, osSize);
+			var popup = default(GxWinPopup);
+			var explorer = default(UIExplorer);
+
+			popup = await CreateWindow(worldSpace, osSpace, osSize);
 			var path = "UIs/UIExplorer";
-			var token = Pool.Spawn(path, eSrcType.Resources, popup.canvas.transform, false);
+			var token = await Pool.Spawn(path, eSrcType.Resources, popup.canvas.transform, false);
 			if (token == null)
 			{
 				Debug.LogError($"Failed to spawn UIExplorer from resource '{path}'.");
 				explorer = null;
-				return;
+				return (null, null);
 			}
 			token.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
 			token.transform.localScale = Vector3.one;
@@ -157,9 +160,10 @@ namespace Gaia
 				Debug.LogError($"UIExplorer component not found in spawned object from resource '{path}'.");
 				Pool.Despawn(token);
 				explorer = null;
-				return;
+				return (null, null);
 			}
 			explorer.InitContent(popup);
+			return (popup, explorer);
 		}
 	}
 	
