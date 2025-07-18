@@ -229,17 +229,6 @@ namespace Gaia
 			DisplayFolder(back, m_Filter);
 		}
 
-		#region Helper Methods
-		[ContextMenu("Head to Streaming Assets")]
-		private void GotoStreamingAssets()
-		{
-			Kit2.Platform.CommandLine("explorer.exe", KxPath.Fix(Application.streamingAssetsPath), (feedback) =>
-			{
-				Debug.Log(feedback);
-			});
-		}
-		#endregion Helper Methods
-
 		[System.Obsolete("Implement somewhere else, not here.")]
 		private bool TryExecuteFile(FileInfo data)
 		{
