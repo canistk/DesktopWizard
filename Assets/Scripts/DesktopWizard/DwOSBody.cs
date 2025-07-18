@@ -6,7 +6,13 @@ using System.Linq;
 using UnityEngine;
 namespace DesktopWizard
 {
-    public class DwOSBody : MonoBehaviour
+	/// <summary>
+	/// The unique instance to scale and keep track of all screens and windows in OS.
+	/// provide the quick access between OS and Unity.
+	/// the visible windows will be created as <see cref="DwWindow"/> objects, 
+	/// however due to the performance reason, the invisible windows will not be created.
+	/// </summary>
+	public class DwOSBody : MonoBehaviour
     {
 		private static DwOSBody m_Instance = null;
 

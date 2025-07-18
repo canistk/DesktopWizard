@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace DesktopWizard
 {
+	/// <summary>
+	/// A base class for all area types in the desktop environment.
+	/// </summary>
 	[RequireComponent(typeof(BoxCollider), typeof(Rigidbody))]
 	public abstract class DwArea : MonoBehaviour
 	{

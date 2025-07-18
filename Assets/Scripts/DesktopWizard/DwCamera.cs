@@ -13,6 +13,9 @@ namespace DesktopWizard
     using Bitmap = System.Drawing.Bitmap;
     using InputButton = PointerEventData.InputButton;
     using Size = System.Drawing.Size;
+	/// <summary>
+	/// The render camera for <see cref="DwForm"/>, provide the image rendering and compositing effect.
+	/// </summary>
 	[RequireComponent(typeof(MeshRenderer))]
 	[RequireComponent(typeof(Camera))]
     public class DwCamera : MonoBehaviour

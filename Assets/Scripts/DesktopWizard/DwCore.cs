@@ -10,6 +10,9 @@ using UnityEngine;
 
 namespace DesktopWizard
 {
+    /// <summary>
+    /// Core to manage the Win32 API
+    /// </summary>
     public class DwCore
     {
         #region Auto init singleton

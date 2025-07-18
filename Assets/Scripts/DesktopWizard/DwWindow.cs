@@ -5,7 +5,12 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace DesktopWizard
 {
-    public class DwWindow : DwArea
+	/// <summary>
+	/// The shadow instance to represent a window in the desktop environment.
+	/// cached the basic information <see cref="WindowInfo"/> of the window.
+	/// the instance created from this will also linked to a <see cref="DwCamera"/> instance,
+	/// </summary>
+	public class DwWindow : DwArea
     {
 		public uint id => m_WindowInfo.id;
 		public string title => m_WindowInfo.title;
