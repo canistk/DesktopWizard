@@ -1,6 +1,7 @@
 using DesktopWizard;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
 namespace Gaia
@@ -69,7 +70,7 @@ namespace Gaia
 		#region Runtime Creation
 		private static Dictionary<GxCharacter, GxWin> s_CharacterDict = new Dictionary<GxCharacter, GxWin>();
 		private static int s_SpawnedVRMCount = 0;
-		public static void LoadVRM(string vrmFilePath)
+		public static async Task LoadVRM(string vrmFilePath)
 		{
 			if (string.IsNullOrEmpty(vrmFilePath))
 			{
@@ -78,7 +79,7 @@ namespace Gaia
 			}
 
 			Debug.Log($"Loading VRM : {vrmFilePath}");
-			GxVRMLoader.LoadModel(vrmFilePath, (ch, vrm) =>
+			await GxVRMLoader.LoadModel(vrmFilePath, (ch, vrm) =>
 			{
 				var _name = Kit2.KxPath.GetFileNameWithoutExtension(vrmFilePath);
 				Debug.Log($"Loaded {_name}", ch);

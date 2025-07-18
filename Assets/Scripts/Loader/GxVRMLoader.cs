@@ -10,25 +10,7 @@ namespace Gaia
     public static class GxVRMLoader
     {
 		#region Charcter
-		public static void LoadModel(string path,
-			System.Action<GxCharacter, Vrm10Instance> success,
-			System.Action<System.Exception> fail = null)
-		{
-			InternalLoadModel(path, success, fail);
-		}
-
-		public static bool UnloadModel(GxCharacter ch)
-		{
-			if (!s_Characters.Contains(ch))
-				return false;
-			s_Characters.Remove(ch);
-			GameObject.Destroy(ch.gameObject);
-			return true;
-		}
-
-		private static List<GxCharacter> s_Characters = new List<GxCharacter>();
-
-		private static async void InternalLoadModel(string path,
+		public static async Task LoadModel(string path,
 			System.Action<GxCharacter, Vrm10Instance> success,
 			System.Action<System.Exception> fail = null)
 		{
@@ -168,6 +150,17 @@ namespace Gaia
 				fail.Invoke(ex);
 			}
 		}
+
+		public static bool UnloadModel(GxCharacter ch)
+		{
+			if (!s_Characters.Contains(ch))
+				return false;
+			s_Characters.Remove(ch);
+			GameObject.Destroy(ch.gameObject);
+			return true;
+		}
+
+		private static List<GxCharacter> s_Characters = new List<GxCharacter>();
 
 		#endregion Charcter
 	}

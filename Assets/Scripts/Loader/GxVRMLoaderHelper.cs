@@ -21,26 +21,12 @@ namespace Gaia
 		[ContextMenu("Load VRM")]
 		private void LoadVRM()
         {
-			LoadModel(KxPath.Combine(Application.streamingAssetsPath,m_ModelPath), OnModelLoaded, Debug.LogException);
-		}
-
-		[ContextMenu("Streaming Assets")]
-		private void GotoStreamingAssets()
-		{
-			Kit2.Platform.CommandLine("explorer.exe", KxPath.Fix(Application.streamingAssetsPath), (feedback) =>
-			{
-				Debug.Log(feedback);
-			});
+			var path = KxPath.Combine(GxConst.Path.VRM, m_ModelPath);
+			_ = GxVRMLoader.LoadModel(path, OnModelLoaded, Debug.LogException);
 		}
 
 		#region Charcter
 		private GxCharacter m_Character;
-		public void LoadModel(string path,
-			System.Action<GxCharacter, Vrm10Instance> success,
-			System.Action<System.Exception> fail = null)
-		{
-			GxVRMLoader.LoadModel(path, success, fail);
-		}
 		private void OnModelLoaded(GxCharacter character, Vrm10Instance vrm)
 		{
 			m_Character = character;
