@@ -334,7 +334,8 @@ namespace Gaia
 				var rac = retargeting.animator.runtimeAnimatorController;
 				retargeting.animator.runtimeAnimatorController = tPose;
 				retargeting.ForceTPose();
-				retargeting.animator.runtimeAnimatorController = rac;
+				// retargeting.animator.runtimeAnimatorController = rac;
+				retargeting.animator.runtimeAnimatorController = null; // remove reference
 
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();
