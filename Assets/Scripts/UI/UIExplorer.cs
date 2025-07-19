@@ -26,8 +26,6 @@ namespace Gaia
 		#region Mono
 		private void Awake()
 		{
-			if (!KxDirectory.Exists(Application.streamingAssetsPath))
-				Debug.LogError($"Folder {Application.streamingAssetsPath} not exist.");
 			InternalInit();
 		}
 
@@ -56,7 +54,6 @@ namespace Gaia
 				m_BackParentFolder.EVENT_OnClick += BackParentFolder;
 			}
 
-			rootFolder = new DirectoryInfo(Application.streamingAssetsPath);
 			m_Collection.SetSpawnedCallback(OnSpawnedToken);
 			m_Collection.SetDespawnCallback(OnDespawnToken);
 		}
@@ -78,6 +75,7 @@ namespace Gaia
 		{
 			m_Filter = new FilterInfo(path, extension);
 			m_FileSelectedCallback = fileSelected;
+			rootFolder = new DirectoryInfo(path);
 			InternalInit();
 			DisplayFolder(m_Filter.rootPath, m_Filter);
 		}
