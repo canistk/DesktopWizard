@@ -20,6 +20,8 @@ namespace DesktopWizard
 
         [Tooltip("Capture mouse move event, even Window.Form was lose focus.")]
         public bool CaptureMouseMoveEventOnLoseFocus = false;
+
+        [Range(1f, 60f)] public float FPS = 60f;
 	}
 
     public enum eDragMethod

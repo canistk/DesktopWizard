@@ -859,40 +859,42 @@ namespace DesktopWizard
 			}
 		}
 
-		private int m_FirstUpdateCnt = 0;
+		private float m_LastRenderTime = 0f;
+		private float GetUpdateFactor()
+		{
+			var factor = 1f / Mathf.Clamp(setting.FPS, 1f, 60f);
+			// Convert FPS to interval time.
+			if (factor <= 0f)
+			{
+				Debug.LogWarning($"Invalid FPS: {setting.FPS}, set to 60 FPS.", this);
+				factor = 1f / 60f;
+			}
+			return factor;
+		}
+
 		private void UpdateCore()
         {
 			if (dwForm == null || !dwForm.Visible)
 				return;
-			var _first = m_FirstUpdateCnt == 0;
-
+			
 			// rendering
 			_RenderToTexture();
 			_HandleCoordInOS();
 
 			// update form event within main thread.
-			if (_first) Debug.Log("First - HandleWinFormEvents.", this);
-
 			/// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L544
 			if (_Form == null)
 			{
-				Debug.LogWarning("First - Form instance not found.", this);
+				Debug.LogWarning("Form instance not found.", this);
 			}
 			else
 			{
 				// read events from WinForm queues.
-				if (_first) Debug.Log("First - Form instance found, process events.", this);
 				_Form.ProcessEvents();
 			}
 
 			HandlerSelectedObjectEvents();
 			CleanSubmitEvents();
-
-			if (_first) Debug.Log("First - Update Core completed.", this);
-			if (m_FirstUpdateCnt == 0)
-			{
-				++m_FirstUpdateCnt;
-			}
 
 			return;
 
@@ -909,10 +911,13 @@ namespace DesktopWizard
             {
 				if (dwForm != null && !dwForm.Visible || linkCamera == null)
 				{
-					if (_first) Debug.Log("First - RenderToTexture start Fail", this);
                     return;
 				}
-				if (_first) Debug.Log("First - RenderToTexture starting.", this);
+
+				var factor = GetUpdateFactor();
+				if (Time.realtimeSinceStartup - m_LastRenderTime < factor)
+					return;
+				m_LastRenderTime = Time.realtimeSinceStartup;
 
 				if (m_FormSizePre != setting.Size)
                 {
@@ -943,7 +948,6 @@ namespace DesktopWizard
 					dwForm.TopMost = setting.TopMost;
 				}
 
-				if (_first) Debug.Log("First - RenderToTexture, start dump texture(s)", this);
 				{
                     var isRaw   = m_RemoveEffect || m_OutputShader == null;
                     var gpu     = isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
@@ -984,7 +988,6 @@ namespace DesktopWizard
                     // Capture current render into cache.
                     gpu.Execute(m_Renderer, linkCamera, setting.Size.x, setting.Size.y);
                 }
-				if (_first) Debug.Log("First - RenderToTexture dump texture success.", this);
             }
 
             void _HandleCoordInOS()
@@ -996,7 +999,6 @@ namespace DesktopWizard
 					dwForm.Left = cursor.x + m_DragFormInfo.offsetX;
                     dwForm.Top = cursor.y + m_DragFormInfo.offsetY;
                 }
-				if (_first) Debug.Log("First - _HandleCoordInOS.", this);
             }
         }
 

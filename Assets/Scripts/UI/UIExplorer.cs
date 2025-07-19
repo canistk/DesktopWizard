@@ -106,7 +106,7 @@ namespace Gaia
 			List<FileSystemInfo> data = new List<FileSystemInfo>();
 			foreach (var dir in KxDirectory.EnumerateDirectories(path))
 			{
-				Debug.Log($"Folder {dir}");
+				// Debug.Log($"Folder {dir}");
 				DirectoryInfo directoryInfo = new DirectoryInfo(dir);
 				data.Add(directoryInfo);
 			}
@@ -115,7 +115,7 @@ namespace Gaia
 			{
 				if (!KxPath.IsExtension(file, true, filter.extensions))
 					continue;
-				Debug.Log($"File {file}");
+				// Debug.Log($"File {file}");
 				FileInfo fileInfo = new FileInfo(file);
 				data.Add(fileInfo);
 			}
