@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 namespace Gaia
 {
-    public class WinPopupCharacterMenu : GxWinPopup_LoseFocusDisable
+    public class WinPopupCharacterMenu : GxWinPopupContent
 	{
         [SerializeField] private UIText m_Title;
         [SerializeField] private UIButton m_LoadVRMA;
@@ -41,17 +41,15 @@ namespace Gaia
 			var pos = new Vector3(0f, 0f, -20f);
 			var osPos = LinkedWin.dwCamera.GetMousePosInOSSpace();
 			var osSize = new Vector2Int(300, 500);
-			(var popup, var explorer) = await GxWinPopup.Explorer(pos, osPos, osSize);
-			m_Explorer = explorer;
-			if (m_Explorer != null)
-			{
-				var files = new[] { ".vrma" };
-				var info = new SelectedData(LinkedWin.Character);
-				m_Explorer.Init(Application.streamingAssetsPath, files, (path) =>
+			var info = new SelectedData(LinkedWin.Character);
+			(var popup, var explorer) = await GxWinPopup.Explorer(
+				pos, osPos, osSize,
+				GxConst.Path.VRM, ".vrma",
+				(path) =>
 				{
 					OnVRMASelected(path, info);
-				});
-			}
+				},
+				autoClose: true);
 		}
 
 		private struct SelectedData
@@ -62,7 +60,6 @@ namespace Gaia
 				Character = character;
 			}
 		}
-		UIExplorer m_Explorer;
 		private void OnVRMASelected(string path, SelectedData data)
 		{
 			if (string.IsNullOrEmpty(path))

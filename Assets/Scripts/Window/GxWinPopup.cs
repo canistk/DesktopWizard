@@ -108,6 +108,7 @@ namespace Gaia
 				{
 					content.InitContent(popup);
 				}
+				popup.gameObject.SetActive(true);
 				return (popup, contentPage, content);
 			}
 			catch (System.Exception ex)
@@ -128,23 +129,34 @@ namespace Gaia
 		}
 
 
-		public static async Task<(GxWinPopup, UIExplorer)> Explorer(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize)
+		public static async Task<(GxWinPopup, UIExplorer)> Explorer(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize,
+			string path,
+			string extension,
+			System.Action<string> fileSelectedCallback,
+			bool autoClose)
+			=> await Explorer(worldSpace, osSpace, osSize, path, new[] { extension }, fileSelectedCallback, autoClose);
+
+		public static async Task<(GxWinPopup, UIExplorer)> Explorer(Vector3 worldSpace, Vector2Int osSpace, Vector2Int osSize, 
+			string path,
+			string[] extension,
+			System.Action<string> fileSelectedCallback,
+			bool autoClose)
 		{
 			var popup = default(GxWinPopup);
 			var explorer = default(UIExplorer);
 
 			popup = await CreateWindow(worldSpace, osSpace, osSize);
-			var path = "UIs/UIExplorer";
-			var token = await Pool.Spawn(path, eSrcType.Resources, popup.canvas.transform, false);
-			if (token == null)
+			const string wrapperPath = "UIs/UIExplorer";
+			var contentPage = await Pool.Spawn(wrapperPath, eSrcType.Resources, popup.canvas.transform, false);
+			if (contentPage == null)
 			{
-				Debug.LogError($"Failed to spawn UIExplorer from resource '{path}'.");
+				Debug.LogError($"Failed to spawn UIExplorer from resource '{wrapperPath}'.");
 				explorer = null;
 				return (null, null);
 			}
-			token.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-			token.transform.localScale = Vector3.one;
-			if (token.transform is RectTransform rectTransform)
+			contentPage.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+			contentPage.transform.localScale = Vector3.one;
+			if (contentPage.transform is RectTransform rectTransform)
 			{
 				rectTransform.anchorMin = Vector2.zero;
 				rectTransform.anchorMax = Vector2.one;
@@ -154,20 +166,22 @@ namespace Gaia
 				rectTransform.localScale = Vector3.one;
 			}
 
-			explorer = token.GetComponent<UIExplorer>();
+			explorer = contentPage.GetComponent<UIExplorer>();
 			if (explorer == null)
 			{
 				Debug.LogError($"UIExplorer component not found in spawned object from resource '{path}'.");
-				Pool.Despawn(token);
+				Pool.Despawn(contentPage);
 				explorer = null;
 				return (null, null);
 			}
+			explorer.SetAutoDespawn(autoClose);
+			explorer.Init(path, extension, fileSelectedCallback);
 			explorer.InitContent(popup);
 			return (popup, explorer);
 		}
 	}
 	
-	public abstract class GxWinPopupContent : MonoBehaviour, IWinPopupContent, ISpawnToken
+	public abstract class GxWinPopupContentRaw : MonoBehaviour, IWinPopupContent, ISpawnToken
 	{
 		protected GxWinPopup m_Parent { get; private set; } = null;
 		public virtual bool Initialized => m_Parent != null;
@@ -204,13 +218,20 @@ namespace Gaia
 		}
 	}
 
-	public abstract class GxWinPopup_LoseFocusDisable : GxWinPopupContent, ISelfDespawnable
+	public abstract class GxWinPopupContent : GxWinPopupContentRaw, ISelfDespawnable
 	{
+		#region Lose Focus Auto Despawn
+		protected bool m_LoseFocusAutoDespawn = true;
+		public void SetAutoDespawn(bool autoDespawn)
+		{
+			m_LoseFocusAutoDespawn = autoDespawn;
+		}
+
 		public override void InitContent(GxWinPopup parent)
 		{
 			base.InitContent(parent);
 			var form = parent?.dwForm;
-			Debug.Assert(form != null, "GxWinPopup_LoseFocusDisable requires a valid parent GxWinPopup with a DwForm.");
+			Debug.Assert(form != null, $"{nameof(GxWinPopupContent)} requires a valid parent GxWinPopup with a DwForm.");
 			// form.Focus();
 			form.Event_LostFocus += Form_Event_LostFocus;
 			form.FormClosed += Form_FormClosed;
@@ -226,15 +247,13 @@ namespace Gaia
 			base.SelfDespawn();
 		}
 
-		private void Form_FormClosed(object sender, System.Windows.Forms.FormClosedEventArgs e)
-			=> Form_Close_or_LostFocus();
-
-		private void Form_Event_LostFocus(uint hWnd, System.EventArgs evt)
-			=> Form_Close_or_LostFocus();
-
+		private void Form_FormClosed(object sender, System.Windows.Forms.FormClosedEventArgs e) => Form_Close_or_LostFocus();
+		private void Form_Event_LostFocus(uint hWnd, System.EventArgs evt) => Form_Close_or_LostFocus();
 		private void Form_Close_or_LostFocus()
 		{
-			SelfDespawn();
+			if (m_LoseFocusAutoDespawn)
+				SelfDespawn();
 		}
+		#endregion Lose Focus Auto Despawn
 	}
 }

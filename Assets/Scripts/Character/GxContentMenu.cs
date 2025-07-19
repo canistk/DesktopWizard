@@ -25,8 +25,10 @@ namespace Gaia
 		private async void InternalShowContextMenu()
 		{
 			var mv = win as GxWinCharacter;
+			var wPos = new Vector3(0f, 0f, -10f);
 			var osPos = mv.dwCamera.GetMousePosInOSSpace();
-			(var popup, var token, var content) = await GxWinPopup.TryDisplay("UIs/CharacterMenu", new Vector3(0f, 0f, -10f), osPos, new Vector2Int(300, 500));
+			var osSize = new Vector2Int(300, 500);
+			(var popup, var token, var content) = await GxWinPopup.TryDisplay("UIs/CharacterMenu", wPos, osPos, osSize);
 
 			if (popup == null || token == null || content == null)
 			{

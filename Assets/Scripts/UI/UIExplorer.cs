@@ -9,7 +9,7 @@ namespace Gaia
 	/// An explorer for UI, can be used to select files, support nested folders.
 	/// call <see cref="Init(string, string[], System.Action{string})"/> and wait for the callback to be invoked when a file is selected.
 	/// </summary>
-	public class UIExplorer : GxWinPopup_LoseFocusDisable
+	public class UIExplorer : GxWinPopupContent
 	{
 		[SerializeField] UIText m_Title;
 		public string Title
