@@ -365,11 +365,20 @@ namespace Gaia
 					SetHint("Addressable group not found.");
 					return;
 				}
-				var guid = AssetDatabase.AssetPathToGUID(outputPrefabPath);
-				var entry = settings.CreateOrMoveEntry(guid, group);
-				var fileName = Path.GetFileNameWithoutExtension(outputPrefabPath);
+				var fileName = Path.GetFileName(outputPrefabPath);
 				var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
-				entry.address = address;
+				string guid = AssetDatabase.AssetPathToGUID(outputPrefabPath);
+
+				// Check if the entry already exists
+				// If it exists, we will update the address and asset reference.
+				// If it does not exist, we will create a new entry.
+				var check = settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(address), true);
+				if (check == null)
+				{
+					var entry = settings.CreateOrMoveEntry(guid, group);
+					entry.address = address;
+				}
+
 				if (TryGetDatabase(out var database))
 				{
 					var assetRef = new AssetReference(guid);
