@@ -52,7 +52,7 @@ namespace Gaia
 			{
 				if (!m_ClipNames.Key)
 				{
-					var clipPath = self.db.Timelines.Select(o => o.addressPath).ToArray();
+					var clipPath = self.db.Timelines.Select(o => o.Path).ToArray();
 					m_ClipNames = new KeyValuePair<bool, string[]>(clipPath.Length > 0, clipPath);
 				}
 
@@ -82,7 +82,7 @@ namespace Gaia
 					var clip = self.db.Timelines[idx1];
 					if (GUILayout.Button("Play Animation", GUILayout.ExpandWidth(true), GUILayout.Height(30f)))
 					{
-						Debug.Log($"Trigger animation(Editor): {clip.addressPath}");
+						Debug.Log($"Trigger animation(Editor): {clip.Path}");
 						TriggerAnimation(idx1, idx2);
 					}
 				}

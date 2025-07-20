@@ -21,34 +21,30 @@ namespace Gaia
         [SerializeField] private List<ClipInfo> m_Timelines = new List<ClipInfo>();
   
 		[System.Serializable]
-		public struct ClipInfo
+		public class ClipInfo : GxMotionData
 		{
-			public string addressPath;
 			public AssetReference assetRef;
-			public bool isLoop;
-			public float duration;
-
+			
 			public ClipInfo(AssetReference assetRef, string address, AnimationClip clip)
 				: this(assetRef, address, clip.isLooping, clip.length)
 			{ }
 
 			public ClipInfo(AssetReference assetRef, string address, bool isLoop, float duration)
+				: base()
 			{
-				this.addressPath = address;
+				this.Type = eAssetType.Timeline;
+				this.Path = address;
 				this.assetRef = assetRef;
-				this.isLoop = isLoop;
-				this.duration = duration;
+				this.IsLoop = isLoop;
+				this.ClipLength = duration;
+				this.Weight = 1.0f; // Default weight
 			}
 
 			public async void LoadVRMA(System.Action<IVrm10Animation> vrma, System.Action<System.Exception> exception)
 			{
-				// EditorExtend.ResolvePath(path, out var absolutePath, out var relativePath);
-				// vrma = Resources.Load(relativePath);
-				// vrma = Resources.Load(relativePath);
-
 				try
 				{
-					var path = $"{addressPath}_vrma.glb";
+					var path = $"{Path}_vrma.glb";
 					var oper = Addressables.LoadAssetAsync<GameObject>(path);
 					var task = await oper.Task;
 					if (oper.Status == UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationStatus.Succeeded)
@@ -82,7 +78,7 @@ namespace Gaia
 			for (int i = 0; i < m_Timelines.Count; ++i)
 			{
 				var rec = m_Timelines[i];
-				if (rec.addressPath == path)
+				if (rec.Path == path)
 				{
 					duplicate = true;
 					Debug.LogWarning($"Timeline with path '{path}' already exists in the collection. Skipping addition.");
@@ -94,6 +90,13 @@ namespace Gaia
 			{
 				m_Timelines.Add(clipInfo);
 			}
+		}
+
+		public void Clear()
+		{
+			if (m_Timelines == null)
+				return;
+			m_Timelines.Clear();
 		}
     }
 }

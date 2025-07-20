@@ -147,6 +147,11 @@ namespace Gaia
 				// return;
 			}
 
+			if (TryGetDatabase(out var database))
+			{
+				database.Clear();
+			}
+
 			for (int i = 0; i < s_FullPaths.Length; ++i)
 			{
 				var path = s_FullPaths[i];

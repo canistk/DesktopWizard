@@ -55,7 +55,7 @@ namespace Gaia
 		{
 #if UNITY_EDITOR
 			var r = db.Timelines[idx];
-			character.CrossFade(r.addressPath, m_FadeIn, Kit2.ObjectPool.eSrcType.Addressable);
+			character.CrossFade(r.Path, m_FadeIn, Kit2.ObjectPool.eSrcType.Addressable);
 #endif
 		}
 
