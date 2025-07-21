@@ -498,8 +498,9 @@ MonoBehaviour:
     Size: {x: 500, y: 800}
     dragMethod: 0
     CaptureMouseMoveEventOnLoseFocus: 0
+    FPS: 60
   UpdateFunc: 1
-  ChromaKeyCompositing: 1
+  ChromaKeyCompositing: 0
   ChromaKeyColor: {r: 0, g: 0, b: 0, a: 0}
   ChromaKeyRange: 0.002
   m_RemoveEffect: 0
@@ -511,17 +512,17 @@ MonoBehaviour:
   m_FXAAConfig:
     debug: 0
     lowQuality: 0
-    contrastThreshold: 0.0833
-    relativeThreshold: 0.063
-    subpixelBlending: 1
-    weight: 1
+    contrastThreshold: 0.08
+    relativeThreshold: 0.2
+    subpixelBlending: 0.5
+    weight: 0.2
   m_BoomConfig:
     debug: 0
-    iteration: 1
-    intensity: 1
+    iteration: 4
+    intensity: 1.2
     bias: 1
-    sampleOffset: 1
-    threshold: 1
+    sampleOffset: 1.3
+    threshold: 0.4
     softThreshold: 0.5
   m_Window: {fileID: 0}
 --- !u!114 &5726044127317013188
