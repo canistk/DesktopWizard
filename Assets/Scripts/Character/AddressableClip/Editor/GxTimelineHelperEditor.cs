@@ -4,9 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
-using PlasticPipe.PlasticProtocol.Messages;
-using UniVRM10;
-using PlasticGui.WebApi.Responses;
 using UniGLTF;
 namespace Gaia
 {

@@ -11,7 +11,9 @@ namespace Gaia
             private static readonly string Root = Application.persistentDataPath;
 
             public static readonly string VRM = KxPath.Combine(Root, "VRM");
-        }
+
+            public static readonly string MotionDatabase = KxPath.Combine(Root, "MotionDatabase.json");
+		}
 
 
 		public static class Cmd

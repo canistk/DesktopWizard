@@ -1,4 +1,5 @@
 using Kit2;
+using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -18,18 +19,42 @@ namespace Gaia
 	[CreateAssetMenu(fileName = "GxTimelineCollection", menuName = "Gaia/GxTimelineCollection", order = 1)]
 	public class GxTimelineCollection : ScriptableObject
     {
-        [SerializeField] private List<ClipInfo> m_Timelines = new List<ClipInfo>();
+		private static KeyValuePair<bool, GxTimelineCollection> m_Instance = default;
+		public static GxTimelineCollection Instance
+		{
+			get
+			{
+				if (!m_Instance.Key)
+				{
+					var obj = Resources.Load<GxTimelineCollection>("GxTimelineCollection");
+					if (obj == null)
+					{
+						Debug.LogError("GxTimelineCollection not found in Resources. Please ensure it exists.");
+					}
+					m_Instance = new KeyValuePair<bool, GxTimelineCollection>(true, obj);
+				}
+				return m_Instance.Value;
+			}
+		}
+		[RuntimeInitializeOnLoadMethod]
+		private static void AutoBind()
+		{
+			ReferenceEquals(Instance, null);
+		}
+
+		[SerializeField] private List<TimelineData> m_Timelines = new List<TimelineData>();
   
 		[System.Serializable]
-		public class ClipInfo : GxMotionData
+		public class TimelineData : GxMotionData
 		{
+			[JsonIgnore]
 			public AssetReference assetRef;
 			
-			public ClipInfo(AssetReference assetRef, string address, AnimationClip clip)
+			public TimelineData(AssetReference assetRef, string address, AnimationClip clip)
 				: this(assetRef, address, clip.isLooping, clip.length)
 			{ }
 
-			public ClipInfo(AssetReference assetRef, string address, bool isLoop, float duration)
+			public TimelineData(AssetReference assetRef, string address, bool isLoop, float duration)
 				: base()
 			{
 				this.Type = eAssetType.Timeline;
@@ -39,42 +64,19 @@ namespace Gaia
 				this.ClipLength = duration;
 				this.Weight = 1.0f; // Default weight
 			}
-
-			public async void LoadVRMA(System.Action<IVrm10Animation> vrma, System.Action<System.Exception> exception)
-			{
-				try
-				{
-					var path = $"{Path}_vrma.glb";
-					var oper = Addressables.LoadAssetAsync<GameObject>(path);
-					var task = await oper.Task;
-					if (oper.Status == UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationStatus.Succeeded)
-					{
-						var comp = oper.Result.GetComponent<IVrm10Animation>();
-						if (comp == null)
-							throw new System.Exception("VRMA not found.");
-						var ani = comp as IVrm10Animation;
-						if (ani == null)
-							throw new System.Exception("VRMA not found.");
-						vrma?.Invoke(ani);
-					}
-					else
-					{
-						Debug.LogError($"Failed to load VRMA from path: {path}");
-						vrma?.Invoke(null);
-					}
-				}
-				catch (System.Exception ex)
-				{
-					exception?.Invoke(ex);
-				}
-			}
 		}
-		public IReadOnlyList<ClipInfo> Timelines => m_Timelines;
+
+		public IReadOnlyList<TimelineData> Timelines => m_Timelines;
+
+		public int Count()
+		{
+			return m_Timelines != null ? m_Timelines.Count : 0;
+		}
 
 		public void Add(AssetReference assetRef, string path, AnimationClip clip)
 		{
 			var duplicate = false;
-			var clipInfo = new ClipInfo(assetRef, path, clip);
+			var clipInfo = new TimelineData(assetRef, path, clip);
 			for (int i = 0; i < m_Timelines.Count; ++i)
 			{
 				var rec = m_Timelines[i];

@@ -79,5 +79,27 @@ namespace Gaia
 		{
 			GxConst.Cmd.OpenStreamingAssets();
 		}
+
+		[ContextMenu("Test")]
+		private void Test()
+		{
+			if (GxMotionDatabase.Instance == null)
+			{
+				Debug.Log("Wait for Database loading");
+				GxMotionDatabase.EVENT_OnLoaded -= _OnDBLoaded;
+				GxMotionDatabase.EVENT_OnLoaded += _OnDBLoaded;
+			}
+			else
+			{
+				_OnDBLoaded();
+			}
+
+			void _OnDBLoaded()
+			{
+				GxMotionDatabase.EVENT_OnLoaded -= _OnDBLoaded;
+				var db = GxMotionDatabase.Instance;
+				Debug.Log($"Database loaded [{db.Count}] ready.");
+			}
+		}
 	}
 }
