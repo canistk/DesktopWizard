@@ -111,7 +111,7 @@ namespace Gaia
         {
             if (timelineAsset == null)
                 throw new System.ArgumentNullException(nameof(timelineAsset), "Timeline asset cannot be null.");
-            var aniTask = new GxAnimationTask(this, timelineAsset, fadeIn, realTime);
+            var aniTask = new GxTimelineTask(this, timelineAsset, fadeIn, realTime);
 
 			// Hack : while retargeting system is using Update (prefer to use LateUpdate instead),
             // we need to disable animator in Update to prevent animation flickering/overrided.
@@ -256,7 +256,7 @@ namespace Gaia
             InternalPlayTimeline(timelineAsset, fadeIn, realTime);
 		}
 
-        /// <summary>Called by <see cref="GxAnimationTask"/></summary>
+        /// <summary>Called by <see cref="GxTimelineTask"/></summary>
         /// <param name="ani"></param>
         internal void BoardcastWillPlayAnimation(IRetarget ani)
         {
@@ -268,7 +268,7 @@ namespace Gaia
 			}
         }
 
-		/// <summary>Called by <see cref="GxAnimationTask"/></summary>
+		/// <summary>Called by <see cref="GxTimelineTask"/></summary>
 		internal void BoardCastPlayedOnce(IRetarget ani)
         {
             

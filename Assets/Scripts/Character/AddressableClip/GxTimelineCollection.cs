@@ -47,19 +47,10 @@ namespace Gaia
 		[System.Serializable]
 		public class TimelineData : GxMotionData
 		{
-			[JsonIgnore]
-			public AssetReference assetRef;
-			
-			public TimelineData(AssetReference assetRef, string address, AnimationClip clip)
-				: this(assetRef, address, clip.isLooping, clip.length)
-			{ }
-
-			public TimelineData(AssetReference assetRef, string address, bool isLoop, float duration)
+			public TimelineData(string address, bool isLoop, float duration)
 				: base()
 			{
-				this.Type = eAssetType.Timeline;
-				this.Path = address;
-				this.assetRef = assetRef;
+				this.Key = new GxMotionKey(address, eAssetType.Timeline);
 				this.IsLoop = isLoop;
 				this.ClipLength = duration;
 				this.Weight = 1.0f; // Default weight
@@ -73,10 +64,10 @@ namespace Gaia
 			return m_Timelines != null ? m_Timelines.Count : 0;
 		}
 
-		public void Add(AssetReference assetRef, string path, AnimationClip clip)
+		public TimelineData Add(string path, bool isLoop, float duration)
 		{
 			var duplicate = false;
-			var clipInfo = new TimelineData(assetRef, path, clip);
+			var clipInfo = new TimelineData(path, isLoop, duration);
 			for (int i = 0; i < m_Timelines.Count; ++i)
 			{
 				var rec = m_Timelines[i];
@@ -85,13 +76,13 @@ namespace Gaia
 					duplicate = true;
 					Debug.LogWarning($"Timeline with path '{path}' already exists in the collection. Skipping addition.");
 					m_Timelines[i] = clipInfo;
-					return;
 				}
 			}
 			if (!duplicate)
 			{
 				m_Timelines.Add(clipInfo);
 			}
+			return clipInfo;
 		}
 
 		public void Clear()

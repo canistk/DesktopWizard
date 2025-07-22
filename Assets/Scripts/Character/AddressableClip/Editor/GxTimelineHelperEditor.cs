@@ -106,7 +106,7 @@ namespace Gaia
 			var db = self.db;
 			var r1 = db.Timelines[idx];
 			var r2 = db.Timelines[nextIdx];
-			if (character == null || db == null || r1.assetRef == null)
+			if (character == null || db == null)
 			{
 				Debug.LogWarning("Character or Database is not assigned or invalid.");
 				return;

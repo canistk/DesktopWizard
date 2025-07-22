@@ -8,7 +8,7 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 namespace Gaia
 {
-	public class GxAnimationTask : GxCharacterTask, IRetarget
+	public class GxTimelineTask : GxCharacterTask, IRetarget
 	{
 		GxTimelineAsset m_Timeline;
 		GxRetargeting fromBiped => m_Timeline?.GetRetargeting();
@@ -28,7 +28,7 @@ namespace Gaia
 		private BlendWeight m_BlendIn, m_BlendOut;
 		
 		public bool IsRealtime { get; private set; } = false;
-		public GxAnimationTask(GxCharacter character, GxTimelineAsset timeline, float blendTime, bool isRealTime) : base(character)
+		public GxTimelineTask(GxCharacter character, GxTimelineAsset timeline, float blendTime, bool isRealTime) : base(character)
 		{
 			if (character == null)
 			{
@@ -122,7 +122,7 @@ namespace Gaia
 			}
 			/// else,
 			/// If it's looping, we just hold the blend in weight until next animation.
-			/// <see cref="OnWillPlayAnimation(GxAnimationTask)"/>
+			/// <see cref="OnWillPlayAnimation(GxTimelineTask)"/>
 		}
 
 		public void OnWillPlayAnimation(IRetarget other)
@@ -146,7 +146,7 @@ namespace Gaia
 
 		/// <summary>
 		/// Played one cycle, <see cref="OnPlayedOneCycle"/>
-		/// Blend out by others <see cref="OnWillPlayAnimation(GxAnimationTask)"/>
+		/// Blend out by others <see cref="OnWillPlayAnimation(GxTimelineTask)"/>
 		/// 
 		/// </summary>
 		private void TryTriggerBlendOut()

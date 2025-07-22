@@ -11,7 +11,7 @@ namespace Gaia
 {
 	/// <summary>
 	/// GxVRMA is <see cref="IRetarget"/> & <see cref="GxRetargeting"/>
-	/// just like <see cref="GxAnimationTask"/> but for VRMA (VRM Animation) files.
+	/// just like <see cref="GxTimelineTask"/> but for VRMA (VRM Animation) files.
 	/// </summary>
 	public class GxVRMATask : GxCharacterTask, IRetarget
     {
