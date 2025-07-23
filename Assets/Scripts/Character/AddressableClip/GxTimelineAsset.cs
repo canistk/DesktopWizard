@@ -27,15 +27,25 @@ namespace Gaia
 		/// </summary>
 		[SerializeField] bool m_IsLoop;
 		[SerializeField] float m_Duration;
+		[SerializeField] GxMotionKey m_Key;
+		public GxMotionKey Key => m_Key;
 		public bool IsLoop => m_IsLoop;
 		public float Duration => m_Duration;
-		public void UpdateInfo(AnimationClip clip)
+		public void UpdateInfo(GxMotionKey key, AnimationClip clip)
 		{
+			this.m_Key = key;
 			this.m_Duration = clip.length;
 			this.m_IsLoop = clip.isLooping;
 			playableDirector.extrapolationMode = m_IsLoop ?
 				DirectorWrapMode.Loop :
 				DirectorWrapMode.Hold;
+		}
+
+		public GxMotionData GetMotionData()
+		{
+			if (!GxMotionDatabase.TryGetMotion(m_Key, out var motionData))
+				throw new System.NullReferenceException($"Motion data not found for key: {m_Key}");
+			return motionData;
 		}
 
 		private ISpawner m_Spawner;

@@ -11,6 +11,7 @@ namespace Gaia
 	public class GxTimelineTask : GxCharacterTask, IRetarget
 	{
 		GxTimelineAsset m_Timeline;
+		GxMotionData m_MotionData;
 		GxRetargeting fromBiped => m_Timeline?.GetRetargeting();
 		GxCharacter m_Character;
 
@@ -40,6 +41,12 @@ namespace Gaia
 				Debug.LogError($"The {nameof(GxRetargeting)} reference NOT found, cannot bind to character.");
 				return;
 			}
+			if (!GxMotionDatabase.TryGetMotion(timeline.Key, out m_MotionData))
+			{
+				Debug.LogError($"Motion data not found for key: {timeline.Key}");
+				// return; // Can continue without motion data, but may not work as expected.
+			}
+
 			this.m_Timeline = timeline;
 			this.m_Character = character;
 			this.IsRealtime = isRealTime;
@@ -115,6 +122,8 @@ namespace Gaia
 			m_Timeline.EVENT_PlayedOneCycle -= OnPlayedOneCycle;
 			m_Character.BoardCastPlayedOnce(this);
 			
+			AutoPlayNextAnimation();
+			
 			if (!m_Timeline.IsLoop && m_BlendOut == null)
 			{
 				m_BlendOut = new BlendWeight(m_BlendIn.weight, 0f, m_BlendIn.duration, IsRealtime);
@@ -123,6 +132,21 @@ namespace Gaia
 			/// else,
 			/// If it's looping, we just hold the blend in weight until next animation.
 			/// <see cref="OnWillPlayAnimation(GxTimelineTask)"/>
+		}
+
+		private void AutoPlayNextAnimation()
+		{
+			if (m_MotionData == null)
+				return;
+			var arr = m_MotionData.Next;
+			if (arr == null)
+				return;
+			if (arr.Count == 0)
+				return;
+
+			var rnd = UnityEngine.Random.Range(0, arr.Count);
+			var next = m_MotionData.Next[rnd];
+			m_Character.CrossFade(next, 0f, IsRealtime);
 		}
 
 		public void OnWillPlayAnimation(IRetarget other)

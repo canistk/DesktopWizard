@@ -195,12 +195,15 @@ namespace Gaia
 						continue;
 					}
 					var PrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
-					var asset = CreateTimeline(modelPath, animator, tPose, clip, PrefabPath); // generate all = group clips
+					var tlKey = CreateTimeline(modelPath, animator, tPose, clip, PrefabPath); // generate all = group clips
 					if (i < clips.Length -1)
 					{
 						// Add to database
 						var next = new GxMotionKey(arr[i + 1], eAssetType.Timeline);
-						asset.AddNext(next);
+						if (GxMotionDatabase.TryGetMotion(tlKey, out var asset))
+						{
+							asset.AddNext(next);
+						}
 					}
 					else
 					{
@@ -499,7 +502,7 @@ namespace Gaia
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
-		private GxTimelineCollection.TimelineData CreateTimeline(
+		private GxMotionKey CreateTimeline(
 			string modelPath,
 			Animator animator,
 			RuntimeAnimatorController tPose,
@@ -513,7 +516,7 @@ namespace Gaia
 				var root = cp.token;
 				var timeline = _PrepareTimelineAsset(outputPrefabPath);
 				if (timeline == null)
-					return null;
+					return default;
 
 				// Model
 				var model = PrefabUtility.LoadPrefabContents(modelPath);
@@ -541,19 +544,21 @@ namespace Gaia
 				if (!TryGetDatabase(out var database))
 				{
 					Debug.LogError("Fail to get GxTimelineCollection database, please create one first.");
-					return null;
+					return default;
 				}
+
+				// prepare database record
+				var fileName = Path.GetFileName(outputPrefabPath);
+				var address = Path.Combine(s_OutputPath, fileName).Replace('\\', '/');
+				var record = database.Add(address, clip.isLooping, clip.length);
 
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();
 				GxTimelineAsset.AssignRetargeting(retargeting);
-				GxTimelineAsset.UpdateInfo(clip);
+				GxTimelineAsset.UpdateInfo(record, clip);
 
-				var fileName = Path.GetFileName(outputPrefabPath);
-				var address = Path.Combine(s_OutputPath, fileName).Replace('\\', '/');
-				var rst = database.Add(address, clip.isLooping, clip.length);
 				EditorUtility.SetDirty(database);
-				return rst;
+				return record;
 			}
 
 			void _CovertToAddressable(GameObject prefab)

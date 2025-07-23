@@ -64,7 +64,7 @@ namespace Gaia
 			return m_Timelines != null ? m_Timelines.Count : 0;
 		}
 
-		public TimelineData Add(string path, bool isLoop, float duration)
+		public GxMotionKey Add(string path, bool isLoop, float duration)
 		{
 			var duplicate = false;
 			var clipInfo = new TimelineData(path, isLoop, duration);
@@ -82,7 +82,7 @@ namespace Gaia
 			{
 				m_Timelines.Add(clipInfo);
 			}
-			return clipInfo;
+			return clipInfo.Key;
 		}
 
 		public void Clear()

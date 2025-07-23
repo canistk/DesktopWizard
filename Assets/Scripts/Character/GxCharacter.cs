@@ -132,6 +132,18 @@ namespace Gaia
 			CrossFade(path, 0f, eSrcType.GameObject, true);
 		}
 
+		public void CrossFade(GxMotionKey key, float fadeIn, bool realTime = false)
+		{
+			var src = key.Type == eAssetType.VRMA ?
+				eSrcType.GameObject :
+#if USE_ADDRESSABLE
+				eSrcType.Addressable;
+#else
+				eSrcType.Resources;
+#endif
+			CrossFade(key.Path, fadeIn, src, realTime);
+		}
+
 		public void CrossFade(string timelineAssetPath, float fadeIn, eSrcType type, bool realTime = false)
 		{
 			if (string.IsNullOrEmpty(timelineAssetPath))
@@ -153,26 +165,27 @@ namespace Gaia
 
 		private Dictionary<string, GameObject /* prefab */> m_VrmaDict = new Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
 
-		private void CrossFade_VRMA(string timelineAssetPath, float fadeIn, eSrcType type, bool realTime = false)
+		private void CrossFade_VRMA(string vrmFilePath, float fadeIn, eSrcType type, bool realTime = false)
 		{
-  			if (string.IsNullOrEmpty(timelineAssetPath))
-				throw new System.ArgumentNullException(nameof(timelineAssetPath), "Timeline asset path cannot be null or empty.");
+  			if (string.IsNullOrEmpty(vrmFilePath))
+				throw new System.ArgumentNullException(nameof(vrmFilePath), "Timeline asset path cannot be null or empty.");
 			// Force to GameObject for VRMA assets
 			type = eSrcType.GameObject;
-			if (!m_VrmaDict.TryGetValue(timelineAssetPath, out var _vrmaPrefab))
+			if (!m_VrmaDict.TryGetValue(vrmFilePath, out var _vrmaPrefab))
 			{
 				// load VRMA asset directly if not in pool
-				_InternalLoadVRMA(timelineAssetPath, (gltf) =>
+				_InternalLoadVRMA(vrmFilePath, (gltf) =>
 				{
 					var prefab = gltf.gameObject;
 					if (prefab == null)
-						throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
-					var clipName = KxPath.GetFileNameWithoutExtension(timelineAssetPath);
-					SetupVRMAPrefab(prefab, clipName);
+						throw new System.Exception($"Failed to load VRMA prefab from path: {vrmFilePath}");
+					var clipName = KxPath.GetFileNameWithoutExtension(vrmFilePath);
+					var key = new GxMotionKey(vrmFilePath, eAssetType.VRMA);
+					SetupVRMAPrefab(key, prefab, clipName);
 
-					m_VrmaDict.Add(timelineAssetPath, _vrmaPrefab = prefab);
+					m_VrmaDict.Add(vrmFilePath, _vrmaPrefab = prefab);
 					var token = m_Pool.Spawn(prefab, eSrcType.GameObject, m_Pool.transform, false);
-					_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
+					_OnVRMATokenLoaded(token, vrmFilePath, fadeIn, realTime);
 
 				}, Debug.LogException);
 				return; // stop here, wait for VRMA loaded.
@@ -181,21 +194,18 @@ namespace Gaia
 			{
 				// Use exist prefab to spawn
 				var token = m_Pool.Spawn(_vrmaPrefab, eSrcType.GameObject, m_Pool.transform, false);
-				_OnVRMATokenLoaded(token, timelineAssetPath, fadeIn, realTime);
+				_OnVRMATokenLoaded(token, vrmFilePath, fadeIn, realTime);
 			}
 			return;
 
-			void SetupVRMAPrefab(GameObject prefab, string clipName)
+			void SetupVRMAPrefab(GxMotionKey key, GameObject prefab, string clipName)
 			{
 				if (prefab == null)
-					throw new System.Exception($"Failed to load VRMA prefab from path: {timelineAssetPath}");
+					throw new System.Exception($"Failed to load VRMA prefab from path: {vrmFilePath}");
 				prefab.SetActive(false); // ensure prefab is inactive before spawning
 
 				var hdlr = prefab.AddComponent<GxVRMAToken>();
-				if (hdlr.Animation.clip.wrapMode == WrapMode.Loop)
-					clipName = $"{clipName}(loop)";
-				// Name the prefab based on the clip name
-				hdlr.Setup(clipName);
+				hdlr.Setup(key);
 
 #if HIDE_VRMA_PREFAB
 				prefab.hideFlags = HideFlags.HideAndDontSave;
@@ -235,7 +245,7 @@ namespace Gaia
 				var gltf = token.GetComponent<RuntimeGltfInstance>();
 				if (gltf == null)
 					throw new System.Exception($"{nameof(RuntimeGltfInstance)} not found.");
-				var aniTask = new GxVRMATask(this, gltf, 0.25f, false, m_Pool, token);
+				var aniTask = new GxVRMATask(this, gltf, fadeIn, realTime, m_Pool, token);
 				m_Tasks.Add(aniTask);
 			}
 		}
@@ -305,7 +315,7 @@ namespace Gaia
             }
             m_Retargeting.RemoveTarget(target);
 		}
-		#endregion Wrapped Retargeting Methods
+#endregion Wrapped Retargeting Methods
 
 		#region Face Rig
 		private KeyValuePair<bool, FaceRig> m_FaceRig;

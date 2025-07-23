@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using UnityEngine;
 using UniVRM10;
 using UniGLTF;
+using Kit2;
 namespace Gaia
 {
 	/// <summary>
@@ -66,10 +67,11 @@ namespace Gaia
 			}
 		}
 
-
-		public void Setup(string clipName)
+		[SerializeField] GxMotionKey m_MotionKey;
+		public GxMotionKey key => m_MotionKey;
+		public void Setup(GxMotionKey key)
 		{
-			gameObject.name = clipName;
+			this.m_MotionKey = key;
 
 			this.Animation.cullingType = AnimationCullingType.AlwaysAnimate;
 			this.Vrm10AnimationInstance.ShowBoxMan(false);
@@ -80,6 +82,11 @@ namespace Gaia
 			this.Retargeting.ForceTPose();
 			this.Animator.enabled = cache;
 
+			// instead of using "GLTF", we override based on the clip info
+			var _name = KxPath.GetFileNameWithoutExtension(key.Path);
+			if (Animation?.clip?.wrapMode == WrapMode.Loop)
+				_name += "(loop)";
+			gameObject.name = _name;
 			gltf.EnableUpdateWhenOffscreen();
 		}
 	}
