@@ -91,7 +91,6 @@ namespace Gaia
 
 		/// VRMA case.
 		/// VRMA can only locate in the VRM folder, which is defined in <see cref="GxConst.Path.VRM"/>.
-		/// and play by method. <see cref="GxCharacter.CrossFadeVRMA(string)"/>
 		/// 
 		/// Timeline case.
 		/// Timeline are addressable assets, which can be located in addressable panel.

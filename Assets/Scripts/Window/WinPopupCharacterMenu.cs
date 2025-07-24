@@ -75,14 +75,8 @@ namespace Gaia
 			}
 
 			// Play the VRMA animation
-			ch.CrossFadeVRMA(path);
-
-			// Auto close the explorer popup, after loading the VRMA
-			//if (m_Explorer)
-			//{
-			//	m_Explorer.SelfDespawn();
-			//	m_Explorer = null;
-			//}
+			var key = new GxMotionKey(path, eAssetType.VRMA);
+			ch.CrossFade(key, 0f, true);
 		}
 
 		public override bool Initialized 

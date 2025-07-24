@@ -127,11 +127,6 @@ namespace Gaia
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
-		public void CrossFadeVRMA(string path)
-		{
-			CrossFade(path, 0f, eSrcType.GameObject, true);
-		}
-
 		public void CrossFade(GxMotionKey key, float fadeIn, bool realTime = false)
 		{
 			var src = key.Type == eAssetType.VRMA ?

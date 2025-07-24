@@ -2,12 +2,12 @@ using Kit2;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using UniGLTF;
 using UnityEngine;
 using UniVRM10;
 namespace Gaia
 {
+	[System.Obsolete("Test script during development.", true)]
     public class GxVRMLoaderHelper : MonoBehaviour
     {
 		[Header("StreamingAssets File")]
@@ -15,9 +15,10 @@ namespace Gaia
         [SerializeField] private string m_VRMAPath = "VRMA_01.vrma";
 		private void OnEnable()
 		{
-            LoadVRM();
+            // LoadVRM();
 		}
 
+		[System.Obsolete("Use GxWinCharacter instead, that support GxWin container spawn flow.", true)]
 		[ContextMenu("Load VRM")]
 		private void LoadVRM()
         {
@@ -39,6 +40,7 @@ namespace Gaia
         private Vrm10AnimationInstance m_Vrma;
 
 		[ContextMenu("Load VRMA")]
+		[System.Obsolete("Use GxCharacter.CrossFade instead.", true)]
 		private void LoadAnimation()
         {
 			if (m_Character == null)
@@ -47,9 +49,10 @@ namespace Gaia
 				return;
 			}
 			var path = KxPath.Combine(Application.streamingAssetsPath, m_VRMAPath);
-			m_Character.CrossFade(path, 0.25f, Kit2.ObjectPool.eSrcType.GameObject, true);
-            // LoadVRMAFlow(KxPath.Combine(Application.streamingAssetsPath,m_VRMAPath), OnVRMALoaded, Debug.LogError);
+			var key = new GxMotionKey(path, eAssetType.VRMA);
+			m_Character.CrossFade(key, 0.25f, true);
 		}
+		[System.Obsolete("Use GxCharacter.CrossFade instead.", true)]
 		private async void LoadVRMAFlow(string path,
 			System.Action<RuntimeGltfInstance> loaded,
 			System.Action<System.Exception> fail = null)
@@ -77,7 +80,7 @@ namespace Gaia
 				fail.Invoke(ex);
 			}
 		}
-
+		[System.Obsolete("Use GxCharacter.CrossFade instead.", true)]
 		private void OnVRMALoaded(RuntimeGltfInstance gltf)
         {
 			this.m_Gltf = gltf;
