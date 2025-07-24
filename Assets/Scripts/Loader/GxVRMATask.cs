@@ -13,7 +13,7 @@ namespace Gaia
 	/// GxVRMA is <see cref="IRetarget"/> & <see cref="GxRetargeting"/>
 	/// just like <see cref="GxTimelineTask"/> but for VRMA (VRM Animation) files.
 	/// </summary>
-	public class GxVRMATask : GxCharacterTask, IRetarget
+	public class GxVRMATask : GxCharacterAnimationTask, IRetarget
     {
 		[SerializeField, Range(0f, 1f)] private float m_Weight01 = 1f;
 
@@ -47,7 +47,6 @@ namespace Gaia
 		public BlendWeight BlendIn => m_BlendIn;
 		public BlendWeight BlendOut => m_BlendOut;
 #endif
-		private readonly GxCharacter character;
 		private KeyValuePair<ISpawner, GameObject> m_Spawner;
 		private GxVRMAToken m_VRMA;
 		private float m_StartTime = 0f;
@@ -66,7 +65,6 @@ namespace Gaia
 				return;
 			}
 			this.gltf = gltf;
-			this.character = character;
 			this.IsRealtime = isRealTime;
 #if !NO_BLENDING
 			this.m_BlendIn = new BlendWeight(0f, 1f, blendTime, IsRealtime);
@@ -130,8 +128,8 @@ namespace Gaia
 			/// <see cref="GxCharacter.SetupVRMAPrefab(GameObject, string)"/>
 			m_VRMA = gltf.GetComponentInChildren<GxVRMAToken>(true);
 			
-			character.AddAnimationRetarget(this);
-			character.BoardcastWillPlayAnimation(this);
+			Character.AddAnimationRetarget(this);
+			Character.BoardcastWillPlayAnimation(this);
 
 			m_VRMA.Animation.Play();
 			m_StartTime = Time.timeSinceLevelLoad;
@@ -199,9 +197,9 @@ namespace Gaia
 		protected override void OnDisposing()
 		{
 			base.OnDisposing();
-			if (character != null)
+			if (Character != null)
 			{
-				character.RemoveAnimationRetarget(this);
+				Character.RemoveAnimationRetarget(this);
 			}
 			Despawn();
 		}

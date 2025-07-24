@@ -41,7 +41,7 @@ namespace Gaia
 			}
 			Editor_ObjectPoolCreate();
 			#if DEBUG
-			_ = transform.GetOrAddComponent<GxTimelineHelper>();
+			_ = transform.GetOrAddComponent<GxMotionHelper>();
 			#endif
 		}
 

@@ -30,6 +30,7 @@ namespace Gaia
 		IEquatable<GxMotionKey>,
 		IEquatable<GxMotionData>
 	{
+		public string ShortName => KxPath.GetFileNameWithoutExtension(Path);
 		public string Path;
 		public eAssetType Type;
 		public bool Valid;

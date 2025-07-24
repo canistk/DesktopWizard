@@ -8,12 +8,11 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 namespace Gaia
 {
-	public class GxTimelineTask : GxCharacterTask, IRetarget
+	public class GxTimelineTask : GxCharacterAnimationTask, IRetarget
 	{
 		GxTimelineAsset m_Timeline;
 		GxMotionData m_MotionData;
 		GxRetargeting fromBiped => m_Timeline?.GetRetargeting();
-		GxCharacter m_Character;
 
 		private enum eState
 		{
@@ -48,7 +47,6 @@ namespace Gaia
 			}
 
 			this.m_Timeline = timeline;
-			this.m_Character = character;
 			this.IsRealtime = isRealTime;
 			this.m_BlendIn = new BlendWeight(0f, 1f, blendTime, IsRealtime);
 			this.m_BlendOut = null; // Reset blend out to null initially
@@ -59,8 +57,8 @@ namespace Gaia
 			var pd = m_Timeline.playableDirector;
 
 			// Hook up the retargeting system
-			m_Character.AddAnimationRetarget(this);
-			m_Character.BoardcastWillPlayAnimation(this);
+			Character.AddAnimationRetarget(this);
+			Character.BoardcastWillPlayAnimation(this);
 
 			m_Timeline.EVENT_PlayedOneCycle += OnPlayedOneCycle;
 			if (!pd.playOnAwake)
@@ -113,14 +111,14 @@ namespace Gaia
 		{
 			base.OnDisposing();
 			m_Timeline.Despawn();
-			m_Character.RemoveAnimationRetarget(this);
+			Character.RemoveAnimationRetarget(this);
 		}
 
 		private void OnPlayedOneCycle()
 		{
 			// Debug.Log($"{m_Timeline.gameObject.name} played Once");
 			m_Timeline.EVENT_PlayedOneCycle -= OnPlayedOneCycle;
-			m_Character.BoardCastPlayedOnce(this);
+			Character.BoardCastPlayedOnce(this);
 			
 			AutoPlayNextAnimation();
 			
@@ -146,7 +144,7 @@ namespace Gaia
 
 			var rnd = UnityEngine.Random.Range(0, arr.Count);
 			var next = m_MotionData.Next[rnd];
-			m_Character.CrossFade(next, 0f, IsRealtime);
+			Character.CrossFade(next, 0f, IsRealtime);
 		}
 
 		public void OnWillPlayAnimation(IRetarget other)

@@ -87,16 +87,10 @@ namespace Gaia
 				FetchVRMAFolder();
 			}
 		}
-        private static async void FetchVRMAFolder()
+        private static void FetchVRMAFolder()
         {
             if (m_Instance.Value == null)
                 throw new System.Exception("Motion database is not initialized yet.");
-
-            if (!Application.isPlaying)
-            {
-                EVENT_OnLoaded?.TryCatchDispatchEventError(o => o?.Invoke());
-                return;
-            }
 
             // Fetch VRMA folder and add to database.
             var VRMAPath = GxConst.Path.VRM;
@@ -132,30 +126,42 @@ namespace Gaia
                 {
                     Debug.LogError($"Fail to deserialize motion file: {ex.Message}");
                 }
+                if (readCount == 0) _OnAllMotionRead();
             }
 
             void _OnMotionJsonReadFail(System.Exception ex)
             {
                 Debug.LogError($"Fail to read motion file: {ex.Message}");
                 --readCount;
-            }
+				if (readCount == 0) _OnAllMotionRead();
+			}
 
-            // search for undefine VRMA files and add them to the database.
-            // match with existing m_Clips paths.
-            var heartbeat = Time.realtimeSinceStartup;
-            await Task.Delay(1000);
-            while (readCount > 0)
+            //// search for undefine VRMA files and add them to the database.
+            //// match with existing m_Clips paths.
+            //var heartbeat = Time.realtimeSinceStartup;
+            //await Task.Delay(1000);
+            //while (readCount > 0)
+            //{
+            //    // wait for all motion files to be read
+            //    await Task.Yield();
+            //    if (Time.realtimeSinceStartup - heartbeat > 5f)
+            //    {
+            //        Debug.LogWarning("Fetching VRMA...");
+            //        heartbeat = Time.realtimeSinceStartup;
+            //    }
+            //}
+
+
+            void _OnAllMotionRead()
             {
-                // wait for all motion files to be read
-                await Task.Yield();
-                if (Time.realtimeSinceStartup - heartbeat > 5f)
-                {
-                    Debug.LogWarning("Fetching VRMA...");
-                    heartbeat = Time.realtimeSinceStartup;
-                }
-            }
+			    if (!Application.isPlaying)
+			    {
+				    EVENT_OnLoaded?.TryCatchDispatchEventError(o => o?.Invoke());
+				    return;
+			    }
 
-            MatchingVRMA_MotionRecords(vrmaFilePaths);
+			    MatchingVRMA_MotionRecords(vrmaFilePaths);
+            }
 		}
 
         private static async void MatchingVRMA_MotionRecords(string[] vrmaFilePaths)

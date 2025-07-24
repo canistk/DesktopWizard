@@ -5,15 +5,13 @@ using UnityEngine;
 using Unity.VisualScripting;
 using UniGLTF;
 using UniVRM10;
+using System.Linq;
 namespace Gaia
-
 {
-    [RequireComponent(typeof(GxCharacter))]
-	public class GxTimelineHelper : MonoBehaviour
+	using DB = GxMotionDatabase;
+	[RequireComponent(typeof(GxCharacter))]
+	public class GxMotionHelper : MonoBehaviour
     {
-        [SerializeField] private GxTimelineCollection m_Database;
-        public GxTimelineCollection db => m_Database;
-
         private GxCharacter m_Character;
         public GxCharacter character
         {
@@ -32,42 +30,43 @@ namespace Gaia
         public int m_SecondIndex = 0;
 
         public float m_FadeIn = 0.2f;
-
-        [Header("VRMA, load path")]
-		[SerializeField] public string m_VRMAPath = "Assets/StreamingAssets/VRMA_01.vrma";
-		
-
+		GxMotionKey[] m_Data;
+		public GxMotionKey[] data
+		{
+			get
+			{
+				if (m_Data == null)
+				{
+					m_Data = DB.GetMotions().Select(o => o.Key).ToArray();
+				}
+				return m_Data;
+			}
+		}
 
 		private void Reset()
 		{
-            m_Database = Resources.Load<GxTimelineCollection>("GxTimelineCollection");
 		}
 
 		private void Awake()
 		{
-			if (m_Database == null)
-            {
-				m_Database = Resources.Load<GxTimelineCollection>("GxTimelineCollection");
-			}
+			
 		}
 
 		public void Editor_AnimationClip(int idx)
 		{
 #if UNITY_EDITOR
-			var r = db.Timelines[idx];
-			character.CrossFade(r.Path, m_FadeIn, Kit2.ObjectPool.eSrcType.Addressable);
+			if (idx < 0 || idx >= data.Length)
+			{
+				Debug.LogWarning($"Invalid index {idx}. Must be between 0 and {data.Length - 1}.");
+				return;
+			}
+			var o = data[idx];
+			character.CrossFade(o, m_FadeIn, true);
+			// character.CrossFade(o.Path, m_FadeIn, Kit2.ObjectPool.eSrcType.Addressable);
 #endif
 		}
 
 		#region VRMA
-		public void Editor_LoadVRMA(string path)
-		{
-#if UNITY_EDITOR
-			character.CrossFade(path, m_FadeIn, Kit2.ObjectPool.eSrcType.GameObject);
-			// LoadVRMA(path, OnVRMALoaded, Debug.LogException);
-#endif
-		}
-
 		private RuntimeGltfInstance m_Gltf;
 		private Vrm10AnimationInstance m_Vrma;
 
