@@ -5,12 +5,13 @@ using UnityEngine;
 using UniVRM10;
 using UniGLTF;
 using Kit2;
+using Kit2.ObjectPool;
 namespace Gaia
 {
 	/// <summary>
 	/// A helper class for managing Gaia VRMA tokens in Unity.
 	/// </summary>
-	public class GxVRMAToken : MonoBehaviour
+	public class GxVRMAToken : MonoBehaviour, ISpawnToken, ISelfDespawnable
     {
 		[SerializeField] private Animator m_Animator = null;
 		public Animator Animator
@@ -89,5 +90,29 @@ namespace Gaia
 			gameObject.name = _name;
 			gltf.EnableUpdateWhenOffscreen();
 		}
+
+		#region Self Despawn
+		private ISpawner m_Pool = null;
+		public void OnSpawn(ISpawner pool)
+		{
+			this.m_Pool = pool;
+		}
+
+		public void OnDespawn()
+		{
+		}
+
+		public void SelfDespawn()
+		{
+			if (this.m_Pool == null)
+			{
+				Debug.LogWarning($"GxVRMAToken: {this.gameObject.name} is not spawned by a pool, cannot despawn.");
+				gameObject.SetActive(false);
+				return;
+			}
+			this.m_Pool?.Despawn(this.gameObject);
+			this.m_Pool = null;
+		}
+		#endregion Self Despawn
 	}
 }

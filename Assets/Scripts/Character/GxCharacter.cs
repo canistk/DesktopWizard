@@ -107,24 +107,6 @@ namespace Gaia
 				m_Retargeting = animator.gameObject.AddComponent<GxRetargeting>();
 			}
 		}
-        private void InternalPlayTimeline(GxTimelineAsset timelineAsset, float fadeIn, bool realTime)
-        {
-            if (timelineAsset == null)
-                throw new System.ArgumentNullException(nameof(timelineAsset), "Timeline asset cannot be null.");
-            var aniTask = new GxTimelineTask(this, timelineAsset, fadeIn, realTime);
-
-			// Hack : while retargeting system is using Update (prefer to use LateUpdate instead),
-            // we need to disable animator in Update to prevent animation flickering/overrided.
-			if (animator.enabled)
-            {
-                Debug.LogWarning("Retargeting is enabled in Update, disabling it to prevent flickering. Consider using LateUpdate for retargeting.");
-				if (!m_Retargeting.IsLateUpdate)
-                    animator.enabled = false;
-            }
-
-            m_Tasks.Add(aniTask);
-        }
-
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
 		public void CrossFade(GxMotionKey key, float fadeIn, bool realTime = false)
@@ -139,6 +121,7 @@ namespace Gaia
 			CrossFade(key.Path, fadeIn, src, realTime);
 		}
 
+
 		public void CrossFade(string timelineAssetPath, float fadeIn, eSrcType type, bool realTime = false)
 		{
 			if (string.IsNullOrEmpty(timelineAssetPath))
@@ -148,7 +131,7 @@ namespace Gaia
 			if (isVrmaPath)
 			{
 				// Force to GameObject for VRMA assets
-				CrossFade_VRMA(timelineAssetPath, fadeIn, eSrcType.GameObject, realTime);
+				CrossFade_VRMA(timelineAssetPath, fadeIn, realTime);
 				return; // stop here, wait for VRMA loaded.
 			}
 			else
@@ -160,12 +143,13 @@ namespace Gaia
 
 		private Dictionary<string, GameObject /* prefab */> m_VrmaDict = new Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
 
-		private void CrossFade_VRMA(string vrmFilePath, float fadeIn, eSrcType type, bool realTime = false)
+		private void CrossFade_VRMA(string vrmFilePath, float fadeIn, bool realTime = false)
 		{
   			if (string.IsNullOrEmpty(vrmFilePath))
 				throw new System.ArgumentNullException(nameof(vrmFilePath), "Timeline asset path cannot be null or empty.");
 			// Force to GameObject for VRMA assets
-			type = eSrcType.GameObject;
+			var key = new GxMotionKey(vrmFilePath, eAssetType.VRMA);
+			
 			if (!m_VrmaDict.TryGetValue(vrmFilePath, out var _vrmaPrefab))
 			{
 				// load VRMA asset directly if not in pool
@@ -175,12 +159,11 @@ namespace Gaia
 					if (prefab == null)
 						throw new System.Exception($"Failed to load VRMA prefab from path: {vrmFilePath}");
 					var clipName = KxPath.GetFileNameWithoutExtension(vrmFilePath);
-					var key = new GxMotionKey(vrmFilePath, eAssetType.VRMA);
 					SetupVRMAPrefab(key, prefab, clipName);
 
 					m_VrmaDict.Add(vrmFilePath, _vrmaPrefab = prefab);
 					var token = m_Pool.Spawn(prefab, eSrcType.GameObject, m_Pool.transform, false);
-					_OnVRMATokenLoaded(token, vrmFilePath, fadeIn, realTime);
+					_OnVRMATokenLoaded(key, token, vrmFilePath, fadeIn, realTime);
 
 				}, Debug.LogException);
 				return; // stop here, wait for VRMA loaded.
@@ -189,7 +172,7 @@ namespace Gaia
 			{
 				// Use exist prefab to spawn
 				var token = m_Pool.Spawn(_vrmaPrefab, eSrcType.GameObject, m_Pool.transform, false);
-				_OnVRMATokenLoaded(token, vrmFilePath, fadeIn, realTime);
+				_OnVRMATokenLoaded(key, token, vrmFilePath, fadeIn, realTime);
 			}
 			return;
 
@@ -235,13 +218,18 @@ namespace Gaia
 				}
 			}
 
-			void _OnVRMATokenLoaded(GameObject token, string timelineAssetPath, float fadeIn, bool realTime)
+			void _OnVRMATokenLoaded(GxMotionKey key, GameObject token, string timelineAssetPath, float fadeIn, bool realTime)
 			{
 				var gltf = token.GetComponent<RuntimeGltfInstance>();
 				if (gltf == null)
 					throw new System.Exception($"{nameof(RuntimeGltfInstance)} not found.");
-				var aniTask = new GxVRMATask(this, gltf, fadeIn, realTime, m_Pool, token);
-				m_Tasks.Add(aniTask);
+				var vrmaToken = token.GetComponent<GxVRMAToken>();
+				var handler = new GxVRMAHandler(key, vrmaToken, fadeIn);
+				var task = new GxMotionTask(this, handler, fadeIn);
+				m_Tasks.Add(task);
+
+				//var aniTask = new GxVRMATask(this, gltf, fadeIn, realTime, m_Pool, token);
+				//m_Tasks.Add(aniTask);
 			}
 		}
 
@@ -258,12 +246,28 @@ namespace Gaia
                 Debug.LogError($"The spawned GameObject does not have a GxTimelineAsset component: {timelineAssetGo.name}");
                 return;
             }
-            InternalPlayTimeline(timelineAsset, fadeIn, realTime);
+			if (timelineAsset == null)
+				throw new System.ArgumentNullException(nameof(timelineAsset), "Timeline asset cannot be null.");
+			// Hack : while retargeting system is using Update (prefer to use LateUpdate instead),
+			// we need to disable animator in Update to prevent animation flickering/overrided.
+			if (animator.enabled)
+			{
+				Debug.LogWarning("Retargeting is enabled in Update, disabling it to prevent flickering. Consider using LateUpdate for retargeting.");
+				if (!m_Retargeting.IsLateUpdate)
+					animator.enabled = false;
+			}
+
+			var key = timelineAsset.Key;
+			var handler = new GxTimelineHandler(key, timelineAsset, fadeIn);
+			var task = new GxMotionTask(this, handler, fadeIn);
+			m_Tasks.Add(task);
+			//var aniTask = new GxTimelineTask(this, timelineAsset, fadeIn, realTime);
+			//m_Tasks.Add(aniTask);
 		}
 
-        /// <summary>Called by <see cref="GxTimelineTask"/></summary>
-        /// <param name="ani"></param>
-        internal void BoardcastWillPlayAnimation(IRetarget ani)
+		/// <summary>Called by <see cref="GxTimelineTask"/></summary>
+		/// <param name="ani"></param>
+		internal void BoardcastWillPlayAnimation(IRetarget ani)
         {
             foreach (var at in GetActiveAnimations())
             {

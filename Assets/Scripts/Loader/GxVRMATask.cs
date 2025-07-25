@@ -13,13 +13,14 @@ namespace Gaia
 	/// GxVRMA is <see cref="IRetarget"/> & <see cref="GxRetargeting"/>
 	/// just like <see cref="GxTimelineTask"/> but for VRMA (VRM Animation) files.
 	/// </summary>
+	[System.Obsolete("use GxMotion task instead, this will be removed in future versions.", true)]
 	public class GxVRMATask : GxCharacterAnimationTask, IRetarget
     {
 		[SerializeField, Range(0f, 1f)] private float m_Weight01 = 1f;
 
 		private readonly RuntimeGltfInstance gltf;
-		public GxRetargeting GetTarget() => m_VRMA.Retargeting;
-		public float GetWeight01() => m_Weight01;
+		public override GxRetargeting GetTarget() => m_VRMA.Retargeting;
+		public override float GetWeight01() => m_Weight01;
 
 #if NO_BLENDING
 		private enum eState
@@ -66,6 +67,7 @@ namespace Gaia
 			}
 			this.gltf = gltf;
 			this.IsRealtime = isRealTime;
+
 #if !NO_BLENDING
 			this.m_BlendIn = new BlendWeight(0f, 1f, blendTime, IsRealtime);
 			this.m_BlendOut = null; // Reset blend out to null initially
@@ -131,6 +133,10 @@ namespace Gaia
 			Character.AddAnimationRetarget(this);
 			Character.BoardcastWillPlayAnimation(this);
 
+			//m_VRMA.Animator.updateMode = Character.animator.updateMode;
+			//m_VRMA.Animator.cullingMode = Character.animator.cullingMode;
+			//m_VRMA.Animator.applyRootMotion = Character.animator.applyRootMotion;
+			
 			m_VRMA.Animation.Play();
 			m_StartTime = Time.timeSinceLevelLoad;
 			state = eState.PlayAni;
@@ -161,10 +167,12 @@ namespace Gaia
 #endif
 		}
 
-		public void OnWillPlayAnimation(IRetarget other)
+		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			if (isDisposed)
 				return;
+			if (state >= eState.Exit)
+				return; // Already in exit state, ignore.
 #if !NO_BLENDING
 			if (state >= eState.BlendOut)
 				return; // Already blending out, ignore.
@@ -208,6 +216,7 @@ namespace Gaia
 			if (m_Spawner.Key == null || m_Spawner.Value == null)
 				return; // No valid spawner or token to despawn.
 			m_VRMA.Animation.Stop(); // Stop the animation before despawning.
+			// m_VRMA.SelfDespawn();
 			m_Spawner.Key.Despawn(m_Spawner.Value);
 			m_Spawner = default; // Clear the spawner reference.
 			// gltf.Dispose(); // Dispose the gltf instance.

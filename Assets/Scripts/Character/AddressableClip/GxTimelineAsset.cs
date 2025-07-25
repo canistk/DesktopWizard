@@ -12,7 +12,7 @@ namespace Gaia
     /// This class is used to define a Gaia animation.
     /// </summary>
     [RequireComponent(typeof(PlayableDirector))]
-	public class GxTimelineAsset : TimeLineHelper, ISpawnToken
+	public class GxTimelineAsset : TimeLineHelper, ISpawnToken, ISelfDespawnable
     {
         // TODO: bind actor to track, so that the timeline can control the actor's animation.
 		[SerializeField] private GxRetargeting m_Retargeting;
@@ -85,7 +85,7 @@ namespace Gaia
 		{
 		}
 
-		public void Despawn()
+		public void SelfDespawn()
 		{
 			if (m_Spawner != null)
 			{
@@ -95,6 +95,7 @@ namespace Gaia
 			{
 				Debug.LogWarning("GxTimelineAsset is not spawned by a pool, cannot despawn.");
 			}
+			m_Spawner = null;
 		}
 
 		private bool m_Active = false;

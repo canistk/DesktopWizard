@@ -8,6 +8,7 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 namespace Gaia
 {
+	[System.Obsolete("use GxMotion task instead, this will be removed in future versions.", true)]
 	public class GxTimelineTask : GxCharacterAnimationTask, IRetarget
 	{
 		GxTimelineAsset m_Timeline;
@@ -110,7 +111,7 @@ namespace Gaia
 		protected override void OnDisposing()
 		{
 			base.OnDisposing();
-			m_Timeline.Despawn();
+			m_Timeline.SelfDespawn();
 			Character.RemoveAnimationRetarget(this);
 		}
 
@@ -147,7 +148,7 @@ namespace Gaia
 			Character.CrossFade(next, 0f, IsRealtime);
 		}
 
-		public void OnWillPlayAnimation(IRetarget other)
+		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			if (isDisposed)
 				return;
@@ -181,7 +182,7 @@ namespace Gaia
 			state = eState.BlendOut;
 		}
 
-		public float GetWeight01()
+		public override float GetWeight01()
 		{
 			if (isDisposed)
 				return 0f;
@@ -192,68 +193,9 @@ namespace Gaia
 				m_BlendOut.weight;
 		}
 
-		public GxRetargeting GetTarget()
+		public override GxRetargeting GetTarget()
 		{
 			return fromBiped;
-		}
-	}
-
-	public class BlendWeight : MyTaskBase
-	{
-		private readonly float start, end;
-		private readonly bool realTime;
-		public float weight { get; private set; } = 0f;
-		public float duration { get; private set; } = 0f;
-		public BlendWeight(float startWeight01, float targetWeight01, float duration, bool realTime)
-		{
-			this.start = Mathf.Clamp01(startWeight01);
-			this.end = Mathf.Clamp01(targetWeight01);
-			this.duration = Mathf.Max(0f, duration);
-			this.realTime = realTime;
-			this.weight = start; // Initialize weight to start value
-		}
-
-		protected KeyValuePair<bool, float> m_StartTime;
-
-		private float GetTime()
-		{
-			return realTime ? Time.realtimeSinceStartup : Time.time;
-		}
-
-		public override bool Execute()
-		{
-			if (duration <= 0f)
-			{
-				weight = end; // Instant transition
-				return false; // Task is complete
-			}
-
-			var time = GetTime();
-
-			if (!m_StartTime.Key)
-			{
-				m_StartTime = new KeyValuePair<bool, float>(true, time);
-				weight = start;
-			}
-
-			float elapsed = time - m_StartTime.Value;
-			if (elapsed >= duration)
-			{
-				weight = end;
-				return false; // Task is complete
-			}
-
-			// Interpolate the weight based on elapsed time
-			float pt = elapsed / duration;
-			weight = Mathf.Lerp(start, end, pt);
-			return true;
-		}
-
-		public override void Reset()
-		{
-			base.Reset();
-			m_StartTime = default;
-			weight = start;
 		}
 	}
 
