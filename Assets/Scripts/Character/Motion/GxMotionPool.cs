@@ -59,11 +59,12 @@ namespace Gaia
             s_AppQuit = true;
         }
 
-        public void Preload(GxMotionKey key,
-            System.Action<GxMotionHandler> success,
-            System.Action<System.Exception> fail)
-        {
-        }
+		// TODO: preload instead of loading on demand
+        //public void Preload(GxMotionKey key,
+        //    System.Action<GxMotionHandler> success,
+        //    System.Action<System.Exception> fail)
+        //{
+        //}
 
         public async Task<GxMotionHandler> GetHandler(GxMotionKey key, Transform parent, float fadeIn)
         {

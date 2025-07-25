@@ -15,7 +15,6 @@ namespace Gaia
 		private void Reset()
 		{
             Editor_RetargetingCreate();
-			Editor_ObjectPoolCreate();
 		}
 
 		private void OnDestroy()
@@ -28,7 +27,6 @@ namespace Gaia
 			{
 				m_Retargeting.ForceTPose();
 			}
-			Editor_ObjectPoolCreate();
 			#if DEBUG
 			_ = transform.GetOrAddComponent<GxMotionHelper>();
 			#endif
@@ -46,22 +44,6 @@ namespace Gaia
 			MyTaskHandler.ManualParallelUpdate(m_Tasks);
 		}
 		#endregion Task Management
-
-		#region Object Pooling
-		private KxObjectPool m_Pool;
-        private void Editor_ObjectPoolCreate()
-        {
-			// m_Pool = transform.GetOrAddComponent<kObjectPool>();
-			m_Pool = GetComponentInChildren<KxObjectPool>();
-			if (m_Pool == null)
-			{
-				var tran = new GameObject("Loader").transform;
-				tran.SetParent(transform, false);
-				tran.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-				m_Pool = tran.gameObject.AddComponent<KxObjectPool>();
-			}
-		}
-		#endregion Object Pooling
 
 		#region Wrapped Retargeting Methods
 		[SerializeField] GxRetargeting m_Retargeting;
@@ -98,7 +80,7 @@ namespace Gaia
 		}
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
-		public async void CrossFade(GxMotionKey key, float fadeIn, bool realTime = false)
+		public async void CrossFade(GxMotionKey key, float fadeIn)
 		{
 			var src = key.Type == eAssetType.VRMA ?
 				eSrcType.GameObject :
@@ -161,7 +143,7 @@ namespace Gaia
             }
             m_Retargeting.RemoveTarget(target);
 		}
-#endregion Wrapped Retargeting Methods
+		#endregion Wrapped Retargeting Methods
 
 		#region Face Rig
 		private KeyValuePair<bool, FaceRig> m_FaceRig;

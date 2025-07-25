@@ -48,7 +48,7 @@ namespace Gaia
 				return;
 			}
 			var o = data[idx];
-			character.CrossFade(o, m_FadeIn, true);
+			character.CrossFade(o, m_FadeIn);
 #endif
 		}
 	}

@@ -76,7 +76,7 @@ namespace Gaia
 
 			// Play the VRMA animation
 			var key = new GxMotionKey(path, eAssetType.VRMA);
-			ch.CrossFade(key, 0f, true);
+			ch.CrossFade(key, 0f);
 		}
 
 		public override bool Initialized 

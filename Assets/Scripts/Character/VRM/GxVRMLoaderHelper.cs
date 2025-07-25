@@ -50,7 +50,7 @@ namespace Gaia
 			}
 			var path = KxPath.Combine(Application.streamingAssetsPath, m_VRMAPath);
 			var key = new GxMotionKey(path, eAssetType.VRMA);
-			m_Character.CrossFade(key, 0.25f, true);
+			m_Character.CrossFade(key, 0.25f);
 		}
 		[System.Obsolete("Use GxCharacter.CrossFade instead.", true)]
 		private async void LoadVRMAFlow(string path,
