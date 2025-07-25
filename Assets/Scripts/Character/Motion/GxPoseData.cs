@@ -26,5 +26,11 @@ namespace Gaia
 			this.m_LoopTracks = new[] { loop };
 			this.m_ExitTracks = new[] { exit };
 		}
+
+		public GxMotionKey[] GetEnterTracks() => m_EnterTracks;
+
+		public GxMotionKey[] GetLoopTracks() => m_LoopTracks;
+
+		public GxMotionKey[] GetExitTracks() => m_ExitTracks;
 	}
 }

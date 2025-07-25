@@ -24,6 +24,10 @@ namespace Gaia
 		}
 		public eState state { get; private set; } = eState.None;
 
+		public GxMotionKey Key => m_Handler?.key ?? GxMotionKey.Invalid;
+
+		public GxMotionHandler Handler => m_Handler;
+
 		public GxMotionTask(GxCharacter character, GxMotionHandler handler, float fadeIn)
 			: this(character, handler, new BlendWeight(0f, 1f, fadeIn, (character?.animator.updateMode == AnimatorUpdateMode.UnscaledTime)))
 		{ }

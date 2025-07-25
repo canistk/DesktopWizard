@@ -9,10 +9,12 @@ namespace Gaia
 	{
 		public GxTimelineAsset timeline;
 		public float fadeIn;
+		private bool m_AutoFadeOut = true;
 		public GxTimelineHandler(GxMotionKey key, GxTimelineAsset timeline, float fadeIn) : base(key)
 		{
 			this.timeline = timeline;
 			this.fadeIn = fadeIn;
+			this.m_AutoFadeOut = true;
 		}
 		public override GxRetargeting GetRetargeting() => timeline?.GetRetargeting();
 
@@ -32,7 +34,10 @@ namespace Gaia
 		}
 
 		public override void Update() { }
-
+		public override void SetAutoFadeOut(bool autoFadeOut)
+		{
+			this.m_AutoFadeOut = autoFadeOut;
+		}
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			if (task.state < GxMotionTask.eState.BlendingOut)

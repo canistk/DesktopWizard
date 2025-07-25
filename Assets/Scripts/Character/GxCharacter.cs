@@ -80,7 +80,7 @@ namespace Gaia
 		}
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
-		public async void CrossFade(GxMotionKey key, float fadeIn)
+		public async void CrossFade(GxMotionKey key, float fadeIn, System.Action<GxMotionTask> taskCreated = null)
 		{
 			var src = key.Type == eAssetType.VRMA ?
 				eSrcType.GameObject :
@@ -91,8 +91,12 @@ namespace Gaia
 #endif
 			var handler = await GxMotionPool.Instance.GetHandler(key, transform, fadeIn);
 			var task = new GxMotionTask(this, handler, fadeIn);
+			if (taskCreated != null)
+				taskCreated.TryCatchDispatchEventError(o => o?.Invoke(task));
 			m_Tasks.Add(task);
 		}
+
+		public event System.Action<IRetarget> EVENT_WillPlayMotion;
 
 		/// <summary>Called by <see cref="GxTimelineTask"/></summary>
 		/// <param name="ani"></param>
@@ -104,6 +108,7 @@ namespace Gaia
                     continue;
                 at.OnWillPlayAnimation(ani);
 			}
+			EVENT_WillPlayMotion?.TryCatchDispatchEventError(o => o?.Invoke(ani));
         }
 
 		/// <summary>Called by <see cref="GxTimelineTask"/></summary>
@@ -112,7 +117,28 @@ namespace Gaia
             
 		}
 
-        public IEnumerable<IRetarget> GetActiveAnimations()
+		public bool TrySearchForAnimationTask(GxMotionKey key, out GxMotionTask motionTask)
+		{
+			motionTask = default;
+			if (m_Retargeting == null)
+			{
+				Debug.LogError("GxRetargeting is not initialized.");
+				return false;
+			}
+			foreach (var task in m_Tasks)
+			{
+				if (task is not GxMotionTask mt)
+					continue;
+				if (!mt.Key.Equals(key))
+					continue;
+				motionTask = mt;
+				return true;
+			}
+
+			return false;
+		}
+
+		public IEnumerable<IRetarget> GetActiveAnimations()
         {
             foreach (var task in m_Tasks)
             {

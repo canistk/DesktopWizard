@@ -24,6 +24,7 @@ namespace Gaia
 			this.task = task;
 		}
 
+		public abstract void SetAutoFadeOut(bool autoFadeOut);
 
 		public abstract GxRetargeting GetRetargeting();
 
