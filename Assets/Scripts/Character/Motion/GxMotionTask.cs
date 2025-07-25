@@ -24,11 +24,11 @@ namespace Gaia
 		}
 		public eState state { get; private set; } = eState.None;
 
-		public GxMotionTask(GxCharacter character, GxMotionHandler handler, float fadeIn, bool realTime = false)
-			: this(character, handler, new BlendWeight(0f, 1f, fadeIn, realTime))
+		public GxMotionTask(GxCharacter character, GxMotionHandler handler, float fadeIn)
+			: this(character, handler, new BlendWeight(0f, 1f, fadeIn, (character?.animator.updateMode == AnimatorUpdateMode.UnscaledTime)))
 		{ }
 
-		public GxMotionTask(GxCharacter character, GxMotionHandler handler, BlendWeight fadeIn) : base(character)
+		private GxMotionTask(GxCharacter character, GxMotionHandler handler, BlendWeight fadeIn) : base(character)
         {
 			state = eState.Initializing;
 			if (character == null)
@@ -128,11 +128,12 @@ namespace Gaia
 			}
 		}
 
-		public void FadeOut(float fadeOutDuration, bool realTime = false)
+		public void FadeOut(float fadeOutDuration)
 		{
 			if (isDisposed || isCompleted)
 				return;
 			var w = GetWeight01();
+			var realTime = Character?.animator?.updateMode == AnimatorUpdateMode.UnscaledTime;
 			var blend = new BlendWeight(w, 0f, fadeOutDuration, realTime);
 			FadeOut(blend);
 		}

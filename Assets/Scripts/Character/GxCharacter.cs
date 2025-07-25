@@ -109,7 +109,7 @@ namespace Gaia
 		}
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
-		public void CrossFade(GxMotionKey key, float fadeIn, bool realTime = false)
+		public async void CrossFade(GxMotionKey key, float fadeIn, bool realTime = false)
 		{
 			var src = key.Type == eAssetType.VRMA ?
 				eSrcType.GameObject :
@@ -118,10 +118,13 @@ namespace Gaia
 #else
 				eSrcType.Resources;
 #endif
-			CrossFade(key.Path, fadeIn, src, realTime);
+			// CrossFade(key.Path, fadeIn, src, realTime);
+			var handler = await GxMotionPool.Instance.GetHandler(key, transform, fadeIn);
+			var task = new GxMotionTask(this, handler, fadeIn);
+			m_Tasks.Add(task);
 		}
 
-
+		[System.Obsolete("Use GxMotionPool", true)]
 		public void CrossFade(string timelineAssetPath, float fadeIn, eSrcType type, bool realTime = false)
 		{
 			if (string.IsNullOrEmpty(timelineAssetPath))
@@ -142,7 +145,7 @@ namespace Gaia
 		}
 
 		private Dictionary<string, GameObject /* prefab */> m_VrmaDict = new Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
-
+		[System.Obsolete("Use GxMotionPool", true)]
 		private void CrossFade_VRMA(string vrmFilePath, float fadeIn, bool realTime = false)
 		{
   			if (string.IsNullOrEmpty(vrmFilePath))
@@ -203,6 +206,7 @@ namespace Gaia
 					using (GltfData data = new AutoGltfFileParser(path).Parse())
 					using (var loader = new VrmAnimationImporter(new VrmAnimationData(data)))
 					{
+						// new RuntimeOnlyAwaitCaller()
 						var instance = await loader.LoadAsync(new ImmediateCaller());
 						loaded?.Invoke(instance);
 					}
@@ -232,7 +236,7 @@ namespace Gaia
 				//m_Tasks.Add(aniTask);
 			}
 		}
-
+		[System.Obsolete("Use GxMotionPool", true)]
 		private void _CrossFade_Timeline(GameObject timelineAssetGo, string timelineAssetPath, float fadeIn, bool realTime)
 		{
             if (timelineAssetGo == null)

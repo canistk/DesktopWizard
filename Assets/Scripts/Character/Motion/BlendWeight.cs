@@ -10,10 +10,10 @@ namespace Gaia
 	public class BlendWeight : MyTaskBase
 	{
 		private readonly float start, end;
-		private readonly bool realTime;
+		public bool realTime;
 		public float weight { get; private set; } = 0f;
 		public float duration { get; private set; } = 0f;
-		public BlendWeight(float startWeight01, float targetWeight01, float duration, bool realTime)
+		public BlendWeight(float startWeight01, float targetWeight01, float duration, bool realTime = false)
 		{
 			this.start = Mathf.Clamp01(startWeight01);
 			this.end = Mathf.Clamp01(targetWeight01);
@@ -22,7 +22,19 @@ namespace Gaia
 			this.weight = start; // Initialize weight to start value
 		}
 
-		protected KeyValuePair<bool, float> m_StartTime;
+		protected KeyValuePair<bool, float> m_StartTime = default;
+
+		public bool TrySetRealtime(bool realTime)
+		{
+			if (this.realTime == realTime)
+				return false; // No change
+			if (m_StartTime.Key)
+				return false; // Cannot change to real-time if already started
+
+			this.realTime = realTime;
+			m_StartTime = default; // Reset start time
+			return true; // Changed to real-time or game-time
+		}
 
 		private float GetTime()
 		{

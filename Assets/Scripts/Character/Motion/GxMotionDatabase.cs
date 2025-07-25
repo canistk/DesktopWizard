@@ -364,5 +364,15 @@ namespace Gaia
                 return rst;
 			}
         }
+
+        public static bool TryGetPose(string key, out GxPoseData pose)
+        {
+            pose = null;
+            if (GxTimelineCollection.Instance is GxTimelineCollection inst)
+            {
+                return inst.TryGetPose(key, out pose);
+            }
+            return false;
+		}
 	}
 }

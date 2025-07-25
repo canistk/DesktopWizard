@@ -34,17 +34,12 @@ namespace UniGLTF
 
         public Task Run(Action action)
         {
-            var oper = Task.Run(action);
-            oper.ConfigureAwait(true).GetAwaiter().OnCompleted(() => { });
-            return oper;
+            return Task.Run(action);
 		}
 
         public Task<T> Run<T>(Func<T> action)
         {
-            var oper = Task.Run(action);
-            oper.ConfigureAwait(true).GetAwaiter().OnCompleted(() => { });
-            return oper;
-
+            return Task.Run(action);
 		}
 
         public Task NextFrameIfTimedOut() => CheckTimeout() ? NextFrame() : Task.CompletedTask;

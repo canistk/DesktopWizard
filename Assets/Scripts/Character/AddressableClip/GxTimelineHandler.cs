@@ -36,7 +36,7 @@ namespace Gaia
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			if (task.state < GxMotionTask.eState.BlendingOut)
-				task?.FadeOut(fadeOutDuration: 0f, realTime: true);
+				task?.FadeOut(fadeOutDuration: 0f);
 		}
 
 		public override void SelfDespawn()
