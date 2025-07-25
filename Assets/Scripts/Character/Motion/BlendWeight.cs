@@ -1,0 +1,78 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using Kit2.Tasks;
+namespace Gaia
+{
+	/// <summary>
+	/// Handling the blending of weights over a specified duration.
+	/// </summary>
+	public class BlendWeight : MyTaskBase
+	{
+		private readonly float start, end;
+		private readonly bool realTime;
+		public float weight { get; private set; } = 0f;
+		public float duration { get; private set; } = 0f;
+		public BlendWeight(float startWeight01, float targetWeight01, float duration, bool realTime)
+		{
+			this.start = Mathf.Clamp01(startWeight01);
+			this.end = Mathf.Clamp01(targetWeight01);
+			this.duration = Mathf.Max(0f, duration);
+			this.realTime = realTime;
+			this.weight = start; // Initialize weight to start value
+		}
+
+		protected KeyValuePair<bool, float> m_StartTime;
+
+		private float GetTime()
+		{
+			return realTime ? Time.realtimeSinceStartup : Time.time;
+		}
+
+		public bool IsComplete()
+		{
+			if (duration <= float.Epsilon)
+				return true;
+			if (!m_StartTime.Key)
+				return false; // Not started yet
+			var time = GetTime();
+			return time - m_StartTime.Value >= duration;
+		}
+
+		public override bool Execute()
+		{
+			if (duration <= float.Epsilon)
+			{
+				weight = end; // Instant transition
+				return false; // Task is complete
+			}
+
+			var time = GetTime();
+
+			if (!m_StartTime.Key)
+			{
+				m_StartTime = new KeyValuePair<bool, float>(true, time);
+				weight = start;
+			}
+
+			float elapsed = time - m_StartTime.Value;
+			if (elapsed >= duration)
+			{
+				weight = end;
+				return false; // Task is complete
+			}
+
+			// Interpolate the weight based on elapsed time
+			float pt = elapsed / duration;
+			weight = Mathf.Lerp(start, end, pt);
+			return true;
+		}
+
+		public override void Reset()
+		{
+			base.Reset();
+			m_StartTime = default;
+			weight = start;
+		}
+	}
+}

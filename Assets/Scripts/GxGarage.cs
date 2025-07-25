@@ -101,5 +101,18 @@ namespace Gaia
 				Debug.Log($"Database loaded [{db.Count}] ready.");
 			}
 		}
+
+		[ContextMenu("Test Save")]
+		private void TestSave()
+		{
+			var db = GxMotionDatabase.Instance;
+			if (db == null)
+			{
+				Debug.LogError("Motion database is not loaded.");
+				return;
+			}
+			db.Save();
+			Debug.Log("Motion database saved.");
+		}
 	}
 }
