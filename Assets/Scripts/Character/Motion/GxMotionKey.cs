@@ -31,6 +31,7 @@ namespace Gaia
 		IEquatable<GxMotionKey>,
 		IEquatable<GxMotionData>
 	{
+		public static readonly GxMotionKey Invalid = new GxMotionKey(null, eAssetType.Unknown);
 		public string ShortName => KxPath.GetFileNameWithoutExtension(Path);
 		public string Path;
 		public eAssetType Type;
@@ -58,28 +59,28 @@ namespace Gaia
 		{
 			if (obj is GxMotionKey key)
 			{
-				return Path == key.Path && Type == key.Type;
+				return Type == key.Type && Path == key.Path;
 			}
 			if (obj is GxMotionData data)
 			{
-				return Path == data.Path && Type == data.Type;
+				return Type == data.Type && Path == data.Path;
 			}
 			return false;
 		}
 
 		public bool Equals(GxMotionKey x, GxMotionKey y)
 		{
-			return x.Path == y.Path && x.Type == y.Type;
+			return x.Type == y.Type && x.Path == y.Path;
 		}
 
 		public bool Equals(GxMotionData other)
 		{
-			return Path == other.Path && Type == other.Type;
+			return Type == other.Type && Path == other.Path;
 		}
 
 		public bool Equals(GxMotionKey other)
 		{
-			return Path == other.Path && Type == other.Type;
+			return Type == other.Type && Path == other.Path;
 		}
 	}
 
