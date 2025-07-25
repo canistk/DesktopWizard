@@ -359,7 +359,7 @@ namespace Gaia
                 var rst = m_Clips == null ? 0 : m_Clips.Count;
                 if (GxTimelineCollection.Instance is GxTimelineCollection inst)
 				{
-                    rst += inst.Count();
+                    rst += inst.MotionCount();
                 }
                 return rst;
 			}

@@ -43,7 +43,9 @@ namespace Gaia
 		}
 
 		[SerializeField] private List<TimelineData> m_Timelines = new List<TimelineData>();
-  
+
+		[SerializeField] private List<GxPoseData> m_Poses = new List<GxPoseData>();
+
 		[System.Serializable]
 		public class TimelineData : GxMotionData
 		{
@@ -59,7 +61,7 @@ namespace Gaia
 
 		public IReadOnlyList<TimelineData> Timelines => m_Timelines;
 
-		public int Count()
+		public int MotionCount()
 		{
 			return m_Timelines != null ? m_Timelines.Count : 0;
 		}
@@ -85,11 +87,27 @@ namespace Gaia
 			return clipInfo.Key;
 		}
 
+		public string AddPose(GxPoseData pose)
+		{
+			m_Poses.Add(pose);
+			return pose.key;
+		}
+
+		public int PoseCount()
+		{
+			return m_Poses != null ? m_Poses.Count : 0;
+		}
+
 		public void Clear()
 		{
-			if (m_Timelines == null)
-				return;
-			m_Timelines.Clear();
+			if (m_Timelines != null)
+			{
+				m_Timelines.Clear();
+			}
+			if (m_Poses != null)
+			{
+				m_Poses.Clear();
+			}
 		}
     }
 }

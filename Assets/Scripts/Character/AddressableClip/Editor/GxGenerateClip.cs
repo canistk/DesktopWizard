@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.UIElements;
@@ -160,68 +161,40 @@ namespace Gaia
 			for (int i = 0; i < single.Count; ++i)
 			{
 				var path = single[i];
-				if (string.IsNullOrEmpty(path))
-					continue;
-
-				var fileName = Path.GetFileNameWithoutExtension(path);
-				var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-				if (clip == null)
-				{
-					Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {path}");
-					continue;
-				}
-				var PrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
-				_ = CreateTimeline(modelPath, animator, tPose, clip, PrefabPath); // generate all = single
+				CreateTimeline(modelPath, animator, tPose, path);
 			}
 
+			/// Assume we already have group of timelines defined in the naming convention.
+			/// e.g. "Run_Group", "Run_Loop", "Run_End"
 			foreach (var kvp in groups)
 			{
-				var key = kvp.Key;
+				var groupKey = kvp.Key;
 				var arr = kvp.Value;
 				if (arr == null || arr.Count == 0)
 					continue;
-				var clips = arr.Select(c => AssetDatabase.LoadAssetAtPath<AnimationClip>(c)).ToArray();
-				var clipsNames = string.Join(",\n", clips.Select(c => c.name));
-
-				for (int i = 0; i < clips.Length; ++i)
+				for (int i = 0; i < arr.Count; ++i)
 				{
 					var path = arr[i];
-					if (string.IsNullOrEmpty(path))
-						continue;
-					var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-					if (clip == null)
-					{
-						Debug.LogWarning($"\"{path}\" Animation clip not found at path: {path}");
-						continue;
-					}
-					var PrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
-					var tlKey = CreateTimeline(modelPath, animator, tPose, clip, PrefabPath); // generate all = group clips
-					if (i < clips.Length -1)
-					{
-						// Add to database
-						var next = new GxMotionKey(arr[i + 1], eAssetType.Timeline);
-						if (GxMotionDatabase.TryGetMotion(tlKey, out var asset))
-						{
-							asset.AddNext(next);
-						}
-					}
-					else
-					{
-						Debug.Log($"Generated prefab: {PrefabPath}");
-					}
+					CreateTimeline(modelPath, animator, tPose, path);
 				}
-				var fileName = Path.GetFileNameWithoutExtension(key);
-				var outputPrefabPath = Path.Combine(s_OutputPath, $"{fileName}.prefab");
-				Debug.Log($"Generating timeline for group: {key}, clips:\n{clipsNames}\n\n");
+
+				if (arr.Count == 3)
+				{
+					// we have a complete group, create a Pose data for it.
+					var enter = new GxMotionKey(arr[0], eAssetType.Timeline);
+					var loop = new GxMotionKey(arr[1], eAssetType.Timeline);
+					var exit = new GxMotionKey(arr[2], eAssetType.Timeline);
+					var poseData = new GxPoseData(groupKey, enter, loop, exit);
+					database.AddPose(poseData); // add to database
+				}
+				else
+				{
+					// TODO: may had another cases.
+					Debug.LogWarning($"Group '{groupKey}' has {arr.Count} clips, expected 3 (start, loop, end). Skipping Pose creation.");
+				}
 			}
 
 			AssetDatabase.Refresh();
-		}
-
-		private void TestFunc()
-		{
-			GroupDefine(out var single, out var groups);
-			Debug.Log($"Found groups: {groups.Count}, single = {single.Count}");
 		}
 
 		private void GroupDefine(
@@ -483,13 +456,11 @@ namespace Gaia
 					{
 						if (clip.name.Contains("preview", System.StringComparison.OrdinalIgnoreCase))
 							continue;
-						var fileName = Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
-						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab");
+						var fileName = KxPath.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
+						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab").Replace('\\','/');
 						
-						_ = CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath); // manually
-						
-						// var prefab = PrefabUtility.SaveAsPrefabAsset(rootGO, prefabPath);
-						Debug.Log($"Generated prefab: {outputPrefabPath}");
+						var key = CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath); // manually
+						Debug.Log($"Generated prefab: {key}");
 					}
 				}
 				SetHint("Prefab(s) generated successfully.");
@@ -502,6 +473,31 @@ namespace Gaia
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
+		private GxMotionKey CreateTimeline(string modelPath, Animator animator, RuntimeAnimatorController tPose, string clipPath)
+		{
+			if (string.IsNullOrEmpty(clipPath))
+				return default;
+
+			var fileName = Path.GetFileNameWithoutExtension(clipPath);
+			var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+			if (clip == null)
+			{
+				Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {clipPath}");
+				return default;
+			}
+			var PrefabPath = KxPath.Combine(s_OutputPath, $"{clip.name}.prefab");
+			return CreateTimeline(modelPath, animator, tPose, clip, PrefabPath); // generate all = single
+		}
+
+		/// <summary>
+		/// Create Timeline prefab in editor
+		/// </summary>
+		/// <param name="modelPath">ref base model</param>
+		/// <param name="animator"></param>
+		/// <param name="tPose">for cache T-Pose reference purpose.</param>
+		/// <param name="clip">animation to make timeline.</param>
+		/// <param name="outputPrefabPath">export timeline prefab path</param>
+		/// <returns></returns>
 		private GxMotionKey CreateTimeline(
 			string modelPath,
 			Animator animator,
@@ -549,7 +545,7 @@ namespace Gaia
 
 				// prepare database record
 				var fileName = Path.GetFileName(outputPrefabPath);
-				var address = Path.Combine(s_OutputPath, fileName).Replace('\\', '/');
+				var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
 				var record = database.Add(address, clip.isLooping, clip.length);
 
 				// timeline binging
@@ -597,7 +593,7 @@ namespace Gaia
 				// Ready timeline asset
 				var dirPath = Path.GetDirectoryName(prefabPath);
 				var fileName = Path.GetFileNameWithoutExtension(prefabPath);
-				var timelinePath = Path.Combine(dirPath, $"{fileName}_timeline.asset");
+				var timelinePath = Path.Combine(dirPath, $"{fileName}_timeline.asset").Replace('\\','/');
 
 				var timeline = AssetDatabase.LoadAssetAtPath<TimelineAsset>(timelinePath);
 				if (timeline == null)
@@ -631,9 +627,9 @@ namespace Gaia
 			// if we use ".glb" extension, it will be treated as a GLB file.
 			const string EXTENSION = ".vrma";
 
-			var path = Path.Combine(s_OutputPath, $"{clip.name}{EXTENSION}");
+			var path = KxPath.Combine(s_OutputPath, $"{clip.name}{EXTENSION}");
 			EditorExtend.ResolvePath(path, out var absolutePath, out _);
-			EditorExtend.EnsureFolderExist(path);
+			EditorExtend.EnsureFolderExist(absolutePath);
 			/// <see cref="AnimationClipToVrmaAssetCommand.ConvertAnimationClipToVrmAnimation"/>
 			var bytes = AnimationClipToVrmaCore.Create(animator, clip);
 			File.WriteAllBytes(absolutePath, bytes);

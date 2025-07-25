@@ -1,93 +1,12 @@
-using Kit2;
-using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 namespace Gaia
 {
-	public enum eEmotion : int
-	{
-		Unknown = 0,
-		Neutral,
-		Happy,
-		Sadness,
-		Anger,
-		Frightened,
-		Speechless,
-		Sleep,
-	}
-
-	public enum eAssetType : int
-	{
-		Unknown = 0,
-		VRMA, // VRM Animation
-		Timeline, // Timeline Animation
-	}
-
-	[System.Serializable]
-	public struct GxMotionKey : 
-		IEqualityComparer<GxMotionKey>,
-		IEquatable<GxMotionKey>,
-		IEquatable<GxMotionData>
-	{
-		public string ShortName => KxPath.GetFileNameWithoutExtension(Path);
-		public string Path;
-		public eAssetType Type;
-		public bool Valid;
-		public GxMotionKey(string path, eAssetType type)
-		{
-			Path = path;
-			Type = type;
-			Valid = true;
-		}
-		public override string ToString()
-		{
-			return $"{Type}:{Path}";
-		}
-		public override int GetHashCode()
-		{
-			return HashCode.Combine(Path, Type);
-		}
-		public int GetHashCode(GxMotionKey obj)
-		{
-			return HashCode.Combine(obj.Path, obj.Type);
-		}
-
-		public override bool Equals(object obj)
-		{
-			if (obj is GxMotionKey key)
-			{
-				return Path == key.Path && Type == key.Type;
-			}
-			if (obj is GxMotionData data)
-			{
-				return Path == data.Path && Type == data.Type;
-			}
-			return false;
-		}
-
-		public bool Equals(GxMotionKey x, GxMotionKey y)
-		{
-			return x.Path == y.Path && x.Type == y.Type;
-		}
-
-		public bool Equals(GxMotionData other)
-		{
-			return Path == other.Path && Type == other.Type;
-		}
-
-		public bool Equals(GxMotionKey other)
-		{
-			return Path == other.Path && Type == other.Type;
-		}
-	}
-
 	[System.Serializable]
 	public class GxMotionData : IEqualityComparer<GxMotionData>
     {
 		public GxMotionKey Key;
-
-		public List<GxMotionKey> Next;
 
 		/// VRMA case.
 		/// VRMA can only locate in the VRM folder, which is defined in <see cref="GxConst.Path.VRM"/>.
@@ -130,7 +49,6 @@ namespace Gaia
 				Key = new GxMotionKey(path, type),
 				ClipLength = clipLength,	
 				IsLoop = isLoop,
-				Next = new List<GxMotionKey>(),
 			};
 		}
 
@@ -154,13 +72,6 @@ namespace Gaia
 			{
 				throw new Exception($"Cannot add invalid motion: {next} to {this}");
 			}
-			if (this.Next == null)
-			{
-				this.Next = new List<GxMotionKey>();
-			}
-
-			if (!Next.Contains(next))
-				Next.Add(next);
 		}
 
 		public bool Equals(GxMotionData x, GxMotionData y)
