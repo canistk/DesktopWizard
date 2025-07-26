@@ -138,7 +138,7 @@ namespace Gaia
 			}
 		}
 
-		private const float TIMEOUT = 1f;
+		private const float TIMEOUT = 10f;
 		private float m_LastWaitTime = 0f;
 		protected override bool InternalExecute()
 		{
@@ -164,6 +164,8 @@ namespace Gaia
 						}
 					}
 					var waitTooLong = Time.realtimeSinceStartup - m_LastWaitTime > TIMEOUT;
+					if (waitTooLong)
+						Debug.LogWarning($"Pose task '{poseData.key}' is waiting too long in state '{m_State}'. Skipped.");
 					if (!other || waitTooLong)
 					{
 						m_State = eState.Wait4Enter;

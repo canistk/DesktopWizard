@@ -77,7 +77,13 @@ namespace Gaia
 			// Interpolate the weight based on elapsed time
 			float pt = elapsed / duration;
 			weight = Mathf.Lerp(start, end, pt);
+			//Debug.Log($"BlendWeight: {weight:F2}, PT={pt:F2}");
 			return true;
+		}
+
+		public override string ToString()
+		{
+			return $"Blend duration={duration:F2}";
 		}
 
 		public override void Reset()

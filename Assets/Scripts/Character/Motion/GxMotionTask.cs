@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Windows.Forms;
 using UnityEngine;
 namespace Gaia
 {
@@ -13,11 +12,10 @@ namespace Gaia
 		private BlendWeight m_BlendIn, m_BlendOut;
         private GxMotionHandler m_Handler;
 		private float m_StartTime = 0f;
-		public enum eState
+		public enum eMState
 		{
 			None = 0,
 			Initializing, // Boardcast signal to other MotionTasks to prepare
-			Regist,
 			BlendingIn, // Blending in the motion
 			Playing, // Playing the motion, or looping it
 			BlendingOut, // Blending out the motion
@@ -25,7 +23,7 @@ namespace Gaia
 			Error = 10,
 			Disposed = 11,
 		}
-		public eState state { get; private set; } = eState.None;
+		protected eMState m_State { get; private set; } = eMState.None;
 
 		public GxMotionKey Key => m_Handler?.key ?? GxMotionKey.Invalid;
 
@@ -37,17 +35,17 @@ namespace Gaia
 
 		private GxMotionTask(GxCharacter character, GxMotionHandler handler, BlendWeight fadeIn) : base(character)
         {
-			state = eState.Initializing;
+			m_State = eMState.Initializing;
 			if (character == null)
             {
                 Debug.LogError("GxMotionTask requires a valid GxCharacter reference.");
-				state = eState.Error;
+				m_State = eMState.Error;
 				return;
             }
             if (handler == null)
             {
                 Debug.LogError("GxMotionTask requires a valid GxMotionHandler reference.");
-				state = eState.Error;
+				m_State = eMState.Error;
 				return;
             }
 			handler.SetTask(this);
@@ -62,80 +60,78 @@ namespace Gaia
 				return false; // end task
 			try
 			{
-				switch (state)
+				switch (m_State)
 				{
-					case eState.None: throw new System.Exception("Logic error: GxMotionTask should not be in None state after constructor.");
-					case eState.Initializing: Initialize(); break;
-					case eState.Regist:
-					{
-						// hook into character's retargeting system
-						Character.AddAnimationRetarget(this);
-						state = m_BlendIn == null ? eState.Playing : eState.BlendingIn;
-					}
-					break;
-					case eState.BlendingIn:
+					case eMState.None: throw new System.Exception("Logic error: GxMotionTask should not be in None mState after constructor.");
+					case eMState.Initializing: Initialize(); break;
+					case eMState.BlendingIn:
 					{
 						var running = m_BlendIn.Execute();
 						if (!running)
-							++state; // Transition to Playing state after blending in
+							m_State = eMState.Playing; // Transition to Playing mState after blending in
 					}
 					break;
-					case eState.Playing: break;
-					case eState.BlendingOut:
+					case eMState.Playing: break;
+					case eMState.BlendingOut:
 					{
 						var running = m_BlendOut.Execute();
 						if (!running)
-							++state; // Transition to Completed state after blending out
+						{
+							m_State = eMState.Completed; // Transition to Completed mState after blending out
+							Debug.Log("Blend out completed");
+						}
 					}
 					break;
-					case eState.Completed: return false; // Task is complete, no update.
-					default: throw new System.NotImplementedException($"State {state} not implemented in GxMotionTask.");
+					case eMState.Completed: return false; // Task is complete, no update.
+					default: throw new System.NotImplementedException($"mState {m_State} not implemented in GxMotionTask.");
 				}
 
-				if (state < eState.Completed)
+				if (m_State < eMState.Completed)
 				{
 					m_Handler.Update();
 				}
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"MotionTask Error {state}: {ex.Message}");
-				state = eState.Error;
+				Debug.LogError($"MotionTask Error {m_State}: {ex.Message}");
+				m_State = eMState.Error;
 				return false; // Stop execution on error
 			}
 
-			return state < eState.Completed;
+			return m_State < eMState.Completed;
 		}
 
 		private void Initialize()
 		{
-			if (state != eState.Initializing)
-				throw new System.Exception($"Logic error: GxMotionTask should never in {state} state when initializing.");
-			
-			// Notify character about the upcoming animation
-			Character.BoardcastWillPlayAnimation(this);
-			
-			// play the animation
-			m_Handler.OnInitialize();
+			if (m_State != eMState.Initializing)
+				throw new System.Exception($"Logic error: GxMotionTask should never in {m_State} mState when initializing.");
+			Debug.Log($"Initialize GxMotionTask: {Key.ShortName} in mState {m_State}, Character={Character}");
+			// Step 0: ready to next state.
+			m_State = m_BlendIn == null ? eMState.Playing : eMState.BlendingIn;
+
+			// Step 1: Set start time
 			m_StartTime = Time.timeSinceLevelLoad;
 
-			// hook into character's retargeting system
-			// Character.AddAnimationRetarget(this);
+			// Step 2: Notify character about the upcoming animation
+			Character.BoardcastWillPlayAnimation(this);
 
-			// Transition to blending in or playing directly
-			++state;
+			// Step 3: play the animation
+			m_Handler.OnInitialize();
+
+			// Step 4: hook into character's retargeting system
+			Character.AddAnimationRetarget(this);
 		}
 
 		protected override void OnDisposing()
 		{
-			Debug.Log($"Disposing GxMotionTask: {Key} in state {state}, Handler={Handler}, Character={Character}");
+			// Debug.Log($"Disposing GxMotionTask: {Key.ShortName} in mState {m_State}, Character={Character}");
 			Character.RemoveAnimationRetarget(this);
 			m_Handler.SelfDespawn();
 			base.OnDisposing();
 			m_Handler = null; // Clear the handler reference
 			m_BlendIn = null;
 			m_BlendOut = null;
-			state = eState.Disposed;
+			m_State = eMState.Disposed;
 		}
 
 		public override void OnWillPlayAnimation(IRetarget other)
@@ -152,7 +148,7 @@ namespace Gaia
 			catch (System.Exception ex)
 			{
 				Debug.LogError($"Error in OnWillPlayAnimation: {ex.Message}");
-				state = eState.Error; // Set to error state on exception
+				m_State = eMState.Error; // Set to error mState on exception
 			}
 		}
 
@@ -170,15 +166,16 @@ namespace Gaia
 		{
 			if (isDisposed || isCompleted)
 				return;
-			if (state >= eState.BlendingOut)
+			if (m_State >= eMState.BlendingOut)
 				return; // Already blending out, do nothing
 			if (m_BlendOut != null)
 			{
 				Debug.LogWarning("GxMotionTask already has a blend out task, ignoring new request.");
 				return; // Already has a blend out task, do nothing
 			}
+			//Debug.Log($"GxMotionTask FadeOut: {Key.ShortName} with blend: {blend}, w={GetWeight01()}");
 			this.m_BlendOut = blend;
-			state = eState.BlendingOut;
+			m_State = eMState.BlendingOut;
 		}
 
 		public bool IsPlayedOnce()
