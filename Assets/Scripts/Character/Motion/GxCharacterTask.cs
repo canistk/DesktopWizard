@@ -4,10 +4,16 @@ namespace Gaia
 {
 	public abstract class GxCharacterTask : MyTask
 	{
-		public readonly GxCharacter Character;
+		public GxCharacter Character { get; private set; }
 		public GxCharacterTask(GxCharacter character)
 		{
-			Character = character;
+			this.Character = character;
+		}
+
+		protected override void OnDisposing()
+		{
+			base.OnDisposing();
+			this.Character = null;
 		}
 	}
 }

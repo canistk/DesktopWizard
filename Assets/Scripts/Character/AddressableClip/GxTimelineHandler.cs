@@ -10,6 +10,7 @@ namespace Gaia
 		public GxTimelineAsset timeline;
 		public float fadeIn;
 		private bool m_AutoFadeOut = true;
+		private float fadeOut = 0.25f;
 		public GxTimelineHandler(GxMotionKey key, GxTimelineAsset timeline, float fadeIn) : base(key)
 		{
 			this.timeline = timeline;
@@ -34,14 +35,22 @@ namespace Gaia
 		}
 
 		public override void Update() { }
-		public override void SetAutoFadeOut(bool autoFadeOut)
+		public override void SetAutoFadeOut(bool autoFadeOut, float duration = 0.25f)
 		{
 			this.m_AutoFadeOut = autoFadeOut;
 		}
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
-			if (task.state < GxMotionTask.eState.BlendingOut)
-				task?.FadeOut(fadeOutDuration: 0f);
+			if (!m_AutoFadeOut)
+				return;
+			if (other is not GxMotionTask target)
+				return; // ignore group or other types of retargets
+				
+			if (task.state < GxMotionTask.eState.BlendingIn)
+				task.Abort(); // Abort current task if not yet blending in
+			if (task.state >= GxMotionTask.eState.BlendingOut)
+				return; // Already blending out, do nothing
+			task?.FadeOut(Mathf.Max(0f, fadeOut));
 		}
 
 		public override void SelfDespawn()

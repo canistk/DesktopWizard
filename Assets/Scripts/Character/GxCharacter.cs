@@ -95,7 +95,7 @@ namespace Gaia
 			var task = new GxMotionTask(this, handler, fadeIn);
 			if (taskCreated != null)
 				taskCreated.TryCatchDispatchEventError(o => o?.Invoke(task));
-			m_Tasks.Insert(0, task);
+			m_Tasks.Add(task);
 		}
 
 		public void ChangePose(string poseKey, float fadeIn, System.Action<GxPoseTask> taskCreated = null)
@@ -103,7 +103,7 @@ namespace Gaia
 			var task = new GxPoseTask(poseKey, this);
 			if (taskCreated != null)
 				taskCreated.TryCatchDispatchEventError(o => o?.Invoke(task));
-			m_Tasks.Insert(0, task);
+			m_Tasks.Add(task);
 		}
 
 		public event System.Action<IRetarget> EVENT_WillPlayMotion;
@@ -112,17 +112,16 @@ namespace Gaia
 		/// <param name="ani"></param>
 		internal void BoardcastWillPlayAnimation(IRetarget ani)
         {
-			int i = m_Tasks.Count;
-			while (i-- > 0)
+			//int i = m_Tasks.Count;
+			//while (i-- > 0)
+			for (int i =0; i < m_Tasks.Count; ++i)
 			{
 				if (m_Tasks[i] == ani)
 					continue;
 				if (m_Tasks[i] is not IRetarget aniTask)
 					continue;
-				if (aniTask is MyTask t && t.isCompleted)
-				{
-					m_Tasks.RemoveAt(i);
-				}
+				if (aniTask == ani)
+					continue;
 				aniTask.OnWillPlayAnimation(ani);
 			}
 			EVENT_WillPlayMotion?.TryCatchDispatchEventError(o => o?.Invoke(ani));

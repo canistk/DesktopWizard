@@ -9,6 +9,7 @@ namespace Gaia
 		public GxVRMAToken vrma;
 		public float fadeIn;
 		private bool m_AutoFadeOut = true;
+		private float fadeOut = 0.25f;
 		public GxVRMAHandler(GxMotionKey key, GxVRMAToken vrma, float fadeIn) : base(key)
 		{
 			this.vrma = vrma;
@@ -26,16 +27,23 @@ namespace Gaia
 
 		public override void Update() { }
 
-		public override void SetAutoFadeOut(bool autoFadeOut)
+		public override void SetAutoFadeOut(bool autoFadeOut, float duration = 0.25f)
 		{
 			this.m_AutoFadeOut = autoFadeOut;
+			this.fadeOut = duration;
 		}
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			if (!m_AutoFadeOut)
 				return;
-			if (task.state < GxMotionTask.eState.BlendingOut)
-				task?.FadeOut(fadeOutDuration: 0f);
+			if (other is not GxMotionTask target)
+				return; // ignore group or other types of retargets
+
+			if (task.state < GxMotionTask.eState.BlendingIn)
+				task.Abort(); // Abort current task if not yet blending in
+			if (task.state >= GxMotionTask.eState.BlendingOut)
+				return; // Already blending out, do nothing
+			task?.FadeOut(Mathf.Max(0f, fadeOut));
 		}
 
 		public override void SelfDespawn()

@@ -35,6 +35,14 @@ namespace Gaia
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			// Pose should only care other pose.
+			if (other == this)
+				return;
+			if (m_State >= eState.Exiting)
+			{
+				// If we are exiting, we should not care about other poses.
+				return;
+			}
+
 			if (other is GxMotionTask task)
 			{
 				switch (m_State)
@@ -47,6 +55,7 @@ namespace Gaia
 					}
 					break;
 					case eState.Wait4Loop:
+					if (enterTask != null && !enterTask.isCompleted) enterTask.Abort();
 					if (task.Key.Equals(loopKey))
 					{
 						loopTask = task;
@@ -54,6 +63,8 @@ namespace Gaia
 					}
 					break;
 					case eState.Wait4Exit:
+					if (enterTask != null && !enterTask.isCompleted) enterTask.Abort();
+					if (loopTask != null && !loopTask.isCompleted) loopTask.Abort();
 					if (task.Key.Equals(exitKey))
 					{
 						exitTask = task;
@@ -72,9 +83,9 @@ namespace Gaia
 				// another pose is about to play, exit current pose
 				// force exit if we are not in the exiting state
 				m_State = eState.Wait4Exit;
-				if (enterTask != null && !enterTask.isCompleted)
+				if (enterTask != null)
 					enterTask.Abort();
-				if (loopTask != null && !loopTask.isCompleted)
+				if (loopTask != null)
 					loopTask.Abort();
 				if (exitTask == null)
 				{
@@ -103,7 +114,6 @@ namespace Gaia
 			Looping,
 			Wait4Exit,
 			Exiting,
-			FadeOut,
 			Completed,
 		}
 		private eState m_State = eState.None;
@@ -172,6 +182,7 @@ namespace Gaia
 				}
 				return true;
 				case eState.Looping:
+				if (enterTask != null && !enterTask.isCompleted) enterTask.Abort();
 				if (loopTask != null && loopTask.isCompleted)
 				{
 					m_State = eState.Wait4Exit;
@@ -180,6 +191,8 @@ namespace Gaia
 				}
 				return true;
 				case eState.Exiting:
+				if (enterTask != null && !enterTask.isCompleted) enterTask.Abort();
+				if (loopTask != null && !loopTask.isCompleted) loopTask.Abort();
 				if (exitTask != null && exitTask.IsPlayedOnce())
 				{
 					m_State = eState.Completed;
@@ -205,6 +218,17 @@ namespace Gaia
 					return false; // Task completed
 			}
 		}
-
+		protected override void OnDisposing()
+		{
+			base.OnDisposing();
+			if (enterTask != null && !enterTask.isCompleted) enterTask.Abort();
+			if (loopTask != null && !loopTask.isCompleted) loopTask.Abort();
+			if (exitTask != null && !exitTask.isCompleted) exitTask.Abort();
+			enterTask = null;
+			loopTask = null;
+			exitTask = null;
+			poseData = null;
+			enterKey = GxMotionKey.Invalid;
+		}
 	}
 }

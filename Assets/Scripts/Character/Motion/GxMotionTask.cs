@@ -23,6 +23,7 @@ namespace Gaia
 			BlendingOut, // Blending out the motion
 			Completed, // Exiting the motion
 			Error = 10,
+			Disposed = 11,
 		}
 		public eState state { get; private set; } = eState.None;
 
@@ -127,18 +128,22 @@ namespace Gaia
 
 		protected override void OnDisposing()
 		{
-			Character?.RemoveAnimationRetarget(this);
-			m_Handler?.SelfDespawn();
+			Debug.Log($"Disposing GxMotionTask: {Key} in state {state}, Handler={Handler}, Character={Character}");
+			Character.RemoveAnimationRetarget(this);
+			m_Handler.SelfDespawn();
 			base.OnDisposing();
 			m_Handler = null; // Clear the handler reference
 			m_BlendIn = null;
 			m_BlendOut = null;
+			state = eState.Disposed;
 		}
 
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			// TODO: Handle when another animation is about to play
 			if (isDisposed || isCompleted)
+				return;
+			if (other == this)
 				return;
 			try
 			{
@@ -176,21 +181,12 @@ namespace Gaia
 			state = eState.BlendingOut;
 		}
 
-		public void Stop()
-		{
-			if (isDisposed || isCompleted)
-				return; // Already disposed or completed, do nothing	
-			if (state >= eState.Completed)
-				return; // Error state, do nothing
-			state = eState.Completed;
-		}
-
 		public bool IsPlayedOnce()
 		{
   			if (isDisposed || isCompleted)
 				return true; // Task is not active
-			if (state > eState.Playing)
-				return true;
+			if (Key.Equals(GxMotionKey.Invalid))
+				return false;
 
 			var duration = m_Handler?.motionData?.ClipLength ?? 0f;
 			var playedTime = Time.timeSinceLevelLoad - m_StartTime;
