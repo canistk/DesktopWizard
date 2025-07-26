@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Windows.Forms;
 using UnityEngine;
 namespace Gaia
 {
@@ -11,15 +12,16 @@ namespace Gaia
 
 		private BlendWeight m_BlendIn, m_BlendOut;
         private GxMotionHandler m_Handler;
-
+		private float m_StartTime = 0f;
 		public enum eState
 		{
 			None = 0,
-			Initializing = 1, // Boardcast signal to other MotionTasks to prepare
-			BlendingIn = 2, // Blending in the motion
-			Playing = 3, // Playing the motion, or looping it
-			BlendingOut = 4, // Blending out the motion
-			Completed = 5, // Exiting the motion
+			Initializing, // Boardcast signal to other MotionTasks to prepare
+			Regist,
+			BlendingIn, // Blending in the motion
+			Playing, // Playing the motion, or looping it
+			BlendingOut, // Blending out the motion
+			Completed, // Exiting the motion
 			Error = 10,
 		}
 		public eState state { get; private set; } = eState.None;
@@ -63,6 +65,13 @@ namespace Gaia
 				{
 					case eState.None: throw new System.Exception("Logic error: GxMotionTask should not be in None state after constructor.");
 					case eState.Initializing: Initialize(); break;
+					case eState.Regist:
+					{
+						// hook into character's retargeting system
+						Character.AddAnimationRetarget(this);
+						state = m_BlendIn == null ? eState.Playing : eState.BlendingIn;
+					}
+					break;
 					case eState.BlendingIn:
 					{
 						var running = m_BlendIn.Execute();
@@ -101,11 +110,19 @@ namespace Gaia
 		{
 			if (state != eState.Initializing)
 				throw new System.Exception($"Logic error: GxMotionTask should never in {state} state when initializing.");
-			Character.AddAnimationRetarget(this);
+			
+			// Notify character about the upcoming animation
 			Character.BoardcastWillPlayAnimation(this);
+			
+			// play the animation
 			m_Handler.OnInitialize();
+			m_StartTime = Time.timeSinceLevelLoad;
+
+			// hook into character's retargeting system
+			// Character.AddAnimationRetarget(this);
+
 			// Transition to blending in or playing directly
-			state = m_BlendIn == null ? eState.Playing : eState.BlendingIn;
+			++state;
 		}
 
 		protected override void OnDisposing()
@@ -121,6 +138,8 @@ namespace Gaia
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			// TODO: Handle when another animation is about to play
+			if (isDisposed || isCompleted)
+				return;
 			try
 			{
 				m_Handler.OnWillPlayAnimation(other);
@@ -164,6 +183,18 @@ namespace Gaia
 			if (state >= eState.Completed)
 				return; // Error state, do nothing
 			state = eState.Completed;
+		}
+
+		public bool IsPlayedOnce()
+		{
+  			if (isDisposed || isCompleted)
+				return true; // Task is not active
+			if (state > eState.Playing)
+				return true;
+
+			var duration = m_Handler?.motionData?.ClipLength ?? 0f;
+			var playedTime = Time.timeSinceLevelLoad - m_StartTime;
+			return playedTime >= duration;
 		}
 	}
 }

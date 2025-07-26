@@ -32,9 +32,21 @@ namespace Gaia
 				return m_ClipNames.Value;
 			}
 		}
+		private string[] m_PoseKeys;
+		private string[] poseKeys
+		{
+			get
+			{
+				if (m_PoseKeys == null)
+				{
+					m_PoseKeys = GxMotionDatabase.GetPoses().Select(o => o.key).ToArray();
+				}
+				return m_PoseKeys;
+			}
+		}
 
 		private SerializedProperty m_FirstIndexProp;
-		private SerializedProperty m_SecondIndexProp;
+		private SerializedProperty m_SecondIndexProp, m_PoseIndexProp;
 		private SerializedProperty m_FadeInProp;
 
 		protected override void OnEnable()
@@ -42,20 +54,18 @@ namespace Gaia
 			base.OnEnable();
 			m_FirstIndexProp = serializedObject.FindProperty(nameof(self.m_FirstIndex));
 			m_SecondIndexProp = serializedObject.FindProperty(nameof(self.m_SecondIndex));
+			m_PoseIndexProp = serializedObject.FindProperty(nameof(self.m_PoseIndex));
 			m_FadeInProp = serializedObject.FindProperty(nameof(self.m_FadeIn));
 		}
 
 		private int idx1 { get => m_FirstIndexProp.intValue; set => m_FirstIndexProp.intValue = value; }
 		private int idx2 { get => m_SecondIndexProp.intValue; set => m_SecondIndexProp.intValue = value; }
+		private int poseIdx { get => m_PoseIndexProp.intValue; set => m_PoseIndexProp.intValue = value; }
 		private float fadeIn { get => m_FadeInProp.floatValue; set => m_FadeInProp.floatValue = value; }
 
 		protected override void OnAfterDrawGUI()
 		{
 			// base.OnAfterDrawGUI();
-			if (self.data == null)
-			{
-				EditorGUILayout.HelpBox("Please assign GxTimelineCollection in Resources", MessageType.Warning);
-			}
 			if (self.character == null)
 			{
 				EditorGUILayout.HelpBox("Please assign GxCharacter in this GameObject", MessageType.Warning);
@@ -98,6 +108,29 @@ namespace Gaia
 				{
 					EditorGUILayout.HelpBox("No animation selected.", MessageType.Info);
 				}
+			}
+
+			EditorGUILayout.LabelField("Pose(s)", EditorStyles.boldLabel);
+			using (var checker = new EditorGUI.ChangeCheckScope())
+			{
+				var idx = EditorGUILayout.Popup("Pose", poseIdx, poseKeys, EditorStyles.popup);
+				if (checker.changed)
+				{
+					poseIdx = idx;
+				}
+			}
+			if (poseIdx >= 0 && poseIdx < poseKeys.Length)
+			{
+				var poseKey = poseKeys[poseIdx];
+				if (GUILayout.Button($"Change Pose: {poseKey}", GUILayout.ExpandWidth(true), GUILayout.Height(30f)))
+				{
+					Debug.Log($"Trigger pose change: {poseKey}");
+					self.character.ChangePose(poseKey, fadeIn);
+				}
+			}
+			else
+			{
+				EditorGUILayout.HelpBox("No pose selected.", MessageType.Info);
 			}
 		}
 

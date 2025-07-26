@@ -170,27 +170,29 @@ namespace Gaia
 			{
 				var groupKey = kvp.Key;
 				var arr = kvp.Value;
+				var converted = new List<string>(arr.Count);
 				if (arr == null || arr.Count == 0)
 					continue;
 				for (int i = 0; i < arr.Count; ++i)
 				{
 					var path = arr[i];
-					CreateTimeline(modelPath, animator, tPose, path);
+					var key = CreateTimeline(modelPath, animator, tPose, path);
+					converted.Add(key.Path);
 				}
 
-				if (arr.Count == 3)
+				if (converted.Count == 3)
 				{
 					// we have a complete group, create a Pose data for it.
-					var enter = new GxMotionKey(arr[0], eAssetType.Timeline);
-					var loop = new GxMotionKey(arr[1], eAssetType.Timeline);
-					var exit = new GxMotionKey(arr[2], eAssetType.Timeline);
+					var enter = new GxMotionKey(converted[0], eAssetType.Timeline);
+					var loop = new GxMotionKey(converted[1], eAssetType.Timeline);
+					var exit = new GxMotionKey(converted[2], eAssetType.Timeline);
 					var poseData = new GxPoseData(groupKey, enter, loop, exit);
 					database.AddPose(poseData); // add to database
 				}
 				else
 				{
 					// TODO: may had another cases.
-					Debug.LogWarning($"Group '{groupKey}' has {arr.Count} clips, expected 3 (start, loop, end). Skipping Pose creation.");
+					Debug.LogWarning($"Group '{groupKey}' has {converted.Count} clips, expected 3 (start, loop, end). Skipping Pose creation.");
 				}
 			}
 

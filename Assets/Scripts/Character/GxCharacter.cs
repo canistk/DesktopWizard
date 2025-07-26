@@ -2,8 +2,10 @@
 using Kit2;
 using Kit2.ObjectPool;
 using Kit2.Tasks;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UniGLTF;
 using UnityEngine;
 using UniVRM10;
@@ -93,7 +95,15 @@ namespace Gaia
 			var task = new GxMotionTask(this, handler, fadeIn);
 			if (taskCreated != null)
 				taskCreated.TryCatchDispatchEventError(o => o?.Invoke(task));
-			m_Tasks.Add(task);
+			m_Tasks.Insert(0, task);
+		}
+
+		public void ChangePose(string poseKey, float fadeIn, System.Action<GxPoseTask> taskCreated = null)
+		{
+			var task = new GxPoseTask(poseKey, this);
+			if (taskCreated != null)
+				taskCreated.TryCatchDispatchEventError(o => o?.Invoke(task));
+			m_Tasks.Insert(0, task);
 		}
 
 		public event System.Action<IRetarget> EVENT_WillPlayMotion;
@@ -102,11 +112,18 @@ namespace Gaia
 		/// <param name="ani"></param>
 		internal void BoardcastWillPlayAnimation(IRetarget ani)
         {
-            foreach (var at in GetActiveAnimations())
-            {
-                if (at == ani)
-                    continue;
-                at.OnWillPlayAnimation(ani);
+			int i = m_Tasks.Count;
+			while (i-- > 0)
+			{
+				if (m_Tasks[i] == ani)
+					continue;
+				if (m_Tasks[i] is not IRetarget aniTask)
+					continue;
+				if (aniTask is MyTask t && t.isCompleted)
+				{
+					m_Tasks.RemoveAt(i);
+				}
+				aniTask.OnWillPlayAnimation(ani);
 			}
 			EVENT_WillPlayMotion?.TryCatchDispatchEventError(o => o?.Invoke(ani));
         }

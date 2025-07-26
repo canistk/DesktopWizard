@@ -110,21 +110,25 @@ namespace Gaia
 			}
 		}
 
-		private Dictionary<string, GxPoseData> m_PoseDict = null;
 		public bool TryGetPose(string key, out GxPoseData pose)
 		{
-			if (m_PoseDict == null)
+			foreach (var p in m_Poses)
 			{
-				m_PoseDict = new Dictionary<string, GxPoseData>();
-				foreach (var p in m_Poses)
-				{
-					if (!m_PoseDict.ContainsKey(p.key))
-					{
-						m_PoseDict.Add(p.key, p);
-					}
-				}
+				if (!key.Equals(p.key))
+					continue;
+				pose = p;
+				return true;
 			}
-			return m_PoseDict.TryGetValue(key, out pose);
+			pose = default;
+			return false;
+		}
+
+		public IReadOnlyList<GxPoseData> Poses
+		{
+			get
+			{
+				return m_Poses;
+			}
 		}
 
 	}

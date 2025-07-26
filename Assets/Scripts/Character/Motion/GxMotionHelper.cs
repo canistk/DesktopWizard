@@ -24,8 +24,8 @@ namespace Gaia
         [Header("Addressable, Animation Clips")]
         public int m_FirstIndex = 0;
         public int m_SecondIndex = 0;
-
-        public float m_FadeIn = 0.2f;
+		public int m_PoseIndex = 0;
+		public float m_FadeIn = 0.2f;
 		GxMotionKey[] m_Data;
 		public GxMotionKey[] data
 		{
@@ -36,6 +36,19 @@ namespace Gaia
 					m_Data = DB.GetMotions().Select(o => o.Key).ToArray();
 				}
 				return m_Data;
+			}
+		}
+
+		string[] m_PoseKeys;
+		public string[] poseKeys
+		{
+			get
+			{
+				if (m_PoseKeys == null)
+				{
+					m_PoseKeys = DB.GetPoses().Select(o => o.key).ToArray();
+				}
+				return m_PoseKeys;
 			}
 		}
 
