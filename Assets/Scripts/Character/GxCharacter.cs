@@ -166,6 +166,18 @@ namespace Gaia
 			}
 		}
 
+		public void CleanTask()
+		{
+			foreach (var task in m_Tasks)
+			{
+				if (task is MyTask t && !t.isCompleted)
+				{
+					t.Abort(); // Abort the task if it's not completed
+				}
+			}
+			m_Tasks.Clear();
+		}
+
         public void AddAnimationRetarget(IRetarget target)
         {
             if (m_Retargeting == null)
