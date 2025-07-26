@@ -448,7 +448,7 @@ namespace Gaia
 			foreach (var t in targets)
 			{
 			   	var weight = t.GetWeight01();
-				if (weight <= 0f)
+				if (weight <= float.Epsilon)
 					continue;
 				totalWeight += weight;
 			}
@@ -479,12 +479,13 @@ namespace Gaia
 				cachePos.Clear();
 				cacheRots.Clear();
 				cacheWeights.Clear();
-				
+
 				// fetch all target rotations and weights for this bone
+				var valid = false;
 				foreach (var t in targets)
 				{
 					var weight = t.GetWeight01();
-					if (weight <= 0f)
+					if (weight <= float.Epsilon)
 						continue;
 					var target = t.GetTarget();
 					if (target == null || target.animator == null)
@@ -493,6 +494,7 @@ namespace Gaia
 						continue;
 					cacheRots.Add(poseInfo.rotations[(int)b]);
 					cacheWeights.Add(weight);
+					valid = true;
 					if (!m_RemoveHipMotion && b == HumanBodyBones.Hips)
 					{
 						var v4 = (Vector4)poseInfo.hipOffset;
@@ -500,6 +502,8 @@ namespace Gaia
 						cachePos.Add(v4);
 					}
 				}
+				if (!valid)
+					continue; // No valid targets for this bone
 
 				// Calculate the final rotation
 				var finalRotation = QuaternionExtend.WeightedAverage(cacheRots.ToArray(), cacheWeights.ToArray());
