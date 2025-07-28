@@ -12,6 +12,7 @@ namespace Gaia
 		private BlendWeight m_BlendIn, m_BlendOut;
         private GxMotionHandler m_Handler;
 		private float m_StartTime = 0f;
+		private int m_DelayHooked = 0;
 		public enum eState
 		{
 			None = 0,
@@ -60,6 +61,9 @@ namespace Gaia
 				return false; // end task
 			try
 			{
+				if (m_DelayHooked < DELAY_FRAMES)
+					HandleDelayHook();
+
 				switch (state)
 				{
 					case eState.None: throw new System.Exception("Logic error: GxMotionTask should not be in None mState after constructor.");
@@ -119,7 +123,20 @@ namespace Gaia
 			m_Handler.OnInitialize();
 
 			// Step 4: hook into character's retargeting system
+			// Character.AddAnimationRetarget(this);
+		}
+
+		private const int DELAY_FRAMES = 2; // Hook into retargeting after 2 frames
+		private void HandleDelayHook()
+		{
+			if (m_DelayHooked >= DELAY_FRAMES)
+				throw new System.Exception("Logic error: GxMotionTask should not call HandleDelayHook multiple times.");
+			++m_DelayHooked;
+			if (m_DelayHooked < DELAY_FRAMES)
+				return; // skip 2 frames
+			// Hook into the character's retargeting system after a delay
 			Character.AddAnimationRetarget(this);
+			Debug.Log($"GxMotionTask: {Key.ShortName} hooked into character retargeting after delay.");
 		}
 
 		protected override void OnDisposing()
@@ -131,6 +148,8 @@ namespace Gaia
 			m_Handler = null; // Clear the handler reference
 			m_BlendIn = null;
 			m_BlendOut = null;
+			m_StartTime = 0f;
+			m_DelayHooked = 0;
 			state = eState.Disposed;
 		}
 

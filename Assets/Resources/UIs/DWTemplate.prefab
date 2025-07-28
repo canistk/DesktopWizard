@@ -182,6 +182,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8196844934830017006}
   - component: {fileID: 3763510696158232660}
+  - component: {fileID: 3199980291070976173}
   m_Layer: 0
   m_Name: DWTemplate
   m_TagString: Untagged
@@ -227,6 +228,48 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_DwCamera: {fileID: 7464406423109120388}
   m_CharacterPivot: {fileID: 5806316163496154546}
+  m_BehaviorTree: {fileID: 3199980291070976173}
+--- !u!114 &3199980291070976173
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2753022154582915506}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d7b55c7ecdb49a4a89fa5e6f9022861, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  startWhenEnabled: 1
+  asynchronousLoad: 0
+  pauseWhenDisabled: 0
+  restartWhenComplete: 0
+  logTaskChanges: 0
+  group: 0
+  resetValuesOnRestart: 0
+  externalBehavior: {fileID: 0}
+  mBehaviorSource:
+    behaviorName: Behavior
+    behaviorDescription: 
+    mTaskData:
+      types: []
+      parentIndex: 
+      startIndex: 
+      variableStartIndex: 
+      JSONSerialization: '{"EntryTask":{"Type":"BehaviorDesigner.Runtime.Tasks.EntryTask","NodeData":{"Offset":"(346,12)"},"ID":0,"Name":"Entry","Instant":true},"RootTask":{"Type":"Gaia.GetDwMousePosition","NodeData":{"Offset":"(-4,122)"},"ID":1,"Name":"Get
+        DwMouse Position","Instant":true,"SharedDwCameradwCamera":{"Type":"BehaviorDesigner.Runtime.SharedDwCamera","Name":null,"IsShared":true},"SharedVector3osSpace":{"Type":"BehaviorDesigner.Runtime.SharedVector3","Name":null,"Vector3mValue":"(0,0,0)"},"SharedVector3monitorSpace":{"Type":"BehaviorDesigner.Runtime.SharedVector3","Name":null,"Vector3mValue":"(0,0,0)"},"SharedVector3formSpace":{"Type":"BehaviorDesigner.Runtime.SharedVector3","Name":null,"Vector3mValue":"(0,0,0)"},"SharedFloatmodelSpaceRayDistance":{"Type":"BehaviorDesigner.Runtime.SharedFloat","Name":null,"SinglemValue":1},"SharedVector3modelSpace":{"Type":"BehaviorDesigner.Runtime.SharedVector3","Name":null,"Vector3mValue":"(0,0,0)"}}}'
+      fieldSerializationData:
+        typeName: []
+        fieldNameHash: 
+        startIndex: 
+        dataPosition: 
+        unityObjects: []
+        byteData: 
+        byteDataArray: 
+      Version: 1.7.10
+  gizmoViewMode: 2
+  showBehaviorDesignerGizmo: 1
 --- !u!1 &3062411824392545206
 GameObject:
   m_ObjectHideFlags: 0

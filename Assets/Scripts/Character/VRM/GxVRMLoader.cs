@@ -53,58 +53,10 @@ namespace Gaia
 					? new RuntimeOnlyAwaitCaller(TIMEOUT)
 					: new ImmediateCaller();
 
-				// attempt 1
-				// var _gltfData = new GlbLowLevelParser(string.Empty, bytes).Parse();
-
-				/*
-				// attempt 2
-				// remark : parser isn't the issue. AwaitCaller will not response correctly.
-				// will hang on next awaitCaller.
-				using var oper = awaitCaller.Run(() => new GlbLowLevelParser(string.Empty, bytes).Parse());
-				while (!oper.IsCompleted)
-				{
-					await Task.Yield();
-					//await awaitCaller.NextFrameIfTimedOut();
-				}
-				if (oper.IsCanceled)
-				{
-					Debug.LogError($"VRM loading canceled: {path}");
-					return;
-				}
-				if (oper.IsFaulted || oper.Exception != null)
-				{
-					if (fail != null)
-						fail.Invoke(oper.Exception);
-					return;
-				}
-				//*/
-
-				//*
-				// attempt 3
-				var tcs = new TaskCompletionSource<GltfData>();
-				await Task.Run(() =>
-				{
-					var rst = new GlbLowLevelParser(string.Empty, bytes).Parse();
-					tcs.SetResult(rst);
-				}).ConfigureAwait(true);
-				var _gltfData = tcs.Task.Result;
-				//*/
-
-				// attempt 4
-				/*
-				var _gltfData = await awaitCaller
-					.Run(() => new GlbLowLevelParser(string.Empty, bytes).Parse());
-				if (_gltfData == null)
-				{
-					Debug.LogError($"VRM loading failed: {path}");
-					return;
-				}
-				*/
-
 				Vrm10Instance vrm = null;
 				try
 				{
-					using (var gltfData = _gltfData)
+					using (var gltfData = new GlbLowLevelParser(string.Empty, bytes).Parse())
 					{
 						vrm = await Vrm10.LoadGltfDataAsync(gltfData,
 							canLoadVrm0X: true, // allow load vrm0x

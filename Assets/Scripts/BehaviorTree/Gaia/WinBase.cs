@@ -17,9 +17,9 @@ namespace Gaia
                 return m_Win.Value;
             }
         }
-		protected DwCamera dwCamera => ModelView.dwCamera;
-		protected DwForm dwForm => ModelView.dwForm;
-        protected DwWindow dwWindow => ModelView.dwWindow;
+		protected DwCamera dwCamera => ModelView?.dwCamera;
+		protected DwForm dwForm => ModelView?.dwForm;
+        protected DwWindow dwWindow => ModelView?.dwWindow;
 
 		protected sealed override eState InternalUpdate()
 		{

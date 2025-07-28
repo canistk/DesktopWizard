@@ -160,7 +160,40 @@ namespace DesktopWizard
             }
         }
 
-        public int Width
+		public Vector2Int GetOsPos()
+		{
+			if (dwForm == null)
+			{
+				return setting.StartPos;
+			}
+			return new Vector2Int(dwForm.Left, dwForm.Top);
+		}
+		public void SetOsPos(Vector2Int pos)
+		{
+			setting.StartPos = pos;
+			if (dwForm != null)
+				dwForm.SetBounds(pos.x, pos.y, Width, Height);
+		}
+
+		public Vector2 GetMonitorPos()
+		{
+			var o2m = MatrixOSToMonitor();
+			var os = o2m.MultiplyPoint3x4(new Vector3(Left, Top, 0f));
+			return new Vector2(os.x, os.y);
+		}
+		public void SetMonitorPos(Vector2 pos)
+		{
+			var m2o = MatrixMonitorToOS();
+			var os = m2o.MultiplyPoint3x4(new Vector3(pos.x, pos.y, 0f));
+			var left = (int)os.x;
+			var top = (int)os.y;
+			var v2i = new Vector2Int(left, top);
+			setting.StartPos = v2i;
+			if (dwForm != null)
+				dwForm.SetBounds(left, top, Width, Height);
+		}
+
+		public int Width
         {
             get
             {

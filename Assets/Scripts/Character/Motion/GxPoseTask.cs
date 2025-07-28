@@ -132,8 +132,7 @@ namespace Gaia
 				task.Handler.SetAutoFadeOut(false);
 				if (task.Handler is GxTimelineHandler handler)
 				{
-					var pd = handler.timeline.playableDirector;
-					pd.extrapolationMode = UnityEngine.Playables.DirectorWrapMode.Loop;
+					handler.SetLoop(true);
 				}
 			}
 		}

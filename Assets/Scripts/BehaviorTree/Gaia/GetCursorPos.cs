@@ -23,17 +23,30 @@ namespace Gaia
 			if (ModelView == null || ModelView.dwCamera == null)
 				return eState.Failure;
 			var c		= ModelView.dwCamera;
-			var os		= c.GetMousePosInOSSpace();
-			var world	= c.GetMousePosInMonitorSpace();
+
+			if (!m_OS_Pos.IsNone)
+			{
+				var os		= c.GetMousePosInOSSpace();
+				m_OS_Pos		.SetValue(os);
+			}
+			if (!m_Monitor_Pos.IsNone)
+			{
+				var world	= c.GetMousePosInMonitorSpace();
+				m_Monitor_Pos	.SetValue((Vector2)world);
+			}
+
 			var model	= c.GetMouseRayInModelSpace();
 			var origin	= model.origin;
 			var dir		= c.transform.forward;
-
-			m_OS_Pos		.SetValue(os);
-			m_Monitor_Pos	.SetValue((Vector2)world);
-			m_Model_Pos		.SetValue(origin);
 			var rst		= origin + (dir * m_ZDepthOverride);
-			m_CursorPosInModelSpace.SetValue(rst);
+			if (!m_Model_Pos.IsNone)
+			{
+				m_Model_Pos		.SetValue(origin);
+			}
+			if (!m_CursorPosInModelSpace.IsNone)
+			{
+				m_CursorPosInModelSpace.SetValue(rst);
+			}
 			return eState.Success;
 		}
 	}

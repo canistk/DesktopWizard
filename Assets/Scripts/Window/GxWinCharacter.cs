@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using BehaviorDesigner.Runtime;
 namespace Gaia
 {
 	/// <summary>
@@ -42,6 +43,24 @@ namespace Gaia
 					m_CameraCtrl = new KeyValuePair<bool, GxCameraCtrl>(true, GetComponentInChildren<GxCameraCtrl>(true));
 				}
 				return m_CameraCtrl.Value;
+			}
+		}
+
+		[SerializeField] BehaviorTree m_BehaviorTree;
+		public BehaviorTree BehaviorTree
+		{
+  			get
+			{
+				if (m_BehaviorTree == null)
+				{
+					m_BehaviorTree = gameObject.GetComponent<BehaviorTree>();
+					if (m_BehaviorTree == null)
+					{
+						m_BehaviorTree = gameObject.AddComponent<BehaviorTree>();
+					}
+					// TODO: load resource's BehaviorTree if not found in this gameObject.
+				}
+				return m_BehaviorTree;
 			}
 		}
 

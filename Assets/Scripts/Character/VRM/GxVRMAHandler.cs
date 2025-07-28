@@ -22,10 +22,35 @@ namespace Gaia
 		{
 			// vrma.gltf.ShowMeshes();
 			vrma.Vrm10AnimationInstance.ShowBoxMan(false);
+			m_PlayedOnce = 1; // Mark as started play
 			vrma.Animation.Play();
 		}
 
-		public override void Update() { }
+		public bool IsLoop()
+		{
+			if (vrma == null || vrma.Animation == null)
+				return false;
+			return vrma.Animation.wrapMode == WrapMode.Loop;
+		}
+
+		public void SetLoop(bool loop)
+		{
+			if (vrma == null || vrma.Animation == null)
+				return;
+			vrma.Animation.wrapMode = loop ?
+				WrapMode.Loop :
+				WrapMode.Once;
+		}
+
+		private int m_PlayedOnce = 0; // 0 = not played, 1 = started play, 2 = played Once
+		public override void Update()
+		{
+			if (!vrma.Animation.isPlaying && m_PlayedOnce == 1)
+			{
+				Character.BoardCastPlayedOnce(task);
+				m_PlayedOnce = 2; // Mark as played once
+			}
+		}
 
 		public override void SetAutoFadeOut(bool autoFadeOut, float duration = 0.25f)
 		{
