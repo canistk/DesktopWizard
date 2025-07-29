@@ -26,14 +26,14 @@ namespace Gaia
 			vrma.Animation.Play();
 		}
 
-		public bool IsLoop()
+		public override bool IsLoop()
 		{
 			if (vrma == null || vrma.Animation == null)
 				return false;
 			return vrma.Animation.wrapMode == WrapMode.Loop;
 		}
 
-		public void SetLoop(bool loop)
+		public override void SetLoop(bool loop)
 		{
 			if (vrma == null || vrma.Animation == null)
 				return;

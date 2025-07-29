@@ -75,7 +75,9 @@ namespace Gaia
 							state = eState.Playing; // Transition to Playing mState after blending in
 					}
 					break;
-					case eState.Playing: break;
+					case eState.Playing:
+					
+					break;
 					case eState.BlendingOut:
 					{
 						var running = m_BlendOut.Execute();
@@ -93,6 +95,14 @@ namespace Gaia
 				if (state < eState.Completed)
 				{
 					m_Handler.Update();
+					if (!m_Handler.IsLoop() &&
+						IsPlayedOnce() &&
+						m_BlendOut == null)
+					{
+						// Debug.Log($"GxMotionTask: {Key.ShortName} has played once, transitioning to blending out.");
+						// If no blend out is set, create a default one
+						FadeOut(0f);
+					}
 				}
 			}
 			catch (Exception ex)
@@ -207,6 +217,15 @@ namespace Gaia
 			var duration = m_Handler?.motionData?.ClipLength ?? 0f;
 			var playedTime = Time.timeSinceLevelLoad - m_StartTime;
 			return playedTime >= duration;
+		}
+
+		public bool IsLoop()
+		{
+			if (isDisposed || isCompleted)
+				return false; // Task is not active
+			if (m_Handler == null)
+				return false; // No handler available
+			return m_Handler.IsLoop();
 		}
 	}
 }

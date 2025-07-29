@@ -35,5 +35,8 @@ namespace Gaia
 		public abstract void OnWillPlayAnimation(IRetarget other);
 
 		public abstract void SelfDespawn();
+		public abstract bool IsLoop();
+
+		public abstract void SetLoop(bool loop);
 	}
 }

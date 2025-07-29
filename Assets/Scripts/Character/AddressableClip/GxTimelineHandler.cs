@@ -40,14 +40,14 @@ namespace Gaia
 			this.m_AutoFadeOut = autoFadeOut;
 		}
 
-		public bool IsLoop()
+		public override bool IsLoop()
 		{
 			if (timeline == null || timeline.playableDirector == null)
 				return false;
 			return timeline.playableDirector.extrapolationMode == UnityEngine.Playables.DirectorWrapMode.Loop;
 		}
 
-		public void SetLoop(bool loop)
+		public override void SetLoop(bool loop)
 		{
 			if (timeline == null || timeline.playableDirector == null)
 				return;
