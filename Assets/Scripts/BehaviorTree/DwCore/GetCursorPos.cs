@@ -5,10 +5,10 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	[TaskCategory("Gaia")]
+	[TaskCategory("DwCore")]
 	[TaskName("Get Cursor Pos (ModelSpace).")]
 	[TaskDescription("Get Cursor Pos.")]
-	public class GetCursorPos : WinBase
+	public class GetCursorPos : WinAction
 	{
 		[Header("Cursor Pos - Output")]
 		[SerializeField] SharedVector2Int m_OS_Pos;

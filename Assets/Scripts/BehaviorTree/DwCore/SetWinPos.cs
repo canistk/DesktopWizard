@@ -5,10 +5,10 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	[TaskCategory("Gaia")]
+	[TaskCategory("DwCore")]
 	[TaskName("Set Window Position")]
 	[TaskDescription("Set Window Position.")]
-	public class SetWinPos : WinBase
+	public class SetWinPos : WinAction
 	{
 		[Header("Window Position - Input")]
 		[SerializeField] SharedVector2Int m_OS_Pos;

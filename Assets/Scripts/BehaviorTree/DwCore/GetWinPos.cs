@@ -6,10 +6,10 @@ using UnityEngine;
 
 namespace Gaia
 {
-	[TaskCategory("Gaia")]
+	[TaskCategory("DwCore")]
 	[TaskName("Get Window Position")]
 	[TaskDescription("Get Window Position.")]
-	public class GetWinPos : WinBase
+	public class GetWinPos : WinAction
     {
         [Header("Window Position - Output")]
         [SerializeField] SharedVector2Int m_OS_Pos;

@@ -8,7 +8,7 @@ namespace Gaia
 	[TaskCategory("Gaia")]
 	[TaskName("Change Character Pose")]
 	[TaskDescription("Change Character Pose.")]
-	public class ChangeCharacterPose : CharacterBase
+	public class ChangeCharacterPose : CharacterAction
 	{
 		[SerializeField] SharedBool m_RandomPose = false;
 		[SerializeField] SharedString m_PoseKey;

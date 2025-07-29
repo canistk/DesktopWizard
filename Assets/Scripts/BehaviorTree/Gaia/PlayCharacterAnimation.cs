@@ -8,7 +8,7 @@ namespace Gaia
 	[TaskCategory("Gaia")]
 	[TaskName("Play Character Animation")]
 	[TaskDescription("Play Character Animation.")]
-	public class PlayCharacterAnimation : CharacterBase
+	public class PlayCharacterAnimation : CharacterAction
 	{
 		[SerializeField] SharedGxMotionKey m_MotionKey;
 		[SerializeField] SharedFloat m_FadeTime = 0.25f; // Default fade time for crossfade

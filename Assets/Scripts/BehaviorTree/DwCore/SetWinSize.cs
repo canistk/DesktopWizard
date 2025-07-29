@@ -5,29 +5,31 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	[TaskCategory("Gaia")]
-	[TaskName("Get Window Size")]
-	[TaskDescription("Get Window Size.")]
-	public class GetWinSize : WinBase
+	[TaskCategory("DwCore")]
+	[TaskName("Set Window Size")]
+	[TaskDescription("Set Window Size.")]
+	public class SetWinSize : WinAction
 	{
-		[Header("Window Size - Output")]
+		[Header("Window Position - Input")]
 		[SerializeField] SharedVector2Int m_OS_Size;
 		[SerializeField] SharedVector2 m_Monitor_Size;
 		protected override eState OnModelViewUpdate()
 		{
 			if (ModelView == null || ModelView.dwCamera == null)
 				return eState.Failure;
+
 			var c = ModelView.dwCamera;
 			if (!m_OS_Size.IsNone)
 			{
-				var os = c.GetOsSize();
-				m_OS_Size.SetValue(os);
+				var os = new Vector2Int(c.Left, c.Top);
+				c.SetOsSize(os);
 			}
 			else if (!m_Monitor_Size.IsNone)
 			{
-				var monSize = c.GetMonitorSize();
-				m_Monitor_Size.SetValue(monSize);
+				var mPos = m_Monitor_Size.Value;
+				c.SetMonitorSize(mPos);
 			}
+
 			return eState.Success;
 		}
 	}
