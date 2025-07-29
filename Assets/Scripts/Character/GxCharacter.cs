@@ -106,6 +106,22 @@ namespace Gaia
 			m_Tasks.Add(task);
 		}
 
+		public void RandomPose(float fadeIn, System.Action<GxPoseTask> taskCreated = null)
+		{
+			if (!GxMotionDatabase.TryGetRandomPoseKey(out var pose))
+			{
+				Debug.LogError("No pose keys available in GxMotionDatabase.");
+				return;
+			}
+
+			if (pose == null)
+			{
+				Debug.LogError("No pose keys available in GxMotionDatabase.");
+				return;
+			}
+			ChangePose(pose.key, fadeIn, taskCreated);
+		}
+
 		public event System.Action<IRetarget> EVENT_WillPlayMotion;
 
 		/// <summary>Called by <see cref="GxTimelineTask"/></summary>

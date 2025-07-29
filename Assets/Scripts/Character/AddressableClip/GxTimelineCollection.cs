@@ -97,6 +97,19 @@ namespace Gaia
 			return m_Poses != null ? m_Poses.Count : 0;
 		}
 
+		public bool TryGetRandomPose(out GxPoseData pose)
+		{
+			pose = default;
+			if (m_Poses == null || m_Poses.Count == 0)
+			{
+				Debug.LogWarning("No poses available in the collection.");
+				return false;
+			}
+			var rnd = Random.Range(0, m_Poses.Count);
+			pose = m_Poses[rnd];
+			return pose != null;
+		}
+
 		public void Clear()
 		{
 			if (m_Timelines != null)

@@ -10,6 +10,7 @@ namespace Gaia
 	[TaskDescription("Change Character Pose.")]
 	public class ChangeCharacterPose : CharacterBase
 	{
+		[SerializeField] SharedBool m_RandomPose = false;
 		[SerializeField] SharedString m_PoseKey;
 		[SerializeField] SharedFloat m_FadeTime = 0.25f; // Default fade time for crossfade
 
@@ -38,7 +39,18 @@ namespace Gaia
 					var fadeIn = m_FadeTime.IsNone ? 0f : m_FadeTime.Value;
 					m_StartTime = Time.timeSinceLevelLoad;
 
-					Character.ChangePose(m_PoseKey.Value, fadeIn,
+					var poseKey = m_PoseKey.Value;
+
+					if (!m_RandomPose.IsNone && m_RandomPose.Value)
+					{
+						// override by Randomize pose key when m_RandomPose is true
+						if (GxMotionDatabase.TryGetRandomPoseKey(out var pose))
+						{
+							poseKey = pose.key;
+						}
+					}
+
+					Character.ChangePose(poseKey, fadeIn,
 					(task) => { 
 						m_PoseTask = task;
 					});

@@ -360,5 +360,17 @@ namespace Gaia
             }
             return false;
         }
-    }
+
+        public static bool TryGetRandomPoseKey(out GxPoseData pose)
+        {
+            pose = default;
+			// TODO: random pose key from timeline/VRMA collection
+			if (GxTimelineCollection.Instance is GxTimelineCollection inst &&
+                inst.TryGetRandomPose(out pose))
+            {
+                return true;
+			}
+            return pose != null;
+		}
+	}
 }
