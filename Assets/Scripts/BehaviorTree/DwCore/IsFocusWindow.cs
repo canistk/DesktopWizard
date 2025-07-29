@@ -3,25 +3,27 @@ using BehaviorDesigner.Runtime.Tasks;
 using DesktopWizard;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 namespace Gaia
 {
 	[TaskCategory("DwCore")]
 	[TaskName("Is Focus Window")]
 	[TaskDescription("Check if focus on a window title with the specified name.")]
-	public class IsFocusWindow : ConditionalBase
+	public class IsFocusWindow : WinAction
 	{
-		[RequiredField]
-		public SharedDwCamera dwCamera;
-		protected override eState InternalUpdate()
+		[SerializeField] SharedBool m_NoEventAsFailure = false;
+		protected override eState OnModelViewUpdate()
 		{
-			if (dwCamera == null || dwCamera.IsNone)
+			if (ModelView == null ||
+				ModelView.dwForm == null)
 				return eState.Failure;
-
-			var form = dwCamera.Value.dwForm;
-			if (form.Focused)
+			
+			if (ModelView.dwForm.Focused)
 				return eState.Success;
 
-			return eState.Failure;
+			return m_NoEventAsFailure.Value ?
+				eState.Failure :
+				eState.Running;
 		}
 	}
 }

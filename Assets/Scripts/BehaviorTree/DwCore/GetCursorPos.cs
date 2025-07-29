@@ -49,5 +49,18 @@ namespace Gaia
 			}
 			return eState.Success;
 		}
+		
+		private void InternalReset()
+		{
+			m_OS_Pos.SetValue(default);
+			m_Monitor_Pos.SetValue(default);
+			m_Model_Pos.SetValue(default);
+		}
+
+		public override void OnStart()
+		{
+			base.OnStart();
+			InternalReset();
+		}
 	}
 }

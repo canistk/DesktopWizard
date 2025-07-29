@@ -12,12 +12,20 @@ namespace Gaia
 	{
 		[SerializeField] SharedBool m_RandomPose = false;
 		[SerializeField] SharedString m_PoseKey;
-		[SerializeField] SharedFloat m_FadeTime = 0.25f; // Default fade time for crossfade
+		[SerializeField] SharedFloat m_FadeTime = 0.25f; // Default fade time for cross fade
 
 		private bool m_Initialized = false;
 		private GxPoseTask m_PoseTask = null;
 		private const float TIMEOUT = 5f; // Timeout for waiting for pose to be set
 		private float m_StartTime = 0f;
+
+		private enum eStyle
+		{
+			EnterPoseAsSuccess,
+			SuccessOnPoseExit,
+			FailOnPoseExit,
+		}
+		[SerializeField] eStyle m_Style = eStyle.EnterPoseAsSuccess;
 
 		protected override eState OnModelViewUpdate()
 		{
@@ -69,28 +77,52 @@ namespace Gaia
 				return eState.Failure; // Timeout after 5 seconds
 			}
 
+			if (m_Style == eStyle.EnterPoseAsSuccess &&
+				m_Initialized &&
+				m_PoseTask != null)
+			{
+				// If the pose task is still running, we return Running state
+				return eState.Success; // Pose set successfully
+			}
+			
+
 			if (m_Initialized &&
 				m_PoseTask != null &&
 				m_PoseTask.isCompleted)
 			{
 				// If the pose task is still running, we return Running state
+				if (m_Style == eStyle.FailOnPoseExit)
+				{
+					return eState.Failure; // Pose failed to set
+				}
 				return eState.Success; // Pose set successfully
 			}
 			return eState.Running;
 		}
 
+		private void InternalReset()
+		{
+			m_Initialized = false;
+			m_PoseTask = null;
+			m_StartTime = 0f;
+		}
+
+		public override void OnEnd()
+		{
+			base.OnEnd();
+			InternalReset();
+		}
+
 		public override void OnReset()
 		{
 			base.OnReset();
-			m_Initialized = false;
-			m_PoseKey = default;
+			InternalReset();
 		}
 
 		public override void OnBehaviorRestart()
 		{
 			base.OnBehaviorRestart();
-			m_Initialized = false;
-			m_PoseKey = default;
+			InternalReset();
 		}
 	}
 }

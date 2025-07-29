@@ -84,7 +84,7 @@ namespace Gaia
 						if (!running)
 						{
 							state = eState.Completed; // Transition to Completed mState after blending out
-							Debug.Log("Blend out completed");
+							//Debug.Log("Blend out completed");
 						}
 					}
 					break;
@@ -119,7 +119,7 @@ namespace Gaia
 		{
 			if (state != eState.Initializing)
 				throw new System.Exception($"Logic error: GxMotionTask should never in {state} mState when initializing.");
-			Debug.Log($"Initialize GxMotionTask: {Key.ShortName} in mState {state}, Character={Character}");
+			//Debug.Log($"Initialize GxMotionTask: {Key.ShortName} in mState {state}, Character={Character}");
 			// Step 0: ready to next state.
 			state = m_BlendIn == null ? eState.Playing : eState.BlendingIn;
 
@@ -146,7 +146,7 @@ namespace Gaia
 				return; // skip 2 frames
 			// Hook into the character's retargeting system after a delay
 			Character.AddAnimationRetarget(this);
-			Debug.Log($"GxMotionTask: {Key.ShortName} hooked into character retargeting after delay.");
+			//Debug.Log($"GxMotionTask: {Key.ShortName} hooked into character retargeting after delay.");
 		}
 
 		protected override void OnDisposing()

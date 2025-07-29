@@ -30,5 +30,11 @@ namespace Gaia
 			}
 			return eState.Success;
 		}
+		public override void OnStart()
+		{
+			base.OnStart();
+			m_OS_Size.SetValue(default);
+			m_Monitor_Size.SetValue(default);
+		}
 	}
 }

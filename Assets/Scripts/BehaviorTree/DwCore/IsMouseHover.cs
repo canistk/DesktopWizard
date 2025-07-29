@@ -9,25 +9,20 @@ namespace Gaia
 	[TaskCategory("DwCore")]
 	[TaskName("Is Mouse Hover Window")]
 	[TaskDescription("Check if mouse hover within the window.")]
-	public class IsMouseHover : ConditionalBase
+	public class IsMouseHover : WinConditional
 	{
-		[RequiredField]
-		public SharedDwCamera m_dwCamera;
-		protected override eState InternalUpdate()
+		[SerializeField] SharedBool m_NoEventAsFailure = false;
+		protected override eState OnModelViewUpdate()
 		{
-			if (m_dwCamera.IsNone)
-				return eState.Failure;
-			var dwCamera = m_dwCamera.Value;
-			var dwWindow = dwCamera.dwWindow;
-			if (dwWindow == null)
+			if (ModelView == null || ModelView.dwForm == null)
 				return eState.Failure;
 
-			var bounds = dwWindow.GetMonitorBounds();
-			var cursor = dwCamera.GetMousePosInMonitorSpace();
+			if (ModelView.dwForm.Focused)
+				return eState.Success;
 
-			if (!bounds.Contains(cursor))
-				return eState.Failure;
-			return eState.Success;
+			return m_NoEventAsFailure.Value ?
+				eState.Failure :
+				eState.Running;
 		}
 	}
 }

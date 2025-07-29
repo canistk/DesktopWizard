@@ -60,7 +60,17 @@ namespace Gaia
 				c.EVENT_MouseDown += C_EVENT_MouseDown;
 				c.EVENT_MouseUp += C_EVENT_MouseUp;
 			}
-			Debug.Log($"GetCursorClicked.OnStart() {c}");
+		}
+
+		public override void OnEnd()
+		{
+			base.OnEnd();
+			var c = ModelView?.dwCamera;
+			if (c != null)
+			{
+				c.EVENT_MouseDown -= C_EVENT_MouseDown;
+				c.EVENT_MouseUp -= C_EVENT_MouseUp;
+			}
 		}
 
 		public override void OnReset()
@@ -72,7 +82,6 @@ namespace Gaia
 				c.EVENT_MouseDown -= C_EVENT_MouseDown;
 				c.EVENT_MouseUp -= C_EVENT_MouseUp;
 			}
-			Debug.Log($"GetCursorClicked.OnReset() {c}");
 		}
 
 		private void C_EVENT_MouseUp(UnityEngine.EventSystems.PointerEventData evt)

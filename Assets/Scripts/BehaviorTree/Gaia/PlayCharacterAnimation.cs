@@ -66,18 +66,23 @@ namespace Gaia
 			return eState.Running;
 		}
 
+		private void InternalReset()
+		{
+			m_Initialized = false;
+			m_MotionTask = null;
+			m_StartTime = 0f;
+		}
+
 		public override void OnReset()
 		{
 			base.OnReset();
-			m_Initialized = false;
-			m_MotionTask = null;
+			InternalReset();
 		}
 
 		public override void OnBehaviorRestart()
 		{
 			base.OnBehaviorRestart();
-			m_Initialized = false;
-			m_MotionTask = null;
+			InternalReset();
 		}
 	}
 }
