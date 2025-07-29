@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UniVRM10;
 
@@ -129,5 +130,45 @@ namespace Gaia
 			}
 		}
 
+		public IEnumerable<GxPoseData> GetPoseByTag(string[] tag)
+		{
+			if (tag == null || tag.Length == 0)
+			{
+				yield break; // No tags provided, nothing to return
+			}
+
+			foreach (var p in m_Poses)
+			{
+				if (p.Tags == null || p.Tags.Count == 0)
+					continue;
+				foreach (var t in tag)
+				{
+					if (p.ContainTags(tag) > 0)
+					{
+						yield return p;
+						break;
+					}
+				}
+			}
+		}
+
+		public bool TryGetRandomPoseByTags(string[] tag, out GxPoseData pose)
+		{
+			if (tag == null || tag.Length == 0)
+			{
+				pose = default;
+				return false; // No tags provided, cannot find a pose
+			}
+			var filtered = GetPoseByTag(tag).ToArray();
+			if (filtered.Length == 0)
+			{
+				pose = default;
+				return false; // No matching poses found
+			}
+
+			var rnd = Random.Range(0, filtered.Length);
+			pose = filtered[rnd];
+			return pose != null; // No matching pose found
+		}
 	}
 }

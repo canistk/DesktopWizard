@@ -350,5 +350,15 @@ namespace Gaia
                 }
             }
         }
+
+        public static bool TryGetRandomPoseByTags(string[] tag, out GxPoseData pose)
+        {
+            pose = default;
+            if (GxTimelineCollection.Instance is GxTimelineCollection inst)
+            {
+                return inst.TryGetRandomPoseByTags(tag, out pose);
+            }
+            return false;
+        }
     }
 }
