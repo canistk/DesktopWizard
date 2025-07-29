@@ -6,9 +6,10 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	[TaskCategory("DwCore")]
-	[TaskName("Get DwMouse Position")]
-	[TaskDescription("Get Mouse Position via DwCore system.")]
+	//[TaskCategory("DwCore")]
+	//[TaskName("Get DwMouse Position")]
+	//[TaskDescription("Get Mouse Position via DwCore system.")]
+	[System.Obsolete("Use GetCursorPos instead.", true)]
 	public class GetDwMousePosition : ActionBase
 	{
 		[RequiredField]

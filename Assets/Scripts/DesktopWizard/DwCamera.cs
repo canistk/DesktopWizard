@@ -229,6 +229,35 @@ namespace DesktopWizard
 			}
         }
 
+		public Vector2Int GetOsSize()
+		{
+			return new Vector2Int(Width, Height);
+		}
+
+		public void SetOsSize(Vector2Int size)
+		{
+			setting.Size = size;
+			if (dwForm != null)
+				dwForm.SetBounds(Left, Top, size.x, size.y);
+		}
+
+		public Vector2 GetMonitorSize()
+		{
+			var o2m = MatrixOSToMonitor();
+			var os = o2m.MultiplyVector(new Vector3(Width, Height, 0f));
+			return new Vector2(os.x, os.y);
+		}
+
+		public void SetMonitorSize(Vector2 size)
+		{
+			var m2o = MatrixMonitorToOS();
+			var os = m2o.MultiplyVector((Vector3)size);
+			var v2i = new Vector2Int((int)os.x, (int)os.y);
+			setting.Size = v2i;
+			if (dwForm != null)
+				dwForm.SetBounds(Left, Top, v2i.x, v2i.y);
+		}
+
 		/// <summary>
 		/// A window info is a value that uniquely identifies a window within a desktop.
 		/// it depended on Window-Form handle (HWND) on created.

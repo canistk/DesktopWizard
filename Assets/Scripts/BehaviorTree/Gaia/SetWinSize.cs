@@ -6,28 +6,28 @@ using UnityEngine;
 namespace Gaia
 {
 	[TaskCategory("Gaia")]
-	[TaskName("Set Window Position")]
-	[TaskDescription("Set Window Position.")]
-	public class SetWinPos : WinBase
+	[TaskName("Set Window Size")]
+	[TaskDescription("Set Window Size.")]
+	public class SetWinSize : WinBase
 	{
 		[Header("Window Position - Input")]
-		[SerializeField] SharedVector2Int m_OS_Pos;
-		[SerializeField] SharedVector2 m_Monitor_Pos;
+		[SerializeField] SharedVector2Int m_OS_Size;
+		[SerializeField] SharedVector2 m_Monitor_Size;
 		protected override eState OnModelViewUpdate()
 		{
 			if (ModelView == null || ModelView.dwCamera == null)
 				return eState.Failure;
 
 			var c = ModelView.dwCamera;
-			if (!m_OS_Pos.IsNone)
+			if (!m_OS_Size.IsNone)
 			{
 				var os = new Vector2Int(c.Left, c.Top);
-				c.SetOsPos(os);
+				c.SetOsSize(os);
 			}
-			else if (!m_Monitor_Pos.IsNone)
+			else if (!m_Monitor_Size.IsNone)
 			{
-				var mPos = m_Monitor_Pos.Value;
-				c.SetMonitorPos(mPos);
+				var mPos = m_Monitor_Size.Value;
+				c.SetMonitorSize(mPos);
 			}
 
 			return eState.Success;
