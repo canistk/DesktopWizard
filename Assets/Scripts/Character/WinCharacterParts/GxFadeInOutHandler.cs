@@ -1,10 +1,11 @@
 using Kit2;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
-	public class GxFadeInOutHandler : GxAppearHandler
+	public class GxFadeInOutHandler : GxAppearHandler, IPriorityObj
 	{
 		[System.Serializable]
 		private struct FadeInfo
@@ -37,21 +38,7 @@ namespace Gaia
 		[SerializeField] AnimationCurve m_FadeOutCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 
 		private float m_Opacity = 1f;
-		private class OpacityModifier : IPriorityObj
-		{
-			private GxFadeInOutHandler Owner;
-			public OpacityModifier(GxFadeInOutHandler owner)
-			{
-				this.Owner = owner;
-			}
-			public float Priority => 1f;
-
-			public object Value => Owner.m_Opacity;
-
-			public int CompareTo(IPriorityObj other) => Priority.CompareTo(other.Priority);
-			public bool Equals(IPriorityObj other) => this == other;
-		}
-
+		
 		[Header("LOD")]
 		[SerializeField] private float m_AppearLOD = 0f;
 		[SerializeField] AnimationCurve m_AppearingCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
@@ -62,12 +49,13 @@ namespace Gaia
 			get => win.dwCamera.m_Lod;
 			set => win.dwCamera.m_Lod = value;
 		}
+
 		protected override void StartAppearing()
 		{
 			m_FadeIn.Start();
 			m_Opacity = 0f;
 			LOD = m_DisappearLOD;
-			win.dwCamera.AddOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.AddOpacityModifier(this);
 		}
 		protected override bool InternalAppearing()
 		{
@@ -83,7 +71,7 @@ namespace Gaia
 		{
 			m_Opacity = 1f;
 			LOD = m_AppearLOD;
-			win.dwCamera.RemoveOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.RemoveOpacityModifier(this);
 			m_FadeIn.Reset();
 		}
 
@@ -93,7 +81,7 @@ namespace Gaia
 			m_FadeOut.Start();
 			m_Opacity = 1f;
 			LOD = m_AppearLOD;
-			win.dwCamera.AddOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.AddOpacityModifier(this);
 		}
 
 		protected override bool InternalDisappearing()
@@ -110,8 +98,16 @@ namespace Gaia
 		{
 			m_Opacity = 0f;
 			LOD = m_DisappearLOD;
-			win.dwCamera.RemoveOpacityModifier(new OpacityModifier(this));
+			win.dwCamera.RemoveOpacityModifier(this);
 			m_FadeOut.Reset();
 		}
+
+		float IPriorityObj.Priority => 0.002f;
+
+		object IPriorityObj.Value => m_Opacity;
+
+		int IComparable<IPriorityObj>.CompareTo(IPriorityObj other) => ((IPriorityObj)this).CompareTo(other);
+
+		bool IEquatable<IPriorityObj>.Equals(IPriorityObj other) => this.Equals(other);
 	}
 }

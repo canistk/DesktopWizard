@@ -60,7 +60,7 @@ namespace DesktopWizard
 		{
             private DwCamera m_Src;
             public DefaultOpacityModifier(DwCamera owner) => m_Src = owner;
-            public float Priority => float.MinValue;
+            public float Priority => 0.001f;
 
 			public object Value => Mathf.Clamp01(m_Src.m_OpacityVal);
 
@@ -91,7 +91,7 @@ namespace DesktopWizard
             }
         }
         public void AddOpacityModifier(IPriorityObj obj) => opacityPriority.Add(obj);
-        public int RemoveOpacityModifier(IPriorityObj obj) => opacityPriority.Remove(obj);
+        public bool RemoveOpacityModifier(IPriorityObj obj) => opacityPriority.Remove(obj);
 
 		public float Opacity
 		{
@@ -101,10 +101,30 @@ namespace DesktopWizard
                     return 0;
 
                 var value = (float)ctrl.Value;
+
+				// to avoid the opacity reset to it's default value.
+				// cache last modify opacity value.
+				if (ctrl != defaultOpacityModifier)
+				{
+					m_OpacityVal = Mathf.Clamp01(value);
+				}
+
 				return value;
             }
             set { m_OpacityVal = Mathf.Clamp01(value); }
         }
+
+		[ContextMenu("Get Opacity Modifier")]
+		private void LogOpacityModifier()
+		{
+			if (!opacityPriority.TryPeek(out var ctrl))
+			{
+				Debug.Log($"Opacity: No modifier found.");
+				return;
+			}
+
+			Debug.Log($"Opacity: modifier({ctrl})");
+		}
 		#endregion Opacity
 
 		public string Title
