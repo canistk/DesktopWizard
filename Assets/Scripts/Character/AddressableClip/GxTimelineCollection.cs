@@ -143,36 +143,46 @@ namespace Gaia
 			}
 		}
 
-		public IEnumerable<GxPoseData> GetPoseByTag(string[] tag)
+		/// <summary>Return poses that contain the specified tags.</summary>
+		/// <param name="includeTag">tags should included from the result</param>
+		/// <param name="excludeTag">tags to exclude from the result.</param>
+		/// <param name="minCount">how many tag pass the test ? (for IncludeTag only)</param>
+		/// <returns></returns>
+		public IEnumerable<GxPoseData> GetPoseByTag(string[] includeTag, string[] excludeTag, int minCount)
 		{
-			if (tag == null || tag.Length == 0)
+			var noIncludeTags = includeTag == null || includeTag.Length == 0 || (includeTag.Length == 1 && includeTag[0].Length == 0);
+			var noExcludeTags = excludeTag == null || excludeTag.Length == 0 || (excludeTag.Length == 1 && excludeTag[0].Length == 0);
+			if (noIncludeTags && noExcludeTags)
 			{
 				yield break; // No tags provided, nothing to return
+			}
+			if (minCount < 0)
+			{
+				minCount = 0; // Ensure minCount is not negative
 			}
 
 			foreach (var p in m_Poses)
 			{
 				if (p.Tags == null || p.Tags.Count == 0)
 					continue;
-				foreach (var t in tag)
-				{
-					if (p.ContainTags(tag) > 0)
-					{
-						yield return p;
-						break;
-					}
-				}
+				if (!noExcludeTags && p.ContainTags(excludeTag) > 0)
+					continue; // Skip if any exclude tag is present
+
+				if (noIncludeTags || p.ContainTags(includeTag) >= minCount)
+					yield return p;
 			}
 		}
 
-		public bool TryGetRandomPoseByTags(string[] tag, out GxPoseData pose)
+		public bool TryGetRandomPoseByTags(string[] includeTags, string[] excludeTags, int minCnt, out GxPoseData pose)
 		{
-			if (tag == null || tag.Length == 0)
+			var noIncludeTags = includeTags == null || includeTags.Length == 0;
+			var noExcludeTags = excludeTags == null || excludeTags.Length == 0;
+			if (noIncludeTags && noExcludeTags)
 			{
 				pose = default;
 				return false; // No tags provided, cannot find a pose
 			}
-			var filtered = GetPoseByTag(tag).ToArray();
+			var filtered = GetPoseByTag(includeTags, excludeTags, minCnt).ToArray();
 			if (filtered.Length == 0)
 			{
 				pose = default;

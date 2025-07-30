@@ -103,6 +103,12 @@ namespace Gaia
 		public int ContainTags(params string[] tags)
 		{
 			var match = 0;
+			if (tags.Length == 1 && string.IsNullOrEmpty(tags[0]))
+			{
+				// special handle contain "empty" cases, it match ANY pose.
+				return 1;
+			}
+
 			foreach (var tag in tags)
 			{
 				if (string.IsNullOrEmpty(tag))

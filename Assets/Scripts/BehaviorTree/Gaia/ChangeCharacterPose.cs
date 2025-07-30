@@ -10,9 +10,22 @@ namespace Gaia
 	[TaskDescription("Change Character Pose.")]
 	public class ChangeCharacterPose : CharacterAction
 	{
-		[SerializeField] SharedBool m_RandomPose = false;
-		[SerializeField] SharedString m_PoseKey;
+		private enum eMethod
+		{
+			SpecifyPose,
+			RandomPose,
+			RandomPoseByTags,
+		}
 		[SerializeField] SharedFloat m_FadeTime = 0.25f; // Default fade time for cross fade
+		[SerializeField] eMethod m_Method = eMethod.SpecifyPose;
+
+		[Header("Specify the pose to change to")]
+		[SerializeField] SharedString m_PoseKey;
+
+		[Header("Random Pose Settings (space to split)")]
+		[SerializeField] SharedString m_IncludeTags;
+		[SerializeField] SharedString m_ExcludeTags;
+		[SerializeField] SharedInt m_MinCount = 1;
 
 		private bool m_Initialized = false;
 		private GxPoseTask m_PoseTask = null;
@@ -25,7 +38,11 @@ namespace Gaia
 			SuccessOnPoseExit,
 			FailOnPoseExit,
 		}
+
+		[Header("Exit Method")]
 		[SerializeField] eStyle m_Style = eStyle.EnterPoseAsSuccess;
+
+		private static readonly char[] SPLITS = new char[] { ',', ' ', '-' };
 
 		protected override eState OnModelViewUpdate()
 		{
@@ -47,21 +64,60 @@ namespace Gaia
 					var fadeIn = m_FadeTime.IsNone ? 0f : m_FadeTime.Value;
 					m_StartTime = Time.timeSinceLevelLoad;
 
-					var poseKey = m_PoseKey.Value;
-
-					if (!m_RandomPose.IsNone && m_RandomPose.Value)
+					switch (m_Method)
 					{
-						// override by Randomize pose key when m_RandomPose is true
+						case eMethod.SpecifyPose:
+						{
+							if (string.IsNullOrEmpty(m_PoseKey.Value))
+							{
+								Debug.LogError("Pose key is empty, cannot change pose.");
+								return eState.Failure;
+							}
+
+							Character.ChangePose(m_PoseKey.Value, fadeIn,
+							(task) =>
+							{
+								m_PoseTask = task;
+							});
+						}
+						break;
+						case eMethod.RandomPose:
+						// Random pose will be handled later
 						if (GxMotionDatabase.TryGetRandomPoseKey(out var pose))
 						{
-							poseKey = pose.key;
+							var poseKey = pose.key;
+							Character.ChangePose(poseKey, fadeIn,
+							(task) =>
+							{
+								m_PoseTask = task;
+							});
 						}
+						break;
+						case eMethod.RandomPoseByTags:
+						{
+							var includeTags = m_IncludeTags.IsNone || string.IsNullOrEmpty(m_IncludeTags.Value) ? new string[0] : m_IncludeTags.Value.Split(SPLITS);
+							var excludeTags = m_ExcludeTags.IsNone || string.IsNullOrEmpty(m_ExcludeTags.Value) ? new string[0] : m_ExcludeTags.Value.Split(SPLITS);
+							var minCount = m_MinCount.IsNone ? 1 : m_MinCount.Value;
+							if (GxMotionDatabase.TryGetRandomPoseByTags(includeTags, excludeTags, minCount, out var poseByTags))
+							{
+								var poseKey = poseByTags.key;
+								Character.ChangePose(poseKey, fadeIn,
+								(task) =>
+								{
+									m_PoseTask = task;
+								});
+							}
+							else
+							{
+								Debug.LogError($"No pose found for tags, include: {m_IncludeTags?.Value}, exclude: {m_ExcludeTags?.Value}");
+								return eState.Failure;
+							}
+						}
+						break;
+						default:
+							Debug.LogError($"Unknown method: {m_Method}");
+							return eState.Failure;
 					}
-
-					Character.ChangePose(poseKey, fadeIn,
-					(task) => { 
-						m_PoseTask = task;
-					});
 				}
 				catch (System.Exception ex)
 				{
