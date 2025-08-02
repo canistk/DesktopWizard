@@ -91,6 +91,12 @@ namespace Gaia
 #else
 				eSrcType.Resources;
 #endif
+
+			if (animator.enabled)
+			{
+				Debug.LogWarning("Animator should be closed.", this);
+				animator.enabled = false;
+			}
 			var handler = await GxMotionPool.Instance.GetHandler(key, transform, fadeIn);
 			var task = new GxMotionTask(this, handler, fadeIn);
 			if (taskCreated != null)
