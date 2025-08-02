@@ -116,7 +116,7 @@ namespace Gaia
                     {
                         // Maintain ".motion" file 1:1 ".vrma" files.
                         Debug.LogError($"{motion.Path} not exist.");
-                        var path = KxFile.ChangeExtension(motion.Path, ".motion");
+                        var path = KxPath.ChangeExtension(motion.Path, ".motion");
                         KxFile.Delete(path);
                         return;
                     }
@@ -186,7 +186,7 @@ namespace Gaia
                     Instance.m_Clips.Add(motion);
                     // Write motion to file
                     var motionJson = GxUtil.ToJson(motion);
-                    var motionFilePath = KxFile.ChangeExtension(vrmaPath, ".motion");
+                    var motionFilePath = KxPath.ChangeExtension(vrmaPath, ".motion");
                     KxFile.Write(motionFilePath, motionJson, backup: false);
                     try
                     {
