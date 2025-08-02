@@ -160,8 +160,8 @@ namespace Gaia
 
 			for (int i = 0; i < single.Count; ++i)
 			{
-				var path = single[i];
-				CreateTimeline(modelPath, animator, tPose, path);
+				var clipPath = single[i];
+				CreateTimeline(modelPath, animator, tPose, clipPath);
 			}
 
 			/// Assume we already have group of timelines defined in the naming convention.
@@ -175,8 +175,8 @@ namespace Gaia
 					continue;
 				for (int i = 0; i < arr.Count; ++i)
 				{
-					var path = arr[i];
-					var key = CreateTimeline(modelPath, animator, tPose, path);
+					var clipPath = arr[i];
+					var key = CreateTimeline(modelPath, animator, tPose, clipPath);
 					converted.Add(key.Path);
 				}
 
@@ -460,8 +460,8 @@ namespace Gaia
 							continue;
 						var fileName = KxPath.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
 						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab").Replace('\\','/');
-						
-						var key = CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath); // manually
+						var infoPath = KxPath.ChangeExtension(path, ".asset");
+						var key = CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath); // manually
 						Debug.Log($"Generated prefab: {key}");
 					}
 				}
@@ -487,8 +487,12 @@ namespace Gaia
 				Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {clipPath}");
 				return default;
 			}
-			var PrefabPath = KxPath.Combine(s_OutputPath, $"{clip.name}.prefab");
-			return CreateTimeline(modelPath, animator, tPose, clip, PrefabPath); // generate all = single
+
+			var infoPath = KxPath.ChangeExtension(clipPath, ".asset");
+			// AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
+
+			var outputPrefabPath = KxPath.Combine(s_OutputPath, $"{clip.name}.prefab");
+			return CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath); // generate all = single
 		}
 
 		/// <summary>
@@ -504,7 +508,7 @@ namespace Gaia
 			string modelPath,
 			Animator animator,
 			RuntimeAnimatorController tPose,
-			AnimationClip clip, string outputPrefabPath)
+			AnimationClip clip, string outputPrefabPath, string infoPath)
 		{
 			//if (animator != null)
 			//	ConvertClip2VRMA(animator, clip);
@@ -548,7 +552,9 @@ namespace Gaia
 				// prepare database record
 				var fileName = Path.GetFileName(outputPrefabPath);
 				var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
-				var record = database.Add(address, clip.isLooping, clip.length);
+
+				var info = AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
+				var record = database.Add(address, clip.isLooping, clip.length, info);
 
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();

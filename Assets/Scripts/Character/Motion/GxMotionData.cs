@@ -7,6 +7,7 @@ namespace Gaia
 	public class GxMotionData : IEqualityComparer<GxMotionData>
     {
 		public GxMotionKey Key;
+		public GxTimelineInfo info;
 
 		/// VRMA case.
 		/// VRMA can only locate in the VRM folder, which is defined in <see cref="GxConst.Path.VRM"/>.
@@ -26,7 +27,7 @@ namespace Gaia
 		// is this animation looped?
 		public bool IsLoop;
 
-		public eEmotion Emotion;
+		// public eEmotion Emotion;
 		public float Weight = 1.0f;
 		// public float BlinkSuppression = 1.0f;
 		// TODO: Optional fields
