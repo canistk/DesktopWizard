@@ -19,6 +19,7 @@ namespace Gaia
         [SerializeField] SharedVector2 m_Form_Pos;
 		[SerializeField] bool m_UseCursorPos = false;
 		[SerializeField] SharedBool m_NoEventAsFailure = false;
+		[SerializeField] bool m_DrawDebugRaycast = false;
 
 		private class ClickInfo
 		{
@@ -85,18 +86,16 @@ namespace Gaia
 			// notes: ray info may not update for some cases (!m_UseCursorPos)
 			if (!TryGetRay(out Ray ray))
 				return NoRayResult();
-			const bool DEBUG_DEPTH = false;
-			const float DEBUG_DURATION = 5f;
 			var maxDistance = m_MaxDistance.IsNone ? float.MaxValue : m_MaxDistance.Value;
 			var radius = m_Radius.IsNone ? 0f : m_Radius.Value;
 			if (radius < 0.0001f)
 			{
 				if (!Physics.Raycast(ray, out var raycastHit, maxDistance, m_LayerMask, m_QueryTriggerInteraction))
 				{
-					DebugExtend.DrawRay(ray.origin, ray.direction * maxDistance, Color.magenta, DEBUG_DURATION, DEBUG_DEPTH);
+					if (m_DrawDebugRaycast) DebugExtend.DrawRay(ray.origin, ray.direction * maxDistance, Color.magenta, DEBUG_DURATION, DEBUG_DEPTH);
 					return NoRayResult();
 				}
-				DebugExtend.DrawRay(ray.origin, ray.direction * raycastHit.distance, Color.green, DEBUG_DURATION, DEBUG_DEPTH);
+				if (m_DrawDebugRaycast) DebugExtend.DrawRay(ray.origin, ray.direction * raycastHit.distance, Color.green, DEBUG_DURATION, DEBUG_DEPTH);
 				CheckHitParts(raycastHit);
 				return eState.Success;
 			}
@@ -104,14 +103,25 @@ namespace Gaia
 			{
 				if (!Physics.SphereCast(ray, radius, out var raycastHit, maxDistance, m_LayerMask, m_QueryTriggerInteraction))
 				{
-					DebugExtend.DrawCylinder(ray.origin, ray.origin + ray.direction * maxDistance, Color.magenta, radius, DEBUG_DURATION, DEBUG_DEPTH);
+					if (m_DrawDebugRaycast) DrawSphereRay(ray, radius, maxDistance, Color.magenta);
 					return NoRayResult();
 				}
-				DebugExtend.DrawCylinder(ray.origin, ray.origin + ray.direction * raycastHit.distance, Color.green, radius, DEBUG_DURATION, DEBUG_DEPTH);
+				if (m_DrawDebugRaycast) DrawSphereRay(ray, radius, raycastHit.distance, Color.green);
 				CheckHitParts(raycastHit);
 				return eState.Success;
+
 			}
-        }
+		}
+
+		const bool DEBUG_DEPTH = false;
+		const float DEBUG_DURATION = 5f;
+		void DrawSphereRay(Ray ray, float radius, float distance, Color col)
+		{
+			var end = ray.origin + ray.direction * distance;
+			DebugExtend.DrawCylinder(ray.origin, end, col, radius, DEBUG_DURATION, DEBUG_DEPTH);
+			DebugExtend.DrawCircle(end, Vector3.up, col, radius, DEBUG_DURATION, DEBUG_DEPTH);
+			DebugExtend.DrawCircle(end, Vector3.right, col, radius, DEBUG_DURATION, DEBUG_DEPTH);
+		}
 
 		private void CheckHitParts(RaycastHit raycastHit)
 		{
@@ -120,13 +130,22 @@ namespace Gaia
 			m_HitPoint.SetValue(raycastHit.point);
 			m_HitDistance.SetValue(raycastHit.distance);
 
-			m_HitLeftArm.SetValue(IsLeftArm(raycastHit.transform, out _));
-			m_HitRightArm.SetValue(IsRightArm(raycastHit.transform, out _));
-			m_HitHead.SetValue(IsHead(raycastHit.transform, out _));
-			m_HitChest.SetValue(IsChest(raycastHit.transform, out _));
-			m_HitHips.SetValue(IsHips(raycastHit.transform, out _));
-			m_HitLeftLeg.SetValue(IsLeftLeg(raycastHit.transform, out _));
-			m_HitRightLeg.SetValue(IsRightLeg(raycastHit.transform, out _));
+			var isLeft = IsLeftArm(raycastHit.transform, out _);
+			var isRight = IsRightArm(raycastHit.transform, out _);
+			var isLeftLeg = IsLeftLeg(raycastHit.transform, out _);
+			var isRightLeg = IsRightLeg(raycastHit.transform, out _);
+			var isHead = IsHead(raycastHit.transform, out _);
+			var isLimbs = isHead || isLeft || isRight || isLeftLeg || isRightLeg;
+			var isChest = !isLimbs && IsChest(raycastHit.transform, out _);
+			var isHip = !isLimbs && !isChest && IsHips(raycastHit.transform, out _);
+
+			m_HitLeftArm.SetValue(isLeft);
+			m_HitRightArm.SetValue(isRight);
+			m_HitHead.SetValue(isHead);
+			m_HitChest.SetValue(isChest);
+			m_HitHips.SetValue(isHip);
+			m_HitLeftLeg.SetValue(isLeftLeg);
+			m_HitRightLeg.SetValue(isRightLeg);
 		}
 
 		private bool TryGetRay(out Ray ray)
@@ -177,6 +196,12 @@ namespace Gaia
 			Debug.LogWarning("GetCharacterHIt: If no position is provided, we cannot determine the ray.");
 			ray = default;
 			return false;
+		}
+
+		public override void OnReset()
+		{
+			base.OnReset();
+			InternalReset();
 		}
 
 		private void InternalReset()

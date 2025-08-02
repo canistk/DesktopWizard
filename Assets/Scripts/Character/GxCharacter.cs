@@ -5,7 +5,6 @@ using Kit2.Tasks;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using UniGLTF;
 using UnityEngine;
 using UniVRM10;
@@ -29,10 +28,13 @@ namespace Gaia
 			{
 				m_Retargeting.ForceTPose();
 			}
-			#if DEBUG
+#if DEBUG
 			_ = transform.GetOrAddComponent<GxMotionHelper>();
-			#endif
+#endif
+
+			GenHumanoidColliders();
 		}
+
 
 		private void Update()
 		{
@@ -255,5 +257,88 @@ namespace Gaia
 		}
 		#endregion Emotion Wheel
 		*/
+
+		#region Body Collider
+		private void GenHumanoidColliders()
+		{
+			var VRM = GetComponent<Vrm10Instance>();
+			if (VRM != null)
+			{
+				m_Tasks.Add(new HotfixVRMControlRigIssue(this, VRM, InternalGenerateCollider));
+			}
+			else
+			{
+				InternalGenerateCollider();
+			}
+		}
+
+		private void InternalGenerateCollider()
+		{
+			if (animator != null)
+				U3DColliderBoneSetup.ExecuteAutoSetup(animator, 1f);
+		}
+
+		/// <summary>
+		/// VRM 10 control rig being create after VRM10 setup completed.
+		/// wait until VRM10 finished.
+		/// </summary>
+		private class HotfixVRMControlRigIssue : MyTaskWithState
+		{
+			private readonly GxCharacter character;
+			private readonly Vrm10Instance vrm10;
+			private float m_StartTime;
+			private const float TIMEOUT = 10f;
+			private System.Action m_Callback;
+			public HotfixVRMControlRigIssue(GxCharacter ch, Vrm10Instance vrm10, System.Action callback)
+			{
+				this.character = ch;
+				this.vrm10 = vrm10;
+				this.m_Callback = callback;
+			}
+			protected override void OnEnter()
+			{
+				// Question, timescale == 0f;
+				m_StartTime = Time.timeSinceLevelLoad;
+			}
+
+			protected override bool ContinueOnNextCycle()
+			{
+				if (character.animator == null)
+					throw new System.NullReferenceException();
+
+				if (character.animator.avatar == null)
+					return true;
+				var avatar = character.animator.avatar;
+				if (avatar == null)
+					return true;
+
+				//var str = avatar.name;
+				//if (str.Contains("runtime control rig", System.StringComparison.OrdinalIgnoreCase))
+				if (vrm10.Runtime != null)
+				{
+					m_Found = true;
+					if (m_Callback != null)
+					{
+						m_Callback.TryCatchDispatchEventError(o => o?.Invoke());
+					}
+					Debug.Log("Found VRM10 control rig.");
+					return false;
+				}
+
+				var pass = Time.timeSinceLevelLoad - m_StartTime;
+				return pass <= TIMEOUT;
+			}
+
+			private bool m_Found;
+
+			protected override void OnComplete()
+			{
+				if (!m_Found)
+					Debug.LogError("Fail to locate VRM10 Control rig");
+			}
+
+		}
+		#endregion Body Collider
+
 	}
 } 
