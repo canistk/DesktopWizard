@@ -1,13 +1,22 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 namespace Gaia
 {
+	/// <summary>
+	/// In order to convert into <see cref="GxMotionData"/>
+	/// for easy modify within development stage.
+	/// </summary>
+	public abstract class GxMotionData_BuildinInfo : ScriptableObject { }
+
+
 	[System.Serializable]
 	public class GxMotionData : IEqualityComparer<GxMotionData>
     {
 		public GxMotionKey Key;
 		public GxTimelineInfo info;
+		public GxPoseInfo pose;
 
 		/// VRMA case.
 		/// VRMA can only locate in the VRM folder, which is defined in <see cref="GxConst.Path.VRM"/>.

@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Gaia
 {
+
     [CreateAssetMenu(fileName = "GxPoseInfo", menuName = "Gaia/GxPoseInfo", order = 1)]
-    public class GxPoseInfo : ScriptableObject
-    {
+    public class GxPoseInfo : GxMotionData_BuildinInfo
+	{
         public List<string> tags = new List<string>();
 
         /// <summary>Internal usage for editor generation</summary>

@@ -9,8 +9,8 @@ namespace Gaia
     /// <see cref="GxTimelineCollection.TimelineData"/> source.
     /// </summary>
     [CreateAssetMenu(fileName = "GxTimelineInfo", menuName = "Gaia/GxTimelineInfo", order = 1)]
-    public class GxTimelineInfo : ScriptableObject
-    {
+    public class GxTimelineInfo : GxMotionData_BuildinInfo
+	{
         public List<string> tags = new List<string>();
     }
 }

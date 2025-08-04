@@ -25,25 +25,101 @@ namespace Gaia
 		}
 
 		private const string s_OutputPath= "Assets/Addressable/Timelines";
-		string[] s_FullPaths, s_FileNames;
+		private static readonly string[] WORK_DIR = new[] { "Assets/Animation" };
+		/// <summary>All FBX files under working <see cref="FetchFBXs"/></summary>
+		private class FBXInfo
+		{
+			public string Path;
+			public string FileName;
+			public FileInfo PoseInfo;
+			public FileInfo MotionInfo;
+
+			public FBXInfo(string path)
+			{
+				this.Path = path;
+				this.FileName = System.IO.Path.GetFileNameWithoutExtension(path);
+			}
+
+			private string GetInfoPath()
+			{
+				var dir = KxPath.GetDirectoryName(this.Path);
+				if (string.IsNullOrEmpty(dir))
+					return string.Empty;
+				var infoPath = KxPath.Combine(dir, $"{FileName}.asset");
+				return infoPath;
+			}
+
+			private bool IsPathExist(string path)
+			{
+				KxPath.ResolvePath(path, out var abs, out _);
+				return KxPath.Exists(abs);
+			}
+
+			public bool IsExist() => IsPathExist(this.Path);
+
+			public bool IsInfoExist() => IsPathExist(GetInfoPath());
+
+			public bool TryGetInfo(out GxMotionData_BuildinInfo obj)
+			{
+				obj = null;
+				var infoPath = GetInfoPath();
+				if (!IsPathExist(infoPath))
+					return false;
+				obj = AssetDatabase.LoadAssetAtPath<GxMotionData_BuildinInfo>(infoPath);
+				if (obj is GxPoseInfo poseInfo)
+				{
+					poseInfo.SetPath(infoPath);
+				}
+				return obj != null;
+			}
+
+			public void GenerateTimelineInfo()
+			{
+				var infoPath = GetInfoPath();
+				if (IsPathExist(infoPath)) throw new System.Exception($"File already exist, {infoPath}");
+				var sampleTags = new List<string>(FileName.ToLower().Split('_'));
+				var obj = ScriptableObject.CreateInstance<GxTimelineInfo>();
+				obj.tags = sampleTags;
+				AssetDatabase.CreateAsset(obj, infoPath);
+			}
+
+			public void GeneratePoseInfo(FBXInfo start, FBXInfo loop, FBXInfo exit)
+			{
+				var infoPath = GetInfoPath();
+				if (IsPathExist(infoPath))		throw new System.Exception($"File already exist, {infoPath}");
+				if (!start.IsExist())			throw new System.Exception($"Start clip file missing: {start}");
+				if (!loop.IsExist())			throw new System.Exception($"Loop clip file missing: {loop}");
+				if (!exit.IsExist())			throw new System.Exception($"Exit clip file missing: {exit}");
+
+				var sampleTags = new List<string>(FileName.ToLower().Split('_'));
+				var obj = ScriptableObject.CreateInstance<GxPoseInfo>();
+				obj.tags = sampleTags;
+				obj.start = start.FileName;
+				obj.loop = loop.FileName;
+				obj.end = exit.FileName;
+				AssetDatabase.CreateAsset(obj, infoPath);
+			}
+
+			public override string ToString()
+			{
+				return FileName;
+			}
+		}
+		FBXInfo[] s_FBXInfo;
 		int m_SelectedIndex = 0;
 		VisualElement m_GenAniPanel, m_ModelPanel;
 		ObjectField m_ModelField, m_TPoseField, m_DatabaseField;
 
-		private void FetchFiles()
+		private void FetchFBXs(out FBXInfo[] info)
 		{
-			var guids = AssetDatabase.FindAssets("t:Model", new[] { "Assets/Animation" });
-			var paths = new List<string>(guids.Length);
-			var fileNames = new List<string>(guids.Length);
-			foreach (var guid in guids)
+			var guids = AssetDatabase.FindAssets("t:Model", WORK_DIR);
+			var cnt = guids.Length;
+			info = new FBXInfo[cnt];
+			for (int i = 0; i < cnt; ++i)
 			{
-				var path = AssetDatabase.GUIDToAssetPath(guid);
-				paths.Add(path);
-				var fileName = System.IO.Path.GetFileNameWithoutExtension(path);
-				fileNames.Add(fileName);
+				var path = AssetDatabase.GUIDToAssetPath(guids[i]);
+				info[i] = new FBXInfo(KxPath.Fix(path));
 			}
-			s_FullPaths = paths.ToArray();
-			s_FileNames = fileNames.ToArray();
 		}
 
 		private void OnDisable()
@@ -58,7 +134,7 @@ namespace Gaia
 		Label m_Hints;
 		public void CreateGUI()
 		{
-			FetchFiles();
+			FetchFBXs(out s_FBXInfo);
 			var left = new ListView
 			{
 				style = {
@@ -71,12 +147,12 @@ namespace Gaia
 				bindItem = (o, index) =>
 				{
 					var btn = o as Label;
-					btn.text = s_FileNames[index];
+					btn.text = s_FBXInfo[index].FileName;
 				},
-				itemsSource = s_FileNames,
+				itemsSource = s_FBXInfo,
 				selectedIndex = m_SelectedIndex,
 			};
-			left.selectedIndicesChanged += OnAniSelectionChange;
+			left.selectedIndicesChanged += OnFBXSelectionChange;
 
 			var split = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal)
 			{
@@ -102,19 +178,17 @@ namespace Gaia
 				("Database", "GxGenerateClip.collision")
 			);
 
-			m_ModelPanel.Add(new Button(OnGenerateAllClicked)
+			m_ModelPanel.Add(new Button(Editor_GenerateSampleDataForRawFBXClips)
 			{
-				text = "Generate All Animations",
+				text = "Generate sample for raw clips",
 				style = { width = 200f }
 			});
-			/***
-			m_ModelPanel.Add(new Button(TestFunc)
-			{
-				text = "Test Path define.",
-				style = { width = 200f }
-			});
-			//**/
 
+			m_ModelPanel.Add(new Button(Editor_CollectTimelineInfo)
+			{
+				text = "Export timeline clips database",
+				style = { width = 200f }
+			});
 
 			m_GenAniPanel.style.flexGrow = 1;
 			m_GenAniPanel.style.flexDirection = FlexDirection.Column;
@@ -131,37 +205,159 @@ namespace Gaia
 
 		}
 
-		private void OnGenerateAllClicked()
+		const int FUZZY_LOGIC = 6;
+		static readonly string[] START = { "start", "begin" };
+		static readonly string[] LOOP = { "loop", "repeat", "mid" };
+		static readonly string[] END = { "end", "finish" };
+		static readonly char[] SPLITS = { '_', '-', ' ' };
+		static readonly string[] ANY = END.Concat(LOOP).Concat(START).ToArray();
+		private void Editor_GenerateSampleDataForRawFBXClips()
 		{
-			if (!TryGetModelPath(out var modelPath))
+			var cnt = s_FBXInfo.Length;
+			var phase2 = new List<FBXInfo>(8);
+			var processed = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+			bool _ContainKeywords(string val, string[] keywords)
 			{
-				SetHint("Model prefab is not set.");
+				foreach (var keyword in keywords)
+				{
+					if (val.Contains(keyword, IGNORE))
+						return true;
+				}
+				return false;
+			}
+
+			for (int i = 0; i < cnt; ++i)
+			{
+				var fbx = s_FBXInfo[i];
+				if (processed.Contains(fbx.Path))
+					continue;
+				if (fbx.TryGetInfo(out var info))
+				{
+					if (info is GxPoseInfo poseInfo)
+					{
+						poseInfo.TryGetStartPath(out var startPath);
+						poseInfo.TryGetLoopPath(out var loopPath);
+						poseInfo.TryGetEndPath(out var exitPath);
+						processed.Add(startPath);
+						processed.Add(loopPath);
+						processed.Add(exitPath);
+					}
+					else
+					{
+						processed.Add(fbx.Path);
+					}
+					continue; // skip already setup fbx.
+				}
+
+				if (!_ContainKeywords(fbx.FileName, ANY))
+				{
+					fbx.GenerateTimelineInfo();
+					processed.Add(fbx.Path);
+				}
+				else
+				{
+					phase2.Add(fbx);
+				}
+			}
+
+			if (phase2.Count == 0)
 				return;
+
+			cnt = phase2.Count;
+			for (int i = 0; i < cnt; ++i)
+			{
+				var fbx = phase2[i];
+				if (processed.Contains(fbx.Path))
+					continue;
+				int endFound = _ContainKeywords(fbx.FileName, END) ? i : -1;
+				int loopFound = _ContainKeywords(fbx.FileName, LOOP) ? i : -1;
+				int startFound = _ContainKeywords(fbx.FileName, START) ? i : -1;
+
+				_FindPrefixSuffix(fbx.FileName, ANY, out var prefix, out var suffix);
+				string key = $"{prefix}GROUP{suffix}"; // use prefix and suffix to form the key
+
+				for (int k = i + 1; k < cnt && (startFound == -1 || loopFound == -1 || endFound == -1); ++k)
+				{
+					if (processed.Contains(phase2[k].Path))
+						continue; // already processed
+					var next = phase2[k];
+					var fName = next.FileName.ToLower();
+					if (!fName.StartsWith(prefix, IGNORE) || !fName.EndsWith(suffix, IGNORE))
+						continue;
+					var factor = StringExtend.LevenshteinDistance(key, fName, false);
+					if (factor > FUZZY_LOGIC)
+						continue; // skip if the factor is too low, means not a group file.
+					if (startFound == -1 && _ContainKeywords(fName, START))	startFound = k;
+					if (loopFound == -1 && _ContainKeywords(fName, LOOP))	loopFound = k;
+					if (endFound == -1 && _ContainKeywords(fName, END))		endFound = k;
+				}
+				if (startFound >= 0 && loopFound >= 0 && endFound >= 0)
+				{
+					// we have a complete group
+					var start = phase2[startFound];
+					var loop = phase2[loopFound];
+					var exit = phase2[endFound];
+					fbx.GeneratePoseInfo(start, loop, exit);
+					processed.Add(start.Path);
+					processed.Add(loop.Path);
+					processed.Add(exit.Path);
+				}
+				else
+				{
+					if (processed.Contains(fbx.Path))
+						throw new System.Exception("Logic error");
+					// this isn't part of pose file, send it to single animation.
+					fbx.GenerateTimelineInfo();
+					processed.Add(fbx.Path);
+				}
 			}
 
-			if (!TryGetTPose(out var tPose))
+			void _FindPrefixSuffix(string fileName, string[] keywords, out string prefix, out string suffix)
 			{
-				SetHint("T-Pose animator is not set.");
+				prefix = string.Empty; suffix = string.Empty;
+				if (string.IsNullOrEmpty(fileName) || keywords == null || keywords.Length == 0)
+					return;
+
+				var arr = fileName.Split(SPLITS, System.StringSplitOptions.RemoveEmptyEntries);
+				for (int i = 0; i < arr.Length; ++i)
+				{
+					var word = arr[i];
+					if (string.IsNullOrEmpty(word))
+						continue;
+					if (!_ContainKeywords(word, keywords))
+					{
+						prefix += word + "_";
+					}
+					else
+					{
+						suffix = string.Join("_", arr.Skip(i + 1));
+						if (!string.IsNullOrEmpty(suffix))
+							suffix = "_" + suffix; // add a trailing underscore for consistency
+						return;
+					}
+				}
+			}
+
+		}
+
+		private void Editor_CollectTimelineInfo()
+		{
+
+		}
+		/****
+		private void TODO()
+		{	
+			if (!CheckSetup(out var modelPath, out var tPose, out var animator, out var database))
 				return;
-			}
 
-			if (!TryGetAnimator(out var animator))
-			{
-				SetHint("Animator is not set.");
-				// return;
-			}
+			database.Clear();
 
-			if (TryGetDatabase(out var database))
-			{
-				database.Clear();
-			}
-
-			GroupDefine(out var single, out var groups);
+			DefineGroupByRawFBXClips(out var single, out var groups);
 			var created = false;
 			for (int i = 0; i < single.Count; ++i)
 			{
 				var clipPath	= single[i];
-				CreateTimeline(modelPath, animator, tPose, clipPath);
+				CreateTimeline(modelPath, animator, tPose, clipPath, out var timelineData);
 				var dir			= KxPath.GetDirectoryName(clipPath);
 				var fileName	= KxPath.GetFileNameWithoutExtension(clipPath);
 				var infoPath	= KxPath.Combine(dir, $"{fileName}.asset");
@@ -183,13 +379,14 @@ namespace Gaia
 				var groupKey = kvp.Key;
 				var arr = kvp.Value;
 				var converted = new List<string>(arr.Count);
+				var tlArr = new GxTimelineCollection.TimelineData[arr.Count];
 				if (arr == null || arr.Count == 0)
 					continue;
 
 				for (int i = 0; i < arr.Count; ++i)
 				{
 					var clipPath = arr[i];
-					var key = CreateTimeline(modelPath, animator, tPose, clipPath);
+					var key = CreateTimeline(modelPath, animator, tPose, clipPath, out tlArr[i]);
 					converted.Add(key.Path);
 				}
 
@@ -201,7 +398,6 @@ namespace Gaia
 					var exit = new GxMotionKey(converted[2], eAssetType.Timeline);
 					var poseData = new GxPoseData(groupKey, enter, loop, exit);
 					database.AddPose(poseData); // add to database
-
 
 					var p = arr[0];
 					var dir = KxPath.GetDirectoryName(p);
@@ -233,152 +429,7 @@ namespace Gaia
 			}
 			AssetDatabase.Refresh();
 		}
-
-		private void GroupDefine(
-			out List<string> single,
-			out Dictionary<string, List<string>> groups)
-		{
-			const int FUZZY_LOGIC = 6;
-			single = new List<string>();
-			groups = new Dictionary<string, List<string>>();
-			var processed = new HashSet<int>();
-			if (s_FullPaths == null || s_FullPaths.Length == 0)
-			{
-				SetHint("No animation clips found.");
-				return;
-			}
-			string[] START = { "start", "begin" };
-			string[] LOOP = { "loop", "repeat", "mid" };
-			string[] END = { "end", "finish" };
-			string[] ANY = END.Concat(LOOP).Concat(START).ToArray();
-			char[] SPLITS = { '_', '-', ' ' };
-			bool _Is(string val, string[] keywords)
-			{
-				foreach (var keyword in keywords)
-				{
-					if (val.Contains(keyword, IGNORE))
-						return true;
-				}
-				return false;
-			}
-			void _FindPrefixSuffix(string fileName, string[] keywords, out string prefix, out string suffix)
-			{
-				prefix = string.Empty; suffix = string.Empty;
-				if (string.IsNullOrEmpty(fileName) || keywords == null || keywords.Length == 0)
-					return;
-
-				var arr = fileName.Split(SPLITS, System.StringSplitOptions.RemoveEmptyEntries);
-				for (int i = 0; i< arr.Length; ++i)
-				{
-					var word = arr[i];
-					if (string.IsNullOrEmpty(word))
-						continue;
-					if (!_Is(word, keywords))
-					{
-						prefix += word + "_";
-					}
-					else
-					{
-						suffix = string.Join("_", arr.Skip(i + 1));
-						if (!string.IsNullOrEmpty(suffix))
-							suffix = "_"+suffix; // add a trailing underscore for consistency
-						return;
-					}
-				}
-			}
-
-			for (int i = 0; i < s_FullPaths.Length; ++i)
-			{
-				if (processed.Contains(i))
-					continue; // already processed
-				var path = s_FullPaths[i];
-				if (string.IsNullOrEmpty(path))
-					continue;
-				var dir = Path.GetDirectoryName(path);
-				var fileName = Path.GetFileNameWithoutExtension(path);
-				
-				// TODO: add specifiy file name check for special cases.
-
-				if (!_Is(fileName, ANY))
-				{
-					single.Add(path); // single animation clip
-					processed.Add(i);
-				}
-				else
-				{
-					// Auto search & group `start`, `loop`, `end` clips
-					const string GROUP = "Group";
-					// group by start, loop, end
-
-					int endFound	= _Is(fileName, END)	? i : -1;
-					int loopFound	= _Is(fileName, LOOP)	? i : -1;
-					int startFound	= _Is(fileName, START)	? i : -1;
-
-					_FindPrefixSuffix(fileName, ANY, out var prefix, out var suffix);
-					string key = $"{prefix}{GROUP}{suffix}"; // use prefix and suffix to form the key
-					if (string.IsNullOrEmpty(key))
-					{
-						processed.Add(i); // mark as processed
-						single.Add(path); // single animation clip
-						continue; // no group found
-					}
-					
-					for (int k = i + 1; k < s_FullPaths.Length &&
-						(startFound == -1 || loopFound == -1 || endFound == -1); ++k)
-					{
-						if (processed.Contains(k))
-							continue; // already processed
-						var nextPath = s_FullPaths[k];
-						if (string.IsNullOrEmpty(nextPath))
-							continue;
-						var nextFileName = Path.GetFileNameWithoutExtension(nextPath);
-
-						var startWith = nextFileName.StartsWith(prefix, IGNORE);
-						var endsWith = nextFileName.EndsWith(suffix, IGNORE);
-						if (!startWith || !endsWith)
-							continue; // assume group file with same pattern, skip mismatch.
-						
-						var factor = StringExtend.LevenshteinDistance(key, nextFileName, false);
-						if (factor > FUZZY_LOGIC)
-							continue; // skip if the factor is too low, means not a group file.
-
-						if (startFound == -1 && _Is(nextFileName, START))
-						{
-							startFound = k;
-						}
-						if (loopFound == -1 && _Is(nextFileName, LOOP))
-						{
-							loopFound = k;
-						}
-						if (endFound == -1 && _Is(nextFileName, END))
-						{
-							endFound = k;
-						}
-					}
-					if (startFound >= 0 && loopFound >= 0 && endFound >= 0)
-					{
-						// we have a complete group
-						if (!groups.TryGetValue(key, out var list))
-						{
-							list = new List<string>();
-							groups.Add(key, list);
-						}
-						list.Add(s_FullPaths[startFound]);
-						list.Add(s_FullPaths[loopFound]);
-						list.Add(s_FullPaths[endFound]);
-						processed.Add(startFound);
-						processed.Add(loopFound);
-						processed.Add(endFound);
-					}
-					else
-					{
-						single.Add(path); // single animation clip
-						processed.Add(i); // mark as processed
-					}
-				}
-			}
-		}
-
+		//*****/
 		private void SetHint(string msg)
 		{
 			if (m_Hints == null)
@@ -422,7 +473,7 @@ namespace Gaia
 			return database != null;
 		}
 
-		private void OnAniSelectionChange(IEnumerable<int> selection)
+		private void OnFBXSelectionChange(IEnumerable<int> selection)
 		{
 			if (selection == null || selection.Count() == 0)
 			{
@@ -430,16 +481,16 @@ namespace Gaia
 				return;
 			}
 			var i = selection.ElementAt(0);
-			var path = s_FullPaths[i];
-			SetHint($"Selected: {path}");
-			DetailPage(path);
+			var data = s_FBXInfo[i];
+			SetHint($"Selected Path: {data.Path}");
+			DetailPage(data);
 		}
 
 		Object[] m_DetailObjects;
-		private void DetailPage(string path)
+		private void DetailPage(FBXInfo info)
 		{
 			m_GenAniPanel.Clear();
-			m_DetailObjects = AssetDatabase.LoadAllAssetsAtPath(path);
+			m_DetailObjects = AssetDatabase.LoadAllAssetsAtPath(info.Path);
 			var rootGO = m_DetailObjects.FirstOrDefault(o => o is GameObject) as GameObject;
 
 			for (int i = 0; i < m_DetailObjects.Length; ++i)
@@ -462,6 +513,15 @@ namespace Gaia
 				m_GenAniPanel.Add(field);
 			}
 
+			info.TryGetInfo(out var infoSO);
+			m_GenAniPanel.Add(new ObjectField
+			{
+				value = infoSO,
+				label = "Info",
+				allowSceneObjects = false,				
+			});
+
+			/***
 			var generateButton = new Button(() =>
 			{
 				if (m_DetailObjects == null || m_DetailObjects.Length == 0)
@@ -496,7 +556,7 @@ namespace Gaia
 						var fileName = KxPath.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
 						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab").Replace('\\','/');
 						var infoPath = KxPath.ChangeExtension(path, ".asset");
-						var key = CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath); // manually
+						var key = CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath, out var timeline); // manually
 						Debug.Log($"Generated prefab: {key}");
 					}
 				}
@@ -506,12 +566,14 @@ namespace Gaia
 				text = "Generate Prefabs"
 			};
 			m_GenAniPanel.Add(generateButton);
+			//**/
 		}
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
-		private GxMotionKey CreateTimeline(string modelPath, Animator animator, RuntimeAnimatorController tPose, string clipPath)
+		private GxMotionKey CreateTimeline(string modelPath, Animator animator, RuntimeAnimatorController tPose, string clipPath, out GxTimelineCollection.TimelineData timelineData)
 		{
+			timelineData = default;
 			if (string.IsNullOrEmpty(clipPath))
 				return default;
 
@@ -527,7 +589,7 @@ namespace Gaia
 			// AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
 
 			var outputPrefabPath = KxPath.Combine(s_OutputPath, $"{clip.name}.prefab");
-			return CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath); // generate all = single
+			return CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath, out timelineData); // generate all = single
 		}
 
 		/// <summary>
@@ -543,7 +605,7 @@ namespace Gaia
 			string modelPath,
 			Animator animator,
 			RuntimeAnimatorController tPose,
-			AnimationClip clip, string outputPrefabPath, string infoPath)
+			AnimationClip clip, string outputPrefabPath, string infoPath, out GxTimelineCollection.TimelineData timelineData)
 		{
 			//if (animator != null)
 			//	ConvertClip2VRMA(animator, clip);
@@ -553,7 +615,10 @@ namespace Gaia
 				var root = cp.token;
 				var timeline = _PrepareTimelineAsset(outputPrefabPath);
 				if (timeline == null)
+				{
+					timelineData = default;
 					return default;
+				}
 
 				// Model
 				var model = PrefabUtility.LoadPrefabContents(modelPath);
@@ -581,6 +646,7 @@ namespace Gaia
 				if (!TryGetDatabase(out var database))
 				{
 					Debug.LogError("Fail to get GxTimelineCollection database, please create one first.");
+					timelineData = default;
 					return default;
 				}
 
@@ -589,7 +655,8 @@ namespace Gaia
 				var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
 
 				var info = AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
-				var record = database.Add(address, clip.isLooping, clip.length, info);
+				var record = database.Add(address, clip.isLooping, clip.length, out timelineData);
+				timelineData.info = info;
 
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();

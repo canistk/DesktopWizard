@@ -48,14 +48,13 @@ namespace Gaia
 		[System.Serializable]
 		public class TimelineData : GxMotionData
 		{
-			public TimelineData(string address, bool isLoop, float duration, GxTimelineInfo info)
+			public TimelineData(string address, bool isLoop, float duration)
 				: base()
 			{
 				this.Key = new GxMotionKey(address, eAssetType.Timeline);
 				this.IsLoop = isLoop;
 				this.ClipLength = duration;
 				this.Weight = 1.0f; // Default weight
-				this.info = info;
 			}
 		}
 
@@ -66,10 +65,10 @@ namespace Gaia
 			return m_Timelines != null ? m_Timelines.Count : 0;
 		}
 
-		public GxMotionKey Add(string path, bool isLoop, float duration, GxTimelineInfo info)
+		public GxMotionKey Add(string path, bool isLoop, float duration, out TimelineData clipInfo)
 		{
 			var duplicate = false;
-			var clipInfo = new TimelineData(path, isLoop, duration, info);
+			clipInfo = new TimelineData(path, isLoop, duration);
 			for (int i = 0; i < m_Timelines.Count; ++i)
 			{
 				var rec = m_Timelines[i];
