@@ -157,11 +157,23 @@ namespace Gaia
 			}
 
 			GroupDefine(out var single, out var groups);
-
+			var created = false;
 			for (int i = 0; i < single.Count; ++i)
 			{
-				var clipPath = single[i];
+				var clipPath	= single[i];
 				CreateTimeline(modelPath, animator, tPose, clipPath);
+				var dir			= KxPath.GetDirectoryName(clipPath);
+				var fileName	= KxPath.GetFileNameWithoutExtension(clipPath);
+				var infoPath	= KxPath.Combine(dir, $"{fileName}.asset");
+				KxPath.ResolvePath(infoPath, out var abs, out _);
+				if (!KxPath.Exists(infoPath))
+				{
+					var obj = ScriptableObject.CreateInstance<GxTimelineInfo>();
+					var list = new List<string>(fileName.ToLower().Split('_'));
+					obj.tags = list;
+					AssetDatabase.CreateAsset(obj, infoPath);
+					created = true;
+				}
 			}
 
 			/// Assume we already have group of timelines defined in the naming convention.
@@ -173,6 +185,7 @@ namespace Gaia
 				var converted = new List<string>(arr.Count);
 				if (arr == null || arr.Count == 0)
 					continue;
+
 				for (int i = 0; i < arr.Count; ++i)
 				{
 					var clipPath = arr[i];
@@ -188,6 +201,24 @@ namespace Gaia
 					var exit = new GxMotionKey(converted[2], eAssetType.Timeline);
 					var poseData = new GxPoseData(groupKey, enter, loop, exit);
 					database.AddPose(poseData); // add to database
+
+
+					var p = arr[0];
+					var dir = KxPath.GetDirectoryName(p);
+					var fileName = KxPath.GetFileNameWithoutExtension(p);
+					var infoPath = KxPath.Combine(dir, $"{fileName}.asset");
+					KxPath.ResolvePath(infoPath, out var abs, out _);
+					if (!KxPath.Exists(abs))
+					{
+						var obj = ScriptableObject.CreateInstance<GxPoseInfo>();
+						var list = new List<string>(fileName.ToLower().Split('_'));
+						obj.tags = list;
+						obj.start = KxPath.GetFileNameWithoutExtension(enter.Path);
+						obj.loop = KxPath.GetFileNameWithoutExtension(loop.Path);
+						obj.end = KxPath.GetFileNameWithoutExtension(exit.Path);
+						AssetDatabase.CreateAsset(obj, infoPath);
+					}
+
 				}
 				else
 				{
@@ -196,6 +227,10 @@ namespace Gaia
 				}
 			}
 
+			if (created)
+			{
+				AssetDatabase.SaveAssets();
+			}
 			AssetDatabase.Refresh();
 		}
 

@@ -53,28 +53,6 @@ namespace Gaia
 			};
 		}
 
-		public void AddNext(string nextPath, eAssetType nextType)
-		{
-			var next = new GxMotionKey(nextPath, nextType);
-			AddNext(next);
-		}
-
-		public void AddNext(GxMotionKey next)
-		{
-			if (next.Type != Type)
-			{
-				throw new ArgumentException($"Cannot add motion of different type: {next.Type} to {Type}");
-			}
-			if (string.IsNullOrEmpty(next.Path))
-			{
-				throw new ArgumentException($"Cannot add empty path: {next.Path} to {Path}");
-			}
-			if (!next.Valid)
-			{
-				throw new Exception($"Cannot add invalid motion: {next} to {this}");
-			}
-		}
-
 		public bool Equals(GxMotionData x, GxMotionData y)
 		{
 			return x.Path == y.Path && x.Type == y.Type;

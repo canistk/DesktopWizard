@@ -35,12 +35,10 @@ namespace Gaia
 		public string ShortName => KxPath.GetFileNameWithoutExtension(Path);
 		public string Path;
 		public eAssetType Type;
-		public bool Valid;
 		public GxMotionKey(string path, eAssetType type)
 		{
 			Path = path;
 			Type = type;
-			Valid = true;
 		}
 		public override string ToString()
 		{
