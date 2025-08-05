@@ -1,6 +1,7 @@
 using Kit2;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 namespace Gaia
 {
@@ -17,24 +18,32 @@ namespace Gaia
             var dir = KxPath.GetDirectoryName(path);
             this.m_Path = new KeyValuePair<bool, string>(true, dir);
         }
-        
-        public string start;
-        public string loop;
-        public string end;
-		private bool TryGetPath(string fileName, out string path)
-		{
-			if (!m_Path.Key)
-			{
-				path = default;
-				return false;
-			}
 
-			path = KxPath.Combine(m_Path.Value, $"{fileName}.fbx");
-			return true;
-		}
+        public string key;
+        public GxTimelineData start;
+        public GxTimelineData loop;
+        public GxTimelineData end;
 
-		public bool TryGetStartPath(out string path) => TryGetPath(start, out path);
-        public bool TryGetLoopPath(out string path) => TryGetPath(loop, out path);
-        public bool TryGetEndPath(out string path) => TryGetPath(end, out path);
+        public void Assign(string key, GxTimelineData start, GxTimelineData loop, GxTimelineData exit, string[] tags)
+        {
+            this.key = key;
+            this.start = start;
+            this.loop = loop;
+            this.end = exit;
+            this.tags = new List<string>(tags);
+        }
+
+        public GxPoseData ToData(string dir)
+        {
+            var s = start.Path;
+            var l = loop.Path;
+            var e = end.Path;
+
+			var data = new GxPoseData(key,
+                new GxMotionKey(s, eAssetType.Timeline),
+                new GxMotionKey(l, eAssetType.Timeline),
+                new GxMotionKey(e, eAssetType.Timeline));
+            return data;
+        }
     }
 }

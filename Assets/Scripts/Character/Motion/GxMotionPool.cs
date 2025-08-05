@@ -67,8 +67,14 @@ namespace Gaia
         //}
 
         public async Task<GxMotionHandler> GetHandler(GxMotionKey key, Transform parent, float fadeIn)
-        {
-            if (!GxMotionDatabase.TryGetMotion(key, out GxMotionData motionData))
+		{
+			if (string.IsNullOrEmpty(key.Path))
+			{
+				Debug.LogError("Invalid Key");
+				return default;
+			}
+
+			if (!GxMotionDatabase.TryGetMotion(key, out GxMotionData motionData))
                 throw new System.Exception($"Motion data not found for key: {key}");
             if (motionData.Type == eAssetType.VRMA)
             {

@@ -120,4 +120,19 @@ namespace Gaia
 			return match;
 		}
 	}
+
+
+	[System.Serializable]
+	public class GxTimelineData : GxMotionData
+	{
+		public GxTimelineData(string address, bool isLoop, float duration)
+			: base()
+		{
+			this.Key = new GxMotionKey(address, eAssetType.Timeline);
+			this.IsLoop = isLoop;
+			this.ClipLength = duration;
+			this.Weight = 1.0f; // Default weight
+		}
+	}
+
 }

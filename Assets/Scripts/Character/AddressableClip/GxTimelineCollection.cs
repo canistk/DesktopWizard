@@ -41,57 +41,42 @@ namespace Gaia
 			ReferenceEquals(Instance, null);
 		}
 
-		[SerializeField] private List<TimelineData> m_Timelines = new List<TimelineData>();
+		[SerializeField] private List<GxTimelineData> m_Timelines = new List<GxTimelineData>();
 
 		[SerializeField] private List<GxPoseData> m_Poses = new List<GxPoseData>();
 
-		[System.Serializable]
-		public class TimelineData : GxMotionData
-		{
-			public TimelineData(string address, bool isLoop, float duration)
-				: base()
-			{
-				this.Key = new GxMotionKey(address, eAssetType.Timeline);
-				this.IsLoop = isLoop;
-				this.ClipLength = duration;
-				this.Weight = 1.0f; // Default weight
-			}
-		}
-
-		public IReadOnlyList<TimelineData> Timelines => m_Timelines;
+		public IReadOnlyList<GxTimelineData> Timelines => m_Timelines;
 
 		public int MotionCount()
 		{
 			return m_Timelines != null ? m_Timelines.Count : 0;
 		}
 
-		public GxMotionKey Add(string path, bool isLoop, float duration, out TimelineData clipInfo)
+		public void Add(GxTimelineData data)
 		{
-			var duplicate = false;
-			clipInfo = new TimelineData(path, isLoop, duration);
-			for (int i = 0; i < m_Timelines.Count; ++i)
+			var path = data.Path;
+			foreach(var tl in m_Timelines)
 			{
-				var rec = m_Timelines[i];
-				if (rec.Path == path)
-				{
-					duplicate = true;
-					Debug.LogWarning($"Timeline with path '{path}' already exists in the collection. Skipping addition.");
-					m_Timelines[i] = clipInfo;
-				}
+				if (!tl.Path.Equals(path, IGNORE))
+					continue;
+				return;
 			}
-			if (!duplicate)
-			{
-				m_Timelines.Add(clipInfo);
-			}
-			return clipInfo.Key;
+			m_Timelines.Add(data);
 		}
 
-		public string AddPose(GxPoseData pose)
+		public bool Add(GxPoseData data)
 		{
-			m_Poses.Add(pose);
-			return pose.key;
+			var key = data.key;
+			foreach (var p in m_Poses)
+			{
+				if (!p.key.Equals(key, IGNORE))
+					continue;
+				return false;
+			}
+			m_Poses.Add(data);
+			return true;
 		}
-
+		const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 		public int PoseCount()
 		{
 			return m_Poses != null ? m_Poses.Count : 0;

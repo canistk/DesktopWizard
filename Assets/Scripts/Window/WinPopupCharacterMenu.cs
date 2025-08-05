@@ -1,3 +1,4 @@
+using Kit2;
 using Kit2.ObjectPool;
 using System.Collections;
 using System.Collections.Generic;
@@ -75,6 +76,7 @@ namespace Gaia
 			}
 
 			// Play the VRMA animation
+			path = KxPath.Fix(path);
 			var key = new GxMotionKey(path, eAssetType.VRMA);
 			ch.CrossFade(key, 0f);
 		}

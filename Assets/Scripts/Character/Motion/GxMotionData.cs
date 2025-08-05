@@ -15,8 +15,6 @@ namespace Gaia
 	public class GxMotionData : IEqualityComparer<GxMotionData>
     {
 		public GxMotionKey Key;
-		public GxTimelineInfo info;
-		public GxPoseInfo pose;
 
 		/// VRMA case.
 		/// VRMA can only locate in the VRM folder, which is defined in <see cref="GxConst.Path.VRM"/>.

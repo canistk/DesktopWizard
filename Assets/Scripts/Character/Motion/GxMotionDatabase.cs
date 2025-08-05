@@ -97,6 +97,7 @@ namespace Gaia
             KxDirectory.EnsureExists(VRMAPath);
             var motionFilePaths = KxDirectory.GetFiles(VRMAPath, "*.motion", System.IO.SearchOption.AllDirectories);
             var vrmaFilePaths = KxDirectory.GetFiles(VRMAPath, "*.vrma", System.IO.SearchOption.AllDirectories);
+            
             int readCount = 0;
             for (int i = 0; i < motionFilePaths.Length; i++)
             {
@@ -105,6 +106,11 @@ namespace Gaia
                 ++readCount;
                 KxFile.Read(motionFilePaths[i], _OnMotionJsonRead, _OnMotionJsonReadFail);
             }
+
+            if (motionFilePaths.Length == 0)
+            {
+                _OnAllMotionRead();
+			}
 
             void _OnMotionJsonRead(string json)
             {
@@ -168,35 +174,36 @@ namespace Gaia
         {
             try
             {
-                foreach (var vrmaPath in vrmaFilePaths)
+                foreach (var path in vrmaFilePaths)
                 {
+                    var vrmaPath = KxPath.Fix(path);
                     if (!KxFile.Exists(vrmaPath))
                         throw new System.Exception($"VRMA file not found: {vrmaPath}");
 
                     var hadRecord = Instance.m_Clips.Any(o => o.Path == vrmaPath);
                     if (hadRecord)
                         continue; // skip, vrma loading, since we already had reecord.
-
-                    var motion = await GenerateMotionByVRMA(vrmaPath);
-                    if (motion == null)
-                    {
-                        // Debug.LogError($"Fail to load VRMA file: {vrmaPath}");
-                        continue;
-                    }
-                    Instance.m_Clips.Add(motion);
-                    // Write motion to file
-                    var motionJson = GxUtil.ToJson(motion);
-                    var motionFilePath = KxPath.ChangeExtension(vrmaPath, ".motion");
-                    KxFile.Write(motionFilePath, motionJson, backup: false);
-                    try
-                    {
-                        OnNewVRMAFound(motion);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        Debug.LogError(ex);
-                    }
-                }
+                    
+					var motion = await GenerateMotionByVRMA(vrmaPath);
+					if (motion == null)
+					{
+						// Debug.LogError($"Fail to load VRMA file: {vrmaPath}");
+						return;
+					}
+					Instance.m_Clips.Add(motion);
+					// Write motion to file
+					var motionJson = GxUtil.ToJson(motion);
+					var motionFilePath = KxPath.ChangeExtension(vrmaPath, ".motion");
+					KxFile.Write(motionFilePath, motionJson, backup: false);
+					try
+					{
+						OnNewVRMAFound(motion);
+					}
+					catch (System.Exception ex)
+					{
+						Debug.LogError(ex);
+					}
+				}
             }
             catch (System.Exception ex)
             {

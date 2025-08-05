@@ -2,8 +2,11 @@ using Baxter;
 using Kit2;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using Unity.Plastic.Antlr3.Runtime;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
@@ -12,6 +15,8 @@ using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using UnityEngine.UIElements;
+using UnityEngine.VFX;
+using static Gaia.GxTimelineCollection;
 
 namespace Gaia
 {
@@ -31,8 +36,6 @@ namespace Gaia
 		{
 			public string Path;
 			public string FileName;
-			public FileInfo PoseInfo;
-			public FileInfo MotionInfo;
 
 			public FBXInfo(string path)
 			{
@@ -55,6 +58,12 @@ namespace Gaia
 				return KxPath.Exists(abs);
 			}
 
+			public bool TryGetClip(out AnimationClip clip)
+			{
+				clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(this.Path);
+				return clip != null;
+			}
+
 			public bool IsExist() => IsPathExist(this.Path);
 
 			public bool IsInfoExist() => IsPathExist(GetInfoPath());
@@ -75,28 +84,26 @@ namespace Gaia
 
 			public void GenerateTimelineInfo()
 			{
+				var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(this.Path);
+				if (clip == null)
+					return; // skip this
 				var infoPath = GetInfoPath();
 				if (IsPathExist(infoPath)) throw new System.Exception($"File already exist, {infoPath}");
-				var sampleTags = new List<string>(FileName.ToLower().Split('_'));
+				var sampleTags = FileName.ToLower().Split('_');
 				var obj = ScriptableObject.CreateInstance<GxTimelineInfo>();
-				obj.tags = sampleTags;
+				obj.Assign(clip.isLooping, clip.length, sampleTags);
 				AssetDatabase.CreateAsset(obj, infoPath);
 			}
 
-			public void GeneratePoseInfo(FBXInfo start, FBXInfo loop, FBXInfo exit)
+			public void GeneratePoseInfo(string key, GxTimelineData start, GxTimelineData loop, GxTimelineData exit)
 			{
 				var infoPath = GetInfoPath();
 				if (IsPathExist(infoPath))		throw new System.Exception($"File already exist, {infoPath}");
-				if (!start.IsExist())			throw new System.Exception($"Start clip file missing: {start}");
-				if (!loop.IsExist())			throw new System.Exception($"Loop clip file missing: {loop}");
-				if (!exit.IsExist())			throw new System.Exception($"Exit clip file missing: {exit}");
-
-				var sampleTags = new List<string>(FileName.ToLower().Split('_'));
+				
+				var sampleTags = FileName.ToLower().Split('_');
 				var obj = ScriptableObject.CreateInstance<GxPoseInfo>();
-				obj.tags = sampleTags;
-				obj.start = start.FileName;
-				obj.loop = loop.FileName;
-				obj.end = exit.FileName;
+				obj.Assign(key, start, loop, exit, sampleTags);
+				
 				AssetDatabase.CreateAsset(obj, infoPath);
 			}
 
@@ -164,7 +171,7 @@ namespace Gaia
 			split.Add(left);
 
 
-			var right = VisualElementExtend.SplitVertical(100f, out m_ModelPanel, -1f, out m_GenAniPanel);
+			var right = VisualElementExtend.SplitVertical(150f, out m_ModelPanel, -1f, out m_GenAniPanel);
 			split.Add(right);
 
 			m_ModelPanel.Add(m_ModelField = VisualElementExtend.
@@ -181,6 +188,12 @@ namespace Gaia
 			m_ModelPanel.Add(new Button(Editor_GenerateSampleDataForRawFBXClips)
 			{
 				text = "Generate sample for raw clips",
+				style = { width = 200f }
+			});
+
+			m_ModelPanel.Add(new Button(Editor_ConvertFBXClips2Timeline)
+			{
+				text = "Convert FBX clips to timeline",
 				style = { width = 200f }
 			});
 
@@ -235,12 +248,9 @@ namespace Gaia
 				{
 					if (info is GxPoseInfo poseInfo)
 					{
-						poseInfo.TryGetStartPath(out var startPath);
-						poseInfo.TryGetLoopPath(out var loopPath);
-						poseInfo.TryGetEndPath(out var exitPath);
-						processed.Add(startPath);
-						processed.Add(loopPath);
-						processed.Add(exitPath);
+						processed.Add(poseInfo.start.Path);
+						processed.Add(poseInfo.loop.Path);
+						processed.Add(poseInfo.end.Path);
 					}
 					else
 					{
@@ -294,13 +304,25 @@ namespace Gaia
 				if (startFound >= 0 && loopFound >= 0 && endFound >= 0)
 				{
 					// we have a complete group
-					var start = phase2[startFound];
-					var loop = phase2[loopFound];
-					var exit = phase2[endFound];
-					fbx.GeneratePoseInfo(start, loop, exit);
-					processed.Add(start.Path);
-					processed.Add(loop.Path);
-					processed.Add(exit.Path);
+					var f0 = phase2[startFound];
+					var f1 = phase2[loopFound];
+					var f2 = phase2[endFound];
+					if (!f0.IsExist() || !f1.IsExist() || !f2.IsExist())
+					{
+						Debug.LogError("Logic error.");
+						continue;
+					}
+					processed.Add(f0.Path);
+					processed.Add(f1.Path);
+					processed.Add(f2.Path);
+					
+					var s = AssetDatabase.LoadAssetAtPath<AnimationClip>(f0.Path);
+					var l = AssetDatabase.LoadAssetAtPath<AnimationClip>(f1.Path);
+					var e = AssetDatabase.LoadAssetAtPath<AnimationClip>(f2.Path);
+					var t0 = new GxTimelineData(KxPath.Combine(s_OutputPath, $"{f0.FileName}.prefab"), s.isLooping, s.length);
+					var t1 = new GxTimelineData(KxPath.Combine(s_OutputPath, $"{f1.FileName}.prefab"), l.isLooping, l.length);
+					var t2 = new GxTimelineData(KxPath.Combine(s_OutputPath, $"{f2.FileName}.prefab"), e.isLooping, e.length);
+					fbx.GeneratePoseInfo(key, t0, t1, t2);
 				}
 				else
 				{
@@ -340,96 +362,98 @@ namespace Gaia
 
 		}
 
-		private void Editor_CollectTimelineInfo()
+		private string GetExportPath(FBXInfo fbx)
 		{
-
+			var fName = fbx.FileName;
+			var address = Path.Combine(s_OutputPath, $"{fName}.prefab").Replace('\\', '/');
+			return address;
+			//var outputPrefabPath = KxPath.Combine(s_OutputPath, $"{fName}.prefab");
+			//return outputPrefabPath;
 		}
-		/****
-		private void TODO()
-		{	
-			if (!CheckSetup(out var modelPath, out var tPose, out var animator, out var database))
-				return;
 
-			database.Clear();
+		private void Editor_ConvertFBXClips2Timeline()
+		{
+			if (!TryGetModelPath(out var modelPath))
+				throw new System.Exception("Model Path not found.");
+			if (!TryGetTPose(out var tPose))
+				throw new System.Exception("TPose reference missing.");
+			if (!TryGetAnimator(out var animator))
+				throw new System.Exception("Animator reference missing.");
+			//if (!TryGetDatabase(out var database))
+			//	throw new System.Exception("Database reference missing.");
+			// database.Clear();
 
-			DefineGroupByRawFBXClips(out var single, out var groups);
-			var created = false;
-			for (int i = 0; i < single.Count; ++i)
+			var cnt = s_FBXInfo.Length;
+			for (int i = 0; i < cnt; ++i)
 			{
-				var clipPath	= single[i];
-				CreateTimeline(modelPath, animator, tPose, clipPath, out var timelineData);
-				var dir			= KxPath.GetDirectoryName(clipPath);
-				var fileName	= KxPath.GetFileNameWithoutExtension(clipPath);
-				var infoPath	= KxPath.Combine(dir, $"{fileName}.asset");
-				KxPath.ResolvePath(infoPath, out var abs, out _);
-				if (!KxPath.Exists(infoPath))
+				var fbx = s_FBXInfo[i];
+				var clipPath = fbx.Path;
+				var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+				if (clip == null)
 				{
-					var obj = ScriptableObject.CreateInstance<GxTimelineInfo>();
-					var list = new List<string>(fileName.ToLower().Split('_'));
-					obj.tags = list;
-					AssetDatabase.CreateAsset(obj, infoPath);
-					created = true;
+					var fileName = Path.GetFileNameWithoutExtension(clipPath);
+					Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {clipPath}");
+					continue;
 				}
+
+				var outputPrefabPath	= GetExportPath(fbx);
+				CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath);
+
+				// var motionKey	= database.Add(outputPrefabPath, clip.isLooping, clip.length, out var timelineData);
+				
+				//var infoPath = KxPath.ChangeExtension(clipPath, ".asset");
+				//timelineData.info = AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
 			}
 
-			/// Assume we already have group of timelines defined in the naming convention.
-			/// e.g. "Run_Group", "Run_Loop", "Run_End"
-			foreach (var kvp in groups)
+			AssetDatabase.SaveAssets();
+			AssetDatabase.Refresh();
+		}
+
+		private void Editor_CollectTimelineInfo()
+		{
+			if (!TryGetDatabase(out var database))
+				throw new System.Exception("Database reference missing.");
+
+			database.Clear();
+			var guids = AssetDatabase.FindAssets($"t:{nameof(GxMotionData_BuildinInfo)}", WORK_DIR);
+			var cnt = guids.Length;
+			for (int i = 0; i < cnt; ++i)
 			{
-				var groupKey = kvp.Key;
-				var arr = kvp.Value;
-				var converted = new List<string>(arr.Count);
-				var tlArr = new GxTimelineCollection.TimelineData[arr.Count];
-				if (arr == null || arr.Count == 0)
-					continue;
+				var guid = guids[i];
+				var path = AssetDatabase.GUIDToAssetPath(guid);
+				var obj = AssetDatabase.LoadAssetAtPath<GxMotionData_BuildinInfo>(path);
 
-				for (int i = 0; i < arr.Count; ++i)
+				if (obj is GxTimelineInfo t)
 				{
-					var clipPath = arr[i];
-					var key = CreateTimeline(modelPath, animator, tPose, clipPath, out tlArr[i]);
-					converted.Add(key.Path);
-				}
-
-				if (converted.Count == 3)
-				{
-					// we have a complete group, create a Pose data for it.
-					var enter = new GxMotionKey(converted[0], eAssetType.Timeline);
-					var loop = new GxMotionKey(converted[1], eAssetType.Timeline);
-					var exit = new GxMotionKey(converted[2], eAssetType.Timeline);
-					var poseData = new GxPoseData(groupKey, enter, loop, exit);
-					database.AddPose(poseData); // add to database
-
-					var p = arr[0];
-					var dir = KxPath.GetDirectoryName(p);
-					var fileName = KxPath.GetFileNameWithoutExtension(p);
-					var infoPath = KxPath.Combine(dir, $"{fileName}.asset");
-					KxPath.ResolvePath(infoPath, out var abs, out _);
-					if (!KxPath.Exists(abs))
+					// assume timeline & asset in same folder.
+					var fName = KxPath.GetFileNameWithoutExtension(path);
+					var tlPath = KxPath.Combine(s_OutputPath, $"{fName}.prefab");
+					KxPath.ResolvePath(tlPath, out var abs, out _);
+					if (!KxFile.Exists(tlPath))
 					{
-						var obj = ScriptableObject.CreateInstance<GxPoseInfo>();
-						var list = new List<string>(fileName.ToLower().Split('_'));
-						obj.tags = list;
-						obj.start = KxPath.GetFileNameWithoutExtension(enter.Path);
-						obj.loop = KxPath.GetFileNameWithoutExtension(loop.Path);
-						obj.end = KxPath.GetFileNameWithoutExtension(exit.Path);
-						AssetDatabase.CreateAsset(obj, infoPath);
+						Debug.LogError($"Fail to load related timeline file.\n{tlPath}");
 					}
-
+					database.Add(t.ToData(tlPath));
+				}
+				else if (obj is GxPoseInfo p)
+				{
+					if (database.Add(p.ToData(s_OutputPath)))
+					{
+						database.Add(p.start);
+						database.Add(p.loop);
+						database.Add(p.end);
+					}
 				}
 				else
 				{
-					// TODO: may had another cases.
-					Debug.LogWarning($"Group '{groupKey}' has {converted.Count} clips, expected 3 (start, loop, end). Skipping Pose creation.");
+					var ex = new System.NotImplementedException($"Type {obj.GetType().Name} not yet defined.");
+					Debug.LogError(ex);
 				}
 			}
 
-			if (created)
-			{
-				AssetDatabase.SaveAssets();
-			}
+			AssetDatabase.SaveAssets();
 			AssetDatabase.Refresh();
 		}
-		//*****/
 		private void SetHint(string msg)
 		{
 			if (m_Hints == null)
@@ -520,77 +544,9 @@ namespace Gaia
 				label = "Info",
 				allowSceneObjects = false,				
 			});
-
-			/***
-			var generateButton = new Button(() =>
-			{
-				if (m_DetailObjects == null || m_DetailObjects.Length == 0)
-				{
-					SetHint("No animation clips found.");
-					return;
-				}
-
-				if (!TryGetModelPath(out var modelPath))
-				{
-					SetHint("Model prefab is not set.");
-					return;
-				}
-
-				if (!TryGetTPose(out var tPose))
-				{
-					SetHint("T-Pose animator is not set.");
-					return;
-				}
-
-				if (!TryGetAnimator(out var animator))
-				{
-					SetHint("Animator is not set.");
-				}
-				
-				foreach (var obj in m_DetailObjects)
-				{
-					if (obj is AnimationClip clip)
-					{
-						if (clip.name.Contains("preview", System.StringComparison.OrdinalIgnoreCase))
-							continue;
-						var fileName = KxPath.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(clip));
-						var outputPrefabPath = Path.Combine(s_OutputPath, $"{clip.name}.prefab").Replace('\\','/');
-						var infoPath = KxPath.ChangeExtension(path, ".asset");
-						var key = CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath, out var timeline); // manually
-						Debug.Log($"Generated prefab: {key}");
-					}
-				}
-				SetHint("Prefab(s) generated successfully.");
-			})
-			{
-				text = "Generate Prefabs"
-			};
-			m_GenAniPanel.Add(generateButton);
-			//**/
 		}
 
 		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
-
-		private GxMotionKey CreateTimeline(string modelPath, Animator animator, RuntimeAnimatorController tPose, string clipPath, out GxTimelineCollection.TimelineData timelineData)
-		{
-			timelineData = default;
-			if (string.IsNullOrEmpty(clipPath))
-				return default;
-
-			var fileName = Path.GetFileNameWithoutExtension(clipPath);
-			var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
-			if (clip == null)
-			{
-				Debug.LogWarning($"\"{fileName}\" Animation clip not found at path: {clipPath}");
-				return default;
-			}
-
-			var infoPath = KxPath.ChangeExtension(clipPath, ".asset");
-			// AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
-
-			var outputPrefabPath = KxPath.Combine(s_OutputPath, $"{clip.name}.prefab");
-			return CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath, infoPath, out timelineData); // generate all = single
-		}
 
 		/// <summary>
 		/// Create Timeline prefab in editor
@@ -601,11 +557,11 @@ namespace Gaia
 		/// <param name="clip">animation to make timeline.</param>
 		/// <param name="outputPrefabPath">export timeline prefab path</param>
 		/// <returns></returns>
-		private GxMotionKey CreateTimeline(
+		private void CreateTimeline(
 			string modelPath,
 			Animator animator,
 			RuntimeAnimatorController tPose,
-			AnimationClip clip, string outputPrefabPath, string infoPath, out GxTimelineCollection.TimelineData timelineData)
+			AnimationClip clip, string outputPrefabPath)
 		{
 			//if (animator != null)
 			//	ConvertClip2VRMA(animator, clip);
@@ -616,8 +572,7 @@ namespace Gaia
 				var timeline = _PrepareTimelineAsset(outputPrefabPath);
 				if (timeline == null)
 				{
-					timelineData = default;
-					return default;
+					return;
 				}
 
 				// Model
@@ -646,25 +601,20 @@ namespace Gaia
 				if (!TryGetDatabase(out var database))
 				{
 					Debug.LogError("Fail to get GxTimelineCollection database, please create one first.");
-					timelineData = default;
-					return default;
+					return;
 				}
 
 				// prepare database record
-				var fileName = Path.GetFileName(outputPrefabPath);
-				var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
-
-				var info = AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
-				var record = database.Add(address, clip.isLooping, clip.length, out timelineData);
-				timelineData.info = info;
+				//var fileName = Path.GetFileName(outputPrefabPath);
+				//var address = Path.Combine(s_OutputPath, fileName).Replace('\\','/');
+				var motionKey = new GxMotionKey(outputPrefabPath, eAssetType.Timeline);
 
 				// timeline binging
 				var GxTimelineAsset = root.AddComponent<GxTimelineAsset>();
 				GxTimelineAsset.AssignRetargeting(retargeting);
-				GxTimelineAsset.UpdateInfo(record, clip);
+				GxTimelineAsset.UpdateInfo(motionKey, clip);
 
 				EditorUtility.SetDirty(database);
-				return record;
 			}
 
 			void _CovertToAddressable(GameObject prefab)
