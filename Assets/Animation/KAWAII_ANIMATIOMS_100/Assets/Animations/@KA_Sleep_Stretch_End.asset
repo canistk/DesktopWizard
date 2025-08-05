@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 857033355d893ef439a2ba508e849c26, type: 3}
+  m_Name: '@KA_Sleep_Stretch_End'
+  m_EditorClassIdentifier: 
+  tags:
+  - '@ka'
+  - sleep
+  - stretch
+  - end
+  key: '@KA_Sleep_Stretch_GROUP'
+  start:
+    Key:
+      Path: Assets/Addressable/Timelines/@KA_Sleep_Stretch_Start.prefab
+      Type: 2
+    ClipLength: 4.666667
+    IsLoop: 0
+    Weight: 1
+  loop:
+    Key:
+      Path: Assets/Addressable/Timelines/@KA_Sleep_Stretch_Loop.prefab
+      Type: 2
+    ClipLength: 8.333334
+    IsLoop: 0
+    Weight: 1
+  end:
+    Key:
+      Path: Assets/Addressable/Timelines/@KA_Sleep_Stretch_End.prefab
+      Type: 2
+    ClipLength: 4.3333335
+    IsLoop: 0
+    Weight: 1
