@@ -17,7 +17,8 @@ namespace Gaia
 	/// </remarks>
 	[CreateAssetMenu(fileName = "GxTimelineCollection", menuName = "Gaia/GxTimelineCollection", order = 1)]
 	public class GxTimelineCollection : ScriptableObject
-    {
+	{
+		const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 		private static KeyValuePair<bool, GxTimelineCollection> m_Instance = default;
 		public static GxTimelineCollection Instance
 		{
@@ -46,7 +47,19 @@ namespace Gaia
 		[SerializeField] private List<GxPoseData> m_Poses = new List<GxPoseData>();
 
 		public IReadOnlyList<GxTimelineData> Timelines => m_Timelines;
+		public void Clear()
+		{
+			if (m_Timelines != null)
+			{
+				m_Timelines.Clear();
+			}
+			if (m_Poses != null)
+			{
+				m_Poses.Clear();
+			}
+		}
 
+		#region Timeline Session
 		public int MotionCount()
 		{
 			return m_Timelines != null ? m_Timelines.Count : 0;
@@ -63,7 +76,9 @@ namespace Gaia
 			}
 			m_Timelines.Add(data);
 		}
+		#endregion Timeline Session
 
+		#region Pose Session
 		public bool Add(GxPoseData data)
 		{
 			var key = data.key;
@@ -76,37 +91,11 @@ namespace Gaia
 			m_Poses.Add(data);
 			return true;
 		}
-		const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 		public int PoseCount()
 		{
 			return m_Poses != null ? m_Poses.Count : 0;
 		}
-
-		public bool TryGetRandomPose(out GxPoseData pose)
-		{
-			pose = default;
-			if (m_Poses == null || m_Poses.Count == 0)
-			{
-				Debug.LogWarning("No poses available in the collection.");
-				return false;
-			}
-			var rnd = Random.Range(0, m_Poses.Count);
-			pose = m_Poses[rnd];
-			return pose != null;
-		}
-
-		public void Clear()
-		{
-			if (m_Timelines != null)
-			{
-				m_Timelines.Clear();
-			}
-			if (m_Poses != null)
-			{
-				m_Poses.Clear();
-			}
-		}
-
+		
 		public bool TryGetPose(string key, out GxPoseData pose)
 		{
 			foreach (var p in m_Poses)
@@ -127,56 +116,6 @@ namespace Gaia
 				return m_Poses;
 			}
 		}
-
-		/// <summary>Return poses that contain the specified tags.</summary>
-		/// <param name="includeTag">tags should included from the result</param>
-		/// <param name="excludeTag">tags to exclude from the result.</param>
-		/// <param name="minCount">how many tag pass the test ? (for IncludeTag only)</param>
-		/// <returns></returns>
-		public IEnumerable<GxPoseData> GetPoseByTag(string[] includeTag, string[] excludeTag, int minCount)
-		{
-			var noIncludeTags = includeTag == null || includeTag.Length == 0 || (includeTag.Length == 1 && includeTag[0].Length == 0);
-			var noExcludeTags = excludeTag == null || excludeTag.Length == 0 || (excludeTag.Length == 1 && excludeTag[0].Length == 0);
-			if (noIncludeTags && noExcludeTags)
-			{
-				yield break; // No tags provided, nothing to return
-			}
-			if (minCount < 0)
-			{
-				minCount = 0; // Ensure minCount is not negative
-			}
-
-			foreach (var p in m_Poses)
-			{
-				if (p.Tags == null || p.Tags.Count == 0)
-					continue;
-				if (!noExcludeTags && p.ContainTags(excludeTag) > 0)
-					continue; // Skip if any exclude tag is present
-
-				if (noIncludeTags || p.ContainTags(includeTag) >= minCount)
-					yield return p;
-			}
-		}
-
-		public bool TryGetRandomPoseByTags(string[] includeTags, string[] excludeTags, int minCnt, out GxPoseData pose)
-		{
-			var noIncludeTags = includeTags == null || includeTags.Length == 0;
-			var noExcludeTags = excludeTags == null || excludeTags.Length == 0;
-			if (noIncludeTags && noExcludeTags)
-			{
-				pose = default;
-				return false; // No tags provided, cannot find a pose
-			}
-			var filtered = GetPoseByTag(includeTags, excludeTags, minCnt).ToArray();
-			if (filtered.Length == 0)
-			{
-				pose = default;
-				return false; // No matching poses found
-			}
-
-			var rnd = Random.Range(0, filtered.Length);
-			pose = filtered[rnd];
-			return pose != null; // No matching pose found
-		}
+		#endregion Pose Session
 	}
 }

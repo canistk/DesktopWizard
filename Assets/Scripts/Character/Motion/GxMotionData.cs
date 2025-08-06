@@ -8,7 +8,7 @@ namespace Gaia
 	/// In order to convert into <see cref="GxMotionData"/>
 	/// for easy modify within development stage.
 	/// </summary>
-	public abstract class GxMotionData_BuildinInfo : ScriptableObject { }
+	public abstract class GxMotionData_BuildinDraft : ScriptableObject { }
 
 
 	[System.Serializable]
@@ -43,6 +43,47 @@ namespace Gaia
 		//public float BodyMotionIntensity = 1.0f;
 		//public bool FacialBlendOverride = false;
 		//public bool UseMouthMotion = false;
+		
+		[SerializeField] List<string> m_Tags;
+		public List<string> Tags
+		{
+			get
+			{
+				if (m_Tags == null)
+				{
+					m_Tags = new List<string>();
+				}
+				return m_Tags;
+			}
+			private set
+			{
+				m_Tags = value;
+			}
+		}
+		public void SetTags(IList<string> tags)
+		{
+			this.Tags = new List<string>(tags);
+		}
+
+		public int ContainTags(params string[] tags)
+		{
+			var match = 0;
+			if (tags.Length == 1 && string.IsNullOrEmpty(tags[0]))
+			{
+				// special handle contain "empty" cases, it match ANY pose.
+				return 1;
+			}
+
+			foreach (var tag in tags)
+			{
+				if (string.IsNullOrEmpty(tag))
+					continue;
+				var val = tag?.Trim().ToLowerInvariant();
+				if (Tags.Contains(val))
+					++match;
+			}
+			return match;
+		}
 
 		/// <summary>
 		/// Generate via script

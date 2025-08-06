@@ -1,7 +1,5 @@
 using Kit2;
-using Kit2.Tasks;
 using Newtonsoft.Json;
-using Obi;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -323,7 +321,38 @@ namespace Gaia
             }
         }
 
-        [JsonIgnore]
+		public static IEnumerable<GxMotionData> GetMotionByTags(string[] includeTag, string[] excludeTag, int minCount)
+		{
+			var noIncludeTags = includeTag == null || includeTag.Length == 0 || (includeTag.Length == 1 && includeTag[0].Length == 0);
+			var noExcludeTags = excludeTag == null || excludeTag.Length == 0 || (excludeTag.Length == 1 && excludeTag[0].Length == 0);
+			if (noIncludeTags && noExcludeTags)
+				yield break;
+			if (minCount < 0)
+				minCount = 0;
+			foreach (var m in GetMotions())
+			{
+				if (m.Tags == null || m.Tags.Count == 0)
+					continue;
+				if (!noExcludeTags && m.ContainTags(excludeTag) > 0)
+					continue; // Skip if any exclude tag is present
+
+				if (noIncludeTags || m.ContainTags(includeTag) >= minCount)
+					yield return m;
+			}
+		}
+
+		public static bool TryGetRandomMotionByTags(string[] includeTags, string[] excludeTags, int minCount, out GxMotionKey key)
+		{
+			key = GxMotionKey.Invalid;
+            foreach (var m in GetMotionByTags(includeTags, excludeTags, minCount))
+            {
+
+            }
+
+			return false;
+		}
+
+		[JsonIgnore]
         public int Count
         {
             get
@@ -349,6 +378,7 @@ namespace Gaia
 
         public static IEnumerable<GxPoseData> GetPoses()
         {
+            // TODO: VRMA Pose data structure.
             if (GxTimelineCollection.Instance is GxTimelineCollection inst)
             {
                 foreach (var p in inst.Poses)
@@ -358,25 +388,53 @@ namespace Gaia
             }
         }
 
-        public static bool TryGetRandomPoseByTags(string[] includeTags, string[] excludeTags, int minCount, out GxPoseData pose)
-        {
-            pose = default;
-            if (GxTimelineCollection.Instance is GxTimelineCollection inst)
+		/// <summary>Return poses that contain the specified tags.</summary>
+		/// <param name="includeTag">tags should included from the result</param>
+		/// <param name="excludeTag">tags to exclude from the result.</param>
+		/// <param name="minCount">how many tag pass the test ? (for IncludeTag only)</param>
+		/// <returns></returns>
+		public static IEnumerable<GxPoseData> GetPosesByTag(string[] includeTag, string[] excludeTag, int minCount)
+		{
+			var noIncludeTags = includeTag == null || includeTag.Length == 0 || (includeTag.Length == 1 && includeTag[0].Length == 0);
+			var noExcludeTags = excludeTag == null || excludeTag.Length == 0 || (excludeTag.Length == 1 && excludeTag[0].Length == 0);
+			if (noIncludeTags && noExcludeTags)
+				yield break; // No tags provided, nothing to return
+
+			foreach (var p in GetPoses())
             {
-                return inst.TryGetRandomPoseByTags(includeTags, excludeTags, minCount, out pose);
-            }
-            return false;
+				if (p.Tags == null || p.Tags.Count == 0)
+					continue;
+				if (!noExcludeTags && p.ContainTags(excludeTag) > 0)
+					continue; // Skip if any exclude tag is present
+
+				if (noIncludeTags || p.ContainTags(includeTag) >= minCount)
+					yield return p;
+			}
         }
 
-        public static bool TryGetRandomPoseKey(out GxPoseData pose)
-        {
+        public static bool TryGetRandomPoseByTags(string[] includeTags, string[] excludeTags, int minCount, out GxPoseData pose)
+		{
             pose = default;
-			// TODO: random pose key from timeline/VRMA collection
-			if (GxTimelineCollection.Instance is GxTimelineCollection inst &&
-                inst.TryGetRandomPose(out pose))
+			var filtered = GetPosesByTag(includeTags, excludeTags, minCount).ToArray();
+            if (filtered.Length == 0)
+                return false;
+            var rnd = Random.Range(0, filtered.Length);
+            pose = filtered[rnd];
+            return pose != null;
+        }
+
+		public static bool TryGetRandomPoseKey(out GxPoseData pose)
+		{
+            // TODO: avoid to array.
+            // GxTimelineCollection.Instance.PoseCount();
+            var arr = GetPoses().ToArray();
+            if (arr.Length == 0)
             {
-                return true;
-			}
+                pose = default;
+                return false;
+            }
+            var idx = Random.Range(0, arr.Length);
+            pose = arr[idx];
             return pose != null;
 		}
 	}

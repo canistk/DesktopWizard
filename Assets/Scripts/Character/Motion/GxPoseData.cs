@@ -100,6 +100,11 @@ namespace Gaia
 				Tags.Remove(tag);
 		}
 
+		public void SetTags(IList<string> tags)
+		{
+			this.Tags = new List<string>(tags);
+		}
+
 		public int ContainTags(params string[] tags)
 		{
 			var match = 0;
@@ -125,6 +130,7 @@ namespace Gaia
 	[System.Serializable]
 	public class GxTimelineData : GxMotionData
 	{
+		
 		public GxTimelineData(string address, bool isLoop, float duration)
 			: base()
 		{

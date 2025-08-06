@@ -2,11 +2,8 @@ using Baxter;
 using Kit2;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using Unity.Plastic.Antlr3.Runtime;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
@@ -15,8 +12,6 @@ using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using UnityEngine.UIElements;
-using UnityEngine.VFX;
-using static Gaia.GxTimelineCollection;
 
 namespace Gaia
 {
@@ -68,14 +63,14 @@ namespace Gaia
 
 			public bool IsInfoExist() => IsPathExist(GetInfoPath());
 
-			public bool TryGetInfo(out GxMotionData_BuildinInfo obj)
+			public bool TryGetInfo(out GxMotionData_BuildinDraft obj)
 			{
 				obj = null;
 				var infoPath = GetInfoPath();
 				if (!IsPathExist(infoPath))
 					return false;
-				obj = AssetDatabase.LoadAssetAtPath<GxMotionData_BuildinInfo>(infoPath);
-				if (obj is GxPoseInfo poseInfo)
+				obj = AssetDatabase.LoadAssetAtPath<GxMotionData_BuildinDraft>(infoPath);
+				if (obj is GxPoseDraft poseInfo)
 				{
 					poseInfo.SetPath(infoPath);
 				}
@@ -90,7 +85,7 @@ namespace Gaia
 				var infoPath = GetInfoPath();
 				if (IsPathExist(infoPath)) throw new System.Exception($"File already exist, {infoPath}");
 				var sampleTags = FileName.ToLower().Split('_');
-				var obj = ScriptableObject.CreateInstance<GxTimelineInfo>();
+				var obj = ScriptableObject.CreateInstance<GxTimelineDraft>();
 				obj.Assign(clip.isLooping, clip.length, sampleTags);
 				AssetDatabase.CreateAsset(obj, infoPath);
 			}
@@ -101,7 +96,7 @@ namespace Gaia
 				if (IsPathExist(infoPath))		throw new System.Exception($"File already exist, {infoPath}");
 				
 				var sampleTags = FileName.ToLower().Split('_');
-				var obj = ScriptableObject.CreateInstance<GxPoseInfo>();
+				var obj = ScriptableObject.CreateInstance<GxPoseDraft>();
 				obj.Assign(key, start, loop, exit, sampleTags);
 				
 				AssetDatabase.CreateAsset(obj, infoPath);
@@ -246,7 +241,7 @@ namespace Gaia
 					continue;
 				if (fbx.TryGetInfo(out var info))
 				{
-					if (info is GxPoseInfo poseInfo)
+					if (info is GxPoseDraft poseInfo)
 					{
 						processed.Add(poseInfo.start.Path);
 						processed.Add(poseInfo.loop.Path);
@@ -367,8 +362,6 @@ namespace Gaia
 			var fName = fbx.FileName;
 			var address = Path.Combine(s_OutputPath, $"{fName}.prefab").Replace('\\', '/');
 			return address;
-			//var outputPrefabPath = KxPath.Combine(s_OutputPath, $"{fName}.prefab");
-			//return outputPrefabPath;
 		}
 
 		private void Editor_ConvertFBXClips2Timeline()
@@ -379,9 +372,6 @@ namespace Gaia
 				throw new System.Exception("TPose reference missing.");
 			if (!TryGetAnimator(out var animator))
 				throw new System.Exception("Animator reference missing.");
-			//if (!TryGetDatabase(out var database))
-			//	throw new System.Exception("Database reference missing.");
-			// database.Clear();
 
 			var cnt = s_FBXInfo.Length;
 			for (int i = 0; i < cnt; ++i)
@@ -398,11 +388,6 @@ namespace Gaia
 
 				var outputPrefabPath	= GetExportPath(fbx);
 				CreateTimeline(modelPath, animator, tPose, clip, outputPrefabPath);
-
-				// var motionKey	= database.Add(outputPrefabPath, clip.isLooping, clip.length, out var timelineData);
-				
-				//var infoPath = KxPath.ChangeExtension(clipPath, ".asset");
-				//timelineData.info = AssetDatabase.LoadAssetAtPath<GxTimelineInfo>(infoPath);
 			}
 
 			AssetDatabase.SaveAssets();
@@ -415,15 +400,15 @@ namespace Gaia
 				throw new System.Exception("Database reference missing.");
 
 			database.Clear();
-			var guids = AssetDatabase.FindAssets($"t:{nameof(GxMotionData_BuildinInfo)}", WORK_DIR);
+			var guids = AssetDatabase.FindAssets($"t:{nameof(GxMotionData_BuildinDraft)}", WORK_DIR);
 			var cnt = guids.Length;
 			for (int i = 0; i < cnt; ++i)
 			{
 				var guid = guids[i];
 				var path = AssetDatabase.GUIDToAssetPath(guid);
-				var obj = AssetDatabase.LoadAssetAtPath<GxMotionData_BuildinInfo>(path);
+				var obj = AssetDatabase.LoadAssetAtPath<GxMotionData_BuildinDraft>(path);
 
-				if (obj is GxTimelineInfo t)
+				if (obj is GxTimelineDraft t)
 				{
 					// assume timeline & asset in same folder.
 					var fName = KxPath.GetFileNameWithoutExtension(path);
@@ -433,11 +418,13 @@ namespace Gaia
 					{
 						Debug.LogError($"Fail to load related timeline file.\n{tlPath}");
 					}
-					database.Add(t.ToData(tlPath));
+					var info = t.ToData(tlPath);
+					database.Add(info);
 				}
-				else if (obj is GxPoseInfo p)
+				else if (obj is GxPoseDraft p)
 				{
-					if (database.Add(p.ToData(s_OutputPath)))
+					var info = p.ToData(s_OutputPath);
+					if (database.Add(info))
 					{
 						database.Add(p.start);
 						database.Add(p.loop);

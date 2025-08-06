@@ -7,7 +7,7 @@ namespace Gaia
 {
 
     [CreateAssetMenu(fileName = "GxPoseInfo", menuName = "Gaia/GxPoseInfo", order = 1)]
-    public class GxPoseInfo : GxMotionData_BuildinInfo
+    public class GxPoseDraft : GxMotionData_BuildinDraft
 	{
         public List<string> tags = new List<string>();
 
@@ -43,6 +43,7 @@ namespace Gaia
                 new GxMotionKey(s, eAssetType.Timeline),
                 new GxMotionKey(l, eAssetType.Timeline),
                 new GxMotionKey(e, eAssetType.Timeline));
+            data.SetTags(tags);
             return data;
         }
     }

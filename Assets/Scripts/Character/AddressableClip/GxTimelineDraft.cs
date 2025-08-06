@@ -10,7 +10,7 @@ namespace Gaia
     /// <see cref="GxTimelineCollection.GxTimelineData"/> source.
     /// </summary>
     [CreateAssetMenu(fileName = "GxTimelineInfo", menuName = "Gaia/GxTimelineInfo", order = 1)]
-    public class GxTimelineInfo : GxMotionData_BuildinInfo
+    public class GxTimelineDraft : GxMotionData_BuildinDraft
 	{
         public List<string> tags = new List<string>();
 		public bool isLoop;
@@ -26,6 +26,7 @@ namespace Gaia
         public GxTimelineData ToData(string Path)
         {
             var data = new GxTimelineData(Path, isLoop, duration);
+            data.SetTags(tags);
             return data;
         }
 	}
