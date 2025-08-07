@@ -438,6 +438,7 @@ namespace Gaia
 				}
 			}
 
+			EditorUtility.SetDirty(database);
 			AssetDatabase.SaveAssets();
 			AssetDatabase.Refresh();
 		}

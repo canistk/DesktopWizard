@@ -1,13 +1,29 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 namespace Gaia
 {
     public class GxMotionTask : GxCharacterAnimationTask, IRetarget
     {
         public override GxRetargeting GetTarget() => m_Handler?.GetRetargeting();
-        public override float GetWeight01() => 1f; // Default weight for motion tasks
+		public override float GetWeight01()
+		{
+			var w = TargetWeight();
+			var dt = Time.timeScale * Time.deltaTime * 2f;
+			m_LastWeight = Mathf.Lerp(m_LastWeight, w, dt);
+			return m_LastWeight;
+		}
+
+		private float m_LastWeight = 1f;
+		private float TargetWeight()
+		{
+			if (m_ParentPoseTask == null)
+				return 1f; // Default weight for motion tasks
+			var cnt = m_ParentPoseTask.GetOtherMotionCounts();
+			return cnt == 0 ? 1f : 0f;
+		}
 
 		private BlendWeight m_BlendIn, m_BlendOut;
         private GxMotionHandler m_Handler;
@@ -54,6 +70,8 @@ namespace Gaia
             this.m_BlendIn = fadeIn;
             this.m_BlendOut = null; // Reset blend out to null initially
         }
+
+		private GxPoseTask m_ParentPoseTask = null;
 
 		protected override bool InternalExecute()
 		{
@@ -122,6 +140,7 @@ namespace Gaia
 			//Debug.Log($"Initialize GxMotionTask: {Key.ShortName} in mState {state}, Character={Character}");
 			// Step 0: ready to next state.
 			state = m_BlendIn == null ? eState.Playing : eState.BlendingIn;
+			m_ParentPoseTask = null;
 
 			// Step 1: Set start time
 			m_StartTime = Time.timeSinceLevelLoad;
@@ -147,6 +166,11 @@ namespace Gaia
 			// Hook into the character's retargeting system after a delay
 			Character.AddAnimationRetarget(this);
 			//Debug.Log($"GxMotionTask: {Key.ShortName} hooked into character retargeting after delay.");
+		}
+
+		internal void SetParentPose(GxPoseTask poseTask)
+		{
+			this.m_ParentPoseTask = poseTask;
 		}
 
 		protected override void OnDisposing()

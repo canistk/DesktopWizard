@@ -65,6 +65,13 @@ namespace Gaia
 			return m_Timelines != null ? m_Timelines.Count : 0;
 		}
 
+		public GxTimelineData GetMotionAt(int index)
+		{
+			if (index < 0 || index >= m_Timelines.Count)
+				throw new System.IndexOutOfRangeException();
+			return m_Timelines[index];
+		}
+
 		public void Add(GxTimelineData data)
 		{
 			var path = data.Path;
@@ -94,6 +101,13 @@ namespace Gaia
 		public int PoseCount()
 		{
 			return m_Poses != null ? m_Poses.Count : 0;
+		}
+
+		public GxPoseData GetPoseAt(int index)
+		{
+			if (index < 0 || index >= m_Poses.Count)
+				throw new System.IndexOutOfRangeException();
+			return m_Poses[index];
 		}
 		
 		public bool TryGetPose(string key, out GxPoseData pose)

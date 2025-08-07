@@ -59,8 +59,6 @@ namespace Gaia
 				m_Initialized = true;
 				try
 				{
-					if (m_PoseKey.IsNone)
-						return eState.Failure; // No pose key specified
 					var fadeIn = m_FadeTime.IsNone ? 0f : m_FadeTime.Value;
 					m_StartTime = Time.timeSinceLevelLoad;
 
@@ -68,29 +66,24 @@ namespace Gaia
 					{
 						case eMethod.SpecifyPose:
 						{
+							if (m_PoseKey.IsNone)
+								return eState.Failure; // No pose key specified
 							if (string.IsNullOrEmpty(m_PoseKey.Value))
 							{
 								Debug.LogError("Pose key is empty, cannot change pose.");
 								return eState.Failure;
 							}
 
-							Character.ChangePose(m_PoseKey.Value, fadeIn,
-							(task) =>
-							{
-								m_PoseTask = task;
-							});
+							Character.ChangePose(m_PoseKey.Value, fadeIn, OnPoseTaskLocated);
 						}
 						break;
 						case eMethod.RandomPose:
-						// Random pose will be handled later
-						if (GxMotionDatabase.TryGetRandomPoseKey(out var pose))
 						{
+							// Random pose will be handled later
+							if (!GxMotionDatabase.TryGetRandomPoseKey(out var pose))
+								return eState.Failure;
 							var poseKey = pose.key;
-							Character.ChangePose(poseKey, fadeIn,
-							(task) =>
-							{
-								m_PoseTask = task;
-							});
+							Character.ChangePose(poseKey, fadeIn, OnPoseTaskLocated);
 						}
 						break;
 						case eMethod.RandomPoseByTags:
@@ -126,6 +119,7 @@ namespace Gaia
 				}
 			}
 
+			// Timeout for pose task not found.
 			if (m_Initialized && m_PoseTask == null &&
 				Time.timeSinceLevelLoad - m_StartTime > TIMEOUT)
 			{
@@ -154,6 +148,11 @@ namespace Gaia
 				return eState.Success; // Pose set successfully
 			}
 			return eState.Running;
+		}
+
+		private void OnPoseTaskLocated(GxPoseTask task)
+		{
+			m_PoseTask = task;
 		}
 
 		private void InternalReset()

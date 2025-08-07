@@ -17,11 +17,11 @@ namespace Gaia
         /// </summary>
         // [JsonProperty("clips")]
         [JsonIgnore]
-        private List<GxMotionData> m_Clips = null;
+        private List<GxMotionData> m_VRMA = null;
 
         public GxMotionDatabase()
         {
-            m_Clips = new List<GxMotionData>();
+            m_VRMA = new List<GxMotionData>();
         }
         #endregion Constructor
 
@@ -124,7 +124,7 @@ namespace Gaia
                         KxFile.Delete(path);
                         return;
                     }
-                    Instance.m_Clips.Add(motion);
+                    Instance.m_VRMA.Add(motion);
                 }
                 catch (System.Exception ex)
                 {
@@ -178,7 +178,7 @@ namespace Gaia
                     if (!KxFile.Exists(vrmaPath))
                         throw new System.Exception($"VRMA file not found: {vrmaPath}");
 
-                    var hadRecord = Instance.m_Clips.Any(o => o.Path == vrmaPath);
+                    var hadRecord = Instance.m_VRMA.Any(o => o.Path == vrmaPath);
                     if (hadRecord)
                         continue; // skip, vrma loading, since we already had reecord.
                     
@@ -188,7 +188,7 @@ namespace Gaia
 						// Debug.LogError($"Fail to load VRMA file: {vrmaPath}");
 						return;
 					}
-					Instance.m_Clips.Add(motion);
+					Instance.m_VRMA.Add(motion);
 					// Write motion to file
 					var motionJson = GxUtil.ToJson(motion);
 					var motionFilePath = KxPath.ChangeExtension(vrmaPath, ".motion");
@@ -286,14 +286,6 @@ namespace Gaia
         }
         #endregion Internal API
 
-        public void Save()
-        {
-            var json = GxUtil.ToJson(this);
-            var path = GxConst.Path.MotionDatabase;
-            KxFile.Write(DBPath, json, true);
-            Debug.Log($"Motion database saved\n{DBPath}");
-        }
-
         public static bool TryGetMotion(GxMotionKey key, out GxMotionData motion)
         {
             motion = null;
@@ -308,9 +300,35 @@ namespace Gaia
             return false;
         }
 
+        public static int MotionCount()
+        {
+            var vrma = Instance?.m_VRMA?.Count ?? 0;
+            var timeline = GxTimelineCollection.Instance?.MotionCount() ?? 0;
+            return vrma + timeline;
+		}
+
+		public static GxMotionData GetMotionAt(int index)
+        {
+			var vrma = Instance.m_VRMA?.Count ?? 0;
+			var timeline = GxTimelineCollection.Instance?.MotionCount() ?? 0;
+            var cnt = vrma + timeline;
+			if (index < 0 || index >= cnt)
+                throw new System.IndexOutOfRangeException();
+            if (index < vrma)
+            {
+                return Instance.m_VRMA[index];
+            }
+            else if (index >= vrma)
+            {
+                var i = index - vrma;
+                return GxTimelineCollection.Instance.GetMotionAt(i);
+            }
+            return null;
+        }
+
         public static IEnumerable<GxMotionData> GetMotions()
         {
-            foreach (var c in Instance.m_Clips)
+            foreach (var c in Instance.m_VRMA)
                 yield return c;
             if (GxTimelineCollection.Instance is GxTimelineCollection inst)
             {
@@ -320,6 +338,14 @@ namespace Gaia
                 }
             }
         }
+
+		public static bool TryGetRandomMotionKey(out GxMotionData motion)
+		{
+            var cnt = MotionCount();
+            var idx = Random.Range(0, cnt);
+            motion = GetMotionAt(idx);
+            return motion != null;
+		}
 
 		public static IEnumerable<GxMotionData> GetMotionByTags(string[] includeTag, string[] excludeTag, int minCount)
 		{
@@ -341,30 +367,17 @@ namespace Gaia
 			}
 		}
 
-		public static bool TryGetRandomMotionByTags(string[] includeTags, string[] excludeTags, int minCount, out GxMotionKey key)
+		public static bool TryGetRandomMotionByTags(string[] includeTag, string[] excludeTag, int minCount, out GxMotionKey key)
 		{
 			key = GxMotionKey.Invalid;
-            foreach (var m in GetMotionByTags(includeTags, excludeTags, minCount))
-            {
+			var noIncludeTags = includeTag == null || includeTag.Length == 0 || (includeTag.Length == 1 && includeTag[0].Length == 0);
+			var noExcludeTags = excludeTag == null || excludeTag.Length == 0 || (excludeTag.Length == 1 && excludeTag[0].Length == 0);
 
-            }
-
-			return false;
+            var arr = GetMotionByTags(includeTag, excludeTag, minCount).ToArray();
+            var idx = Random.Range(0, arr.Length);
+			key = arr[idx].Key;
+            return arr[idx] != null;
 		}
-
-		[JsonIgnore]
-        public int Count
-        {
-            get
-            {
-                var rst = m_Clips == null ? 0 : m_Clips.Count;
-                if (GxTimelineCollection.Instance is GxTimelineCollection inst)
-                {
-                    rst += inst.MotionCount();
-                }
-                return rst;
-            }
-        }
 
         public static bool TryGetPose(string key, out GxPoseData pose)
         {

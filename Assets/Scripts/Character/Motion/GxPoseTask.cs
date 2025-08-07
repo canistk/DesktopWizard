@@ -32,6 +32,9 @@ namespace Gaia
 
 		public override float GetWeight01() => 0f;
 
+		private List<GxMotionTask> m_OtherMotionTasks = new List<GxMotionTask>();
+		private KeyValuePair<int /* framecount */,int /* result */> m_OtherMotionTaskCache = default;
+
 		public override void OnWillPlayAnimation(IRetarget other)
 		{
 			// Pose should only care other pose.
@@ -51,6 +54,7 @@ namespace Gaia
 					if (task.Key.Equals(enterKey))
 					{
 						enterTask = task;
+						task.SetParentPose(this);
 						m_State = eState.Entering;
 					}
 					break;
@@ -59,6 +63,7 @@ namespace Gaia
 					if (task.Key.Equals(loopKey))
 					{
 						loopTask = task;
+						task.SetParentPose(this);
 						m_State = eState.Looping;
 					}
 					break;
@@ -68,10 +73,14 @@ namespace Gaia
 					if (task.Key.Equals(exitKey))
 					{
 						exitTask = task;
+						task.SetParentPose(this);
 						var duration = exitTask?.Handler?.motionData?.ClipLength ?? 0f;
 						exitTask.FadeOut(duration * 0.8f);
 						m_State = eState.Exiting;
 					}
+					break;
+					default:
+					m_OtherMotionTasks.Add(task);
 					break;
 				}
 			}
@@ -141,6 +150,8 @@ namespace Gaia
 		private float m_LastWaitTime = 0f;
 		protected override bool InternalExecute()
 		{
+			FetchOtherMotions();
+
 			switch (m_State)
 			{
 				case eState.None:
@@ -219,6 +230,25 @@ namespace Gaia
 					return false; // Task completed
 			}
 		}
+
+		private void FetchOtherMotions()
+		{
+			if (m_OtherMotionTaskCache.Key == Time.frameCount)
+				return;
+			var i = m_OtherMotionTasks.Count;
+			while (i --> 0)
+			{
+				if (m_OtherMotionTasks[i].isCompleted)
+					m_OtherMotionTasks.RemoveAt(i);
+			}
+			m_OtherMotionTaskCache = new KeyValuePair<int, int>(Time.frameCount, m_OtherMotionTasks.Count);
+		}
+		internal int GetOtherMotionCounts()
+		{
+			FetchOtherMotions();
+			return m_OtherMotionTaskCache.Value;
+		}
+
 		protected override void OnDisposing()
 		{
 			base.OnDisposing();
