@@ -3,6 +3,7 @@ using BehaviorDesigner.Runtime.Tasks;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 namespace Gaia
 {
 	[TaskCategory("DwCore")]
@@ -10,6 +11,7 @@ namespace Gaia
 	[TaskDescription("Return position when user click on Windows.")]
 	public class GetCursorClicked : WinConditional
 	{
+		[SerializeField] PointerEventData.InputButton m_DetectButton = PointerEventData.InputButton.Left;
 		[SerializeField] SharedVector2 m_cursorOSPos = new SharedVector2();
 		[SerializeField] SharedVector2 m_cursorMonitorPos = new SharedVector2();
 
@@ -84,15 +86,17 @@ namespace Gaia
 			}
 		}
 
-		private void C_EVENT_MouseUp(UnityEngine.EventSystems.PointerEventData evt)
+		private void C_EVENT_MouseUp(PointerEventData evt)
 		{
+			if (evt.button != m_DetectButton)
+				return;
 			var c = ModelView?.dwCamera;
 			m_clickInfo.IsClicked = true;
 			m_clickInfo.OS_Pos = c.GetMousePosInOSSpace();
 			m_clickInfo.Monitor_Pos = c.GetMousePosInMonitorSpace();
 		}
 
-		private void C_EVENT_MouseDown(UnityEngine.EventSystems.PointerEventData evt)
+		private void C_EVENT_MouseDown(PointerEventData evt)
 		{
 		}
 	}

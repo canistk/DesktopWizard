@@ -237,10 +237,12 @@ namespace Gaia
 				return true; // Task is not active
 			if (Key.Equals(GxMotionKey.Invalid))
 				return false;
-
+			if (state <= eState.Initializing)
+				return false;
 			var duration = m_Handler?.motionData?.ClipLength ?? 0f;
 			var playedTime = Time.timeSinceLevelLoad - m_StartTime;
-			return playedTime >= duration;
+			var end = playedTime >= duration;
+			return end;
 		}
 
 		public bool IsLoop()

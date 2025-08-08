@@ -91,7 +91,7 @@ namespace Gaia
 							var excludeTags = m_ExcludeTags.IsNone || string.IsNullOrEmpty(m_ExcludeTags.Value) ? new string[0] : m_ExcludeTags.Value.Split(SPLITS);
 							var minCount = m_MinCount.IsNone ? 1 : m_MinCount.Value;
 							if (!GxMotionDatabase.TryGetRandomMotionByTags(includeTags, excludeTags, minCount, out var key))
-									return eState.Failure;
+								return eState.Failure;
 							Character.CrossFade(key, fadeIn, OnMotionTaskLocated);
 						}
 						break;
@@ -100,8 +100,6 @@ namespace Gaia
 						Debug.LogError($"Unknown method: {m_Method}");
 						return eState.Failure;
 					}
-
-
 				}
 				catch (System.Exception ex)
 				{
@@ -119,8 +117,8 @@ namespace Gaia
 			}
 
 
-			if (m_Style == eStyle.EnterMotionAsSuccess &&
-				m_Initialized &&
+			if (m_Initialized &&
+				m_Style == eStyle.EnterMotionAsSuccess &&
 				m_MotionTask != null)
 			{
 				// If the pose task is still running, we return Running state
@@ -128,15 +126,19 @@ namespace Gaia
 			}
 
 			if (m_Initialized &&
-				m_MotionTask != null)
+				m_Style == eStyle.SuccessOnMotionExit &&
+				m_MotionTask != null &&
+				m_MotionTask.isCompleted)
 			{
-				if (m_Style == eStyle.SuccessOnMotionExit &&
-					m_MotionTask.isCompleted)
-					return eState.Success;
+				return eState.Success;
+			}
 
-				if (m_Style == eStyle.PlayOnceAsSuccess &&
-					m_MotionTask.IsPlayedOnce())
-					return eState.Success;
+			if (m_Initialized &&
+				m_Style == eStyle.PlayOnceAsSuccess &&
+				m_MotionTask != null &&
+				m_MotionTask.IsPlayedOnce())
+			{
+				return eState.Success;
 			}
 			return eState.Running;
 		}
@@ -151,6 +153,11 @@ namespace Gaia
 			m_Initialized = false;
 			m_MotionTask = null;
 			m_StartTime = 0f;
+		}
+		public override void OnStart()
+		{
+			base.OnStart();
+			InternalReset();
 		}
 
 		public override void OnEnd()

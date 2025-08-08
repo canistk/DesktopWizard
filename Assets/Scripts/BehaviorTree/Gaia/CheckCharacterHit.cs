@@ -12,8 +12,9 @@ namespace Gaia
 	[TaskName("Check Character Hit")]
 	[TaskDescription("Check Character Hit.")]
 	public class CheckCharacterHit : CharacterCondition
-    {
-        [Header("Ray Position - Input (one of forward)")]
+	{
+		[SerializeField] PointerEventData.InputButton m_DetectButton = PointerEventData.InputButton.Left;
+		[Header("Ray Position - Input (one of forward)")]
 		[SerializeField] SharedVector2Int m_OS_Pos;
 		[SerializeField] SharedVector2 m_Monitor_Pos;
         [SerializeField] SharedVector2 m_Form_Pos;
@@ -224,8 +225,7 @@ namespace Gaia
 		public override void OnStart()
         {
             base.OnStart();
-			// InternalReset();
-
+			InternalReset();
 			if (ModelView.dwCamera != null)
 			{
 				var c = ModelView.dwCamera;
@@ -236,6 +236,7 @@ namespace Gaia
 		public override void OnEnd()
 		{
 			base.OnEnd();
+			InternalReset();
 			if (ModelView.dwCamera != null)
 			{
 				var c = ModelView.dwCamera;
@@ -246,6 +247,8 @@ namespace Gaia
 
 		private void C_EVENT_MouseUp(UnityEngine.EventSystems.PointerEventData evt)
 		{
+			if (evt.button != m_DetectButton)
+				return;
 			if (!m_UseCursorPos)
 				return;
 			m_ClickInfo = new ClickInfo(evt, dwCamera);
