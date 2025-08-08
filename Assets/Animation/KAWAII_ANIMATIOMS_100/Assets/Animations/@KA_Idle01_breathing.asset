@@ -9,12 +9,33 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b8a47d56d03f0c469a05202f65d82ae, type: 3}
+  m_Script: {fileID: 11500000, guid: 857033355d893ef439a2ba508e849c26, type: 3}
   m_Name: '@KA_Idle01_breathing'
   m_EditorClassIdentifier: 
   tags:
   - '@ka'
   - idle01
+  - stand
   - breathing
-  isLoop: 1
-  duration: 6.666667
+  key: '@KA_Idle01_breathing'
+  start:
+    Key:
+      Path: Assets/Addressable/Timelines/@KA_Idle01_breathing.prefab
+      Type: 2
+    ClipLength: 0.25
+    IsLoop: 0
+    Weight: 1
+  loop:
+    Key:
+      Path: Assets/Addressable/Timelines/@KA_Idle01_breathing.prefab
+      Type: 2
+    ClipLength: 6.666667
+    IsLoop: 1
+    Weight: 1
+  end:
+    Key:
+      Path: Assets/Addressable/Timelines/@KA_Idle01_breathing.prefab
+      Type: 2
+    ClipLength: 0.25
+    IsLoop: 0
+    Weight: 1
