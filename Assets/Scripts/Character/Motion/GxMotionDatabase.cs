@@ -374,6 +374,8 @@ namespace Gaia
 			var noExcludeTags = excludeTag == null || excludeTag.Length == 0 || (excludeTag.Length == 1 && excludeTag[0].Length == 0);
 
             var arr = GetMotionByTags(includeTag, excludeTag, minCount).ToArray();
+            if (arr.Length == 0)
+                return false;
             var idx = Random.Range(0, arr.Length);
 			key = arr[idx].Key;
             return arr[idx] != null;

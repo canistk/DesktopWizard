@@ -29,16 +29,20 @@ namespace Gaia
 				m_Retargeting.ForceTPose();
 			}
 #if DEBUG
-			_ = transform.GetOrAddComponent<GxMotionHelper>();
+			// _ = transform.GetOrAddComponent<GxMotionHelper>();
 #endif
 
 			GenHumanoidColliders();
+
+
 		}
 
 
 		private void Update()
 		{
             HandleTasks();
+			HandleBlinkUpdate();
+			HandleExpression();
 		}
 
 		#region Task Management
@@ -256,7 +260,6 @@ namespace Gaia
 		#region Body Collider
 		private void GenHumanoidColliders()
 		{
-			var VRM = GetComponent<Vrm10Instance>();
 			if (VRM != null)
 			{
 				m_Tasks.Add(new HotfixVRMControlRigIssue(this, VRM, InternalGenerateCollider));
@@ -335,5 +338,292 @@ namespace Gaia
 		}
 		#endregion Body Collider
 
+		private KeyValuePair<bool, Vrm10Instance> m_Vrm = default;
+		private Vrm10Instance VRM
+		{
+			get
+			{
+				if (!m_Vrm.Key)
+				{
+					m_Vrm = new KeyValuePair<bool, Vrm10Instance>(true, GetComponent<Vrm10Instance>());
+				}
+				return m_Vrm.Value;
+			}
+		}
+		public Vrm10RuntimeExpression Expression => VRM.Runtime.Expression;
+
+
+		[SerializeField, Range(0f, 1f)] float m_Happy = 0f;
+		[SerializeField, Range(0f, 1f)] float m_Angry = 0f;
+		[SerializeField, Range(0f, 1f)] float m_Sad = 0f;
+		[SerializeField, Range(0f, 1f)] float m_Relaxed = 0f;
+		[SerializeField, Range(0f, 1f)] float m_Surprised = 0f;
+
+		[SerializeField, Range(0f, 1f)] float m_Blink = 0f;
+		[SerializeField, Range(0f, 1f)] float m_BlinkLeft = 0f;
+		[SerializeField, Range(0f, 1f)] float m_BlinkRight = 0f;
+
+		[SerializeField, Range(-1f, 1f)] float m_LookVertical = 0f; // up = 1, down = -1
+		[SerializeField, Range(-1f, 1f)] float m_LookHorizontal = 0f; // right = 1, left = -1
+		private Vector4 GetLookAtParams()
+		{
+			// Convert vertical/horizontal into up,down, left,right within 0~1 range.
+			var up = Mathf.Clamp01(m_LookVertical);
+			var dn = Mathf.Clamp01(-m_LookVertical);
+			var rt = Mathf.Clamp01(m_LookHorizontal);
+			var lt = Mathf.Clamp01(-m_LookHorizontal);
+
+			return new Vector4(up, dn, rt, lt);
+		}
+
+		[ContextMenu("Test Face 01")]
+		private void Test01()
+		{
+			Dictionary<ExpressionKey, float> data = new Dictionary<ExpressionKey, float>();
+			data.Add(ExpressionKey.Happy, m_Happy);
+			data.Add(ExpressionKey.Angry, m_Angry);
+			data.Add(ExpressionKey.Sad, m_Sad);
+			data.Add(ExpressionKey.Blink, m_Blink);
+			Expression.SetWeights(data);
+		}
+		[ContextMenu("Test Face 02")]
+		private void Test02()
+		{
+			Dictionary<ExpressionKey, float> data = new Dictionary<ExpressionKey, float>();
+			// data.Add(ExpressionKey.Happy, m_Happy);
+			//data.Add(ExpressionKey.Angry, m_Angry);
+			//data.Add(ExpressionKey.Sad, m_Sad);
+			data.Add(ExpressionKey.Blink, m_Blink);
+			///data.Add(ExpressionKey.LookUp, m_LookVertical);
+			Expression.SetWeights(data);
+		}
+
+		[ContextMenu("Test Face 03")]
+		private void Test03()
+		{
+			var arr = Expression.ActualWeights.ToArray();
+			var sb = new System.Text.StringBuilder();
+			sb.AppendLine($"Total expression {arr.Length}");
+			for (int i = 0; i < arr.Length; ++i)
+			{
+				var item = arr[i].Key;
+				var val = arr[i].Value;
+				sb.Append($"[{item.Name}] {val:P2}");
+				sb.Append(", IsProcedual = ").Append(item.IsProcedual);
+				sb.Append(", IsBlink = ").Append(item.IsBlink);
+				sb.Append(", IsLookAt = ").Append(item.IsLookAt);
+				sb.Append(", IsMouth = ").Append(item.IsMouth);
+				sb.AppendLine();
+			}
+			Debug.Log(sb.ToString());
+		}
+
+		[SerializeField] bool m_DisableExpressionCtrl = false;
+
+		List<ExpressionKey> m_LipSync = null;
+
+		private void FetchExpreession()
+		{
+			var arr = Expression.GetWeights().ToArray();
+			m_LipSync = new List<ExpressionKey>();
+			for (int i = 0; i < arr.Length; ++i)
+			{
+				var item = arr[i].Key;
+				if (item.IsMouth)
+				{
+					m_LipSync.Add(item);
+				}
+			}
+		}
+		private void HandleExpression()
+		{
+			if (m_DisableExpressionCtrl)
+				return;
+
+
+			var data = new Dictionary<ExpressionKey, float>();
+			if (ExpressionKey.LookUp	.IsLookAt ||
+				ExpressionKey.LookDown	.IsLookAt ||
+				ExpressionKey.LookLeft	.IsLookAt ||
+				ExpressionKey.LookRight	.IsLookAt)
+			{
+				var udrl = GetLookAtParams();
+				data.Add(ExpressionKey.LookUp,		udrl.x);
+				data.Add(ExpressionKey.LookDown,	udrl.y);
+				data.Add(ExpressionKey.LookRight,	udrl.z);
+				data.Add(ExpressionKey.LookLeft,	udrl.w);
+			}
+
+			if (ExpressionKey.BlinkLeft	.IsBlink ||
+				ExpressionKey.BlinkRight.IsBlink)
+			{
+				data.Add(ExpressionKey.BlinkLeft, m_BlinkLeft);
+				data.Add(ExpressionKey.BlinkRight, m_BlinkRight);
+			}
+			else if (ExpressionKey.Blink.IsBlink)
+			{
+				var max = Mathf.Max(m_BlinkLeft, m_BlinkRight);
+				data.Add(ExpressionKey.Blink, max);
+			}
+
+			// A, E, I, O, U
+
+			Expression.SetWeights(data);
+		}
+
+		#region Blink
+		[System.Serializable]
+		public class BlinkConfig
+		{
+			[MinMaxSlider(0f, 60f)]
+			[Help("human blink 15~20times per min, 60/15=4sec, 60/20=3sec")]
+			public Vector2 intervalRange = new Vector2(3f, 4f);
+			[MinMaxSlider(0f, 1f)]
+			[Help("the duration of single blink animation (seconds)")]
+			public Vector2 durationRange = new Vector2(0.25f, 0.5f);
+			[Range(0f, 1f)]
+			public float doubleBlinkChance = 0.3f;
+
+			public AnimationCurve blinkCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+
+		}
+		public enum eBlinkState
+		{
+			Idle,
+			Blinking,
+			Distract,
+		}
+		private struct BlinkInfo
+		{
+			public float lastStartTime, lastEndTime;
+			public float rndNextDuration;
+			public bool focusMode;
+			public string debuglog;
+		}
+		private BlinkInfo m_BlinkInfo;
+		[SerializeField]
+		public BlinkConfig m_BlinkConfig = new BlinkConfig();
+
+		private const float s_MaxWeight = 1f;
+		public Vector2 GetBlinkCap()
+		{
+			// TODO: allow modify the max blink cap for each eyes.
+			return Vector2.one;
+			//if (m_Database == null || m_Database.data == null)
+			//	return Vector2.zero;
+			//var cnt = m_Database.data.Length;
+			//var left = 1f;
+			//var right = 1f;
+			//for (int i = 0; i < cnt; ++i)
+			//{
+			//	var weight01 = GetBlendShapeWeight01(i);
+			//	if (weight01 < 0.1f)
+			//		continue; // ignore
+			//	var l = Mathf.Clamp01(1f - m_Database.data[i].leftBlinkCap);
+			//	var r = Mathf.Clamp01(1f - m_Database.data[i].rightBlinkCap);
+			//	if (left > l)
+			//		left = l;
+			//	if (right > r)
+			//		right = r;
+			//}
+			//return new Vector2(left, right);
+		}
+		private void HandleBlinkUpdate()
+		{
+			if (IsBlinking)
+				return;
+			var lastBlinkPassed = Time.timeSinceLevelLoad - m_BlinkInfo.lastEndTime;
+			var minInterval = Mathf.Min(m_BlinkConfig.intervalRange.x, m_BlinkConfig.intervalRange.y);
+			var shouldTrigger = lastBlinkPassed > m_BlinkInfo.rndNextDuration;
+			if (!shouldTrigger &&
+				lastBlinkPassed >= minInterval)
+			{
+				// moved target in sign, blink
+				// reach min blink interval, ready to blink.
+				//if (m_Target.IsValid)
+				//{
+				//	shouldTrigger |= m_Target.history.Count < 2; // most likely just changed target
+				//	if (!shouldTrigger)
+				//	{
+				//		var flag = m_Target.ObserverState();
+				//		shouldTrigger |= (flag & (TargetInfo.eObserverState.StartMoving | TargetInfo.eObserverState.ChangingDir)) != 0;
+				//	}
+				//}
+			}
+
+			if (!shouldTrigger)
+				return;
+
+			var duration = Random.Range(m_BlinkConfig.durationRange.x, m_BlinkConfig.durationRange.y);
+			InternalTriggerBlink(duration);
+		}
+		private void InternalCleanBlink()
+		{
+			var f = m_BlinkConfig.intervalRange;
+			m_BlinkInfo.rndNextDuration = Random.Range(f.x, f.y);  // define next blink duration.
+			if (m_BlinkConfig.doubleBlinkChance > float.Epsilon &&
+				m_BlinkConfig.doubleBlinkChance >= Random.value)
+			{
+				// double blink chance
+				m_BlinkInfo.rndNextDuration = 0f;
+			}
+			m_BlinkInfo.lastEndTime = Time.timeSinceLevelLoad;
+			if (m_BlinkTask != null)
+				StopCoroutine(m_BlinkTask);
+			m_BlinkTask = null;
+		}
+		private void InternalTriggerBlink(float duration)
+		{
+			m_BlinkInfo.lastStartTime = Time.timeSinceLevelLoad;
+			m_BlinkTask = StartCoroutine(CoBlinkHandler(duration));
+		}
+
+		public bool TryTriggerBlink(float duration)
+		{
+			if (IsBlinking)
+				return false;
+			InternalTriggerBlink(duration);
+			return true;
+		}
+
+		public bool IsBlinking => m_BlinkTask != null;
+		private Coroutine m_BlinkTask = null;
+		private IEnumerator CoBlinkHandler(float duration)
+		{
+			var config = m_BlinkConfig;
+			var halfDuration = duration * 0.5f;
+			var cnt = 0;
+
+			for (var pass = 0f; pass < halfDuration; pass += Time.deltaTime)
+			{
+				var pt = config.blinkCurve.Evaluate(Mathf.Clamp01(pass / halfDuration));
+				var dst = Mathf.Lerp(0f, s_MaxWeight, pt);
+				_SetBlink(dst);
+				m_BlinkInfo.debuglog = $"closing = dst={dst:F2}, pt={pt:F2}, {++cnt}";
+				yield return null; // new WaitForEndOfFrame();
+
+			}
+
+			_SetBlink(s_MaxWeight);
+			for (var pass = halfDuration; pass > 0f; pass -= Time.deltaTime)
+			{
+				var pt = config.blinkCurve.Evaluate(Mathf.Clamp01(pass / halfDuration));
+				var dst = Mathf.Lerp(0f, s_MaxWeight, pt);
+				_SetBlink(dst);
+				m_BlinkInfo.debuglog = $"opening = dst={dst:F2}, pt={pt:F2}, {++cnt}";
+				yield return null; // new WaitForEndOfFrame();
+			}
+			m_BlinkInfo.debuglog = $"End - {Time.timeSinceLevelLoad:F4}";
+			_SetBlink(0f);
+
+			InternalCleanBlink();
+			void _SetBlink(float weight01)
+			{
+				var caps = GetBlinkCap();
+				m_BlinkLeft = Mathf.Min(weight01, caps.x);
+				m_BlinkRight = Mathf.Min(weight01, caps.y);
+			}
+		}
+		#endregion Blink
 	}
 } 
