@@ -10,24 +10,24 @@ namespace Gaia
     {
 		public FaceRig m_FaceRig = null;
         [Header("Wheel of Emotions")]
-        [Range(0f,1f)]public float m_Anger = 0f;
-        [Range(0f,1f)]public float m_Frightened = 0f;
-        [Range(0f,1f)]public float m_Speechless = 0f;
         [Range(0f,1f)]public float m_Happy = 0f;
+        [Range(0f,1f)]public float m_Anger = 0f;
         [Range(0f,1f)]public float m_Sadness = 0f;
-        [Range(0f,1f)]public float m_Sleep = 0f;
+        [Range(0f,1f)]public float m_Relax = 0f;
+        [Range(0f,1f)]public float m_Surprised = 0f;
+        // [Range(0f,1f)]public float m_Sleep = 0f;
         
 
 		[SerializeField] float m_BlendSpeed = 5f;
         private enum eEmotion
 		{
             Neutral = 0,
+			Happy,
 			Anger,
-			Frightened,
-			Speechless,
-			Smile,
 			Sadness,
-			Sleep,
+			Relax,
+			Surprised,
+			// Sleep,
 		}
 
 		private Dictionary<eEmotion, eHeroineFaceRig[]> mapping = new Dictionary<eEmotion, eHeroineFaceRig[]>
@@ -38,14 +38,14 @@ namespace Gaia
 				eHeroineFaceRig.anger01,
 				eHeroineFaceRig.anger02,
 			}},
-			{ eEmotion.Frightened, new eHeroineFaceRig[]{
+			{ eEmotion.Surprised, new eHeroineFaceRig[]{
 				eHeroineFaceRig.frightened01,
 				eHeroineFaceRig.frightened02,
 			}},
-			{ eEmotion.Speechless, new eHeroineFaceRig[]{
+			{ eEmotion.Relax, new eHeroineFaceRig[]{
 				eHeroineFaceRig.speechless,
 			}},
-			{ eEmotion.Smile, new eHeroineFaceRig[]{
+			{ eEmotion.Happy, new eHeroineFaceRig[]{
                 eHeroineFaceRig.smile01,
                 eHeroineFaceRig.smile02,
 				eHeroineFaceRig.smile03,
@@ -58,11 +58,11 @@ namespace Gaia
 				eHeroineFaceRig.sad01,
 				eHeroineFaceRig.sad02,
 			}},
-			{ eEmotion.Sleep, new eHeroineFaceRig[]{
-				eHeroineFaceRig.sleepy,
-				eHeroineFaceRig.sleep01,
-				eHeroineFaceRig.sleep02,
-			}},
+			//{ eEmotion.Sleep, new eHeroineFaceRig[]{
+			//	eHeroineFaceRig.sleepy,
+			//	eHeroineFaceRig.sleep01,
+			//	eHeroineFaceRig.sleep02,
+			//}},
 		};
 		
 		[SerializeField]
@@ -70,7 +70,7 @@ namespace Gaia
 		private eEmotion m_LastEmotion = eEmotion.Neutral;
 		private int m_BlendShapeIdx = -1, m_LastBlendShapeIdx = -1;
 		private List<int> m_ResetIdxs = new List<int>();
-        private float[] rawData => new float[] { m_Anger, m_Frightened, m_Speechless, m_Happy, m_Sadness, m_Sleep };
+        private float[] rawData => new float[] { m_Anger, m_Relax, m_Surprised, m_Happy, m_Sadness };
 		private void OnEnable()
 		{
 			if (m_FaceRig)
