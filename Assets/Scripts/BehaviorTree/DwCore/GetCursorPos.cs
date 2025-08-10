@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Gaia
 {
 	[TaskCategory("DwCore")]
-	[TaskName("Get Cursor Pos (ModelSpace).")]
+	[TaskName("Get Cursor Pos.")]
 	[TaskDescription("Get Cursor Pos.")]
 	public class GetCursorPos : WinAction
 	{

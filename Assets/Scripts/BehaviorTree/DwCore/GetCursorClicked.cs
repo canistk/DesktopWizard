@@ -12,6 +12,13 @@ namespace Gaia
 	public class GetCursorClicked : WinConditional
 	{
 		[SerializeField] PointerEventData.InputButton m_DetectButton = PointerEventData.InputButton.Left;
+		[SerializeField] eEvent m_Event = eEvent.Down;
+		private enum eEvent
+		{
+			Down,
+			Up,
+		}
+
 		[SerializeField] SharedVector2 m_cursorOSPos = new SharedVector2();
 		[SerializeField] SharedVector2 m_cursorMonitorPos = new SharedVector2();
 
@@ -88,6 +95,8 @@ namespace Gaia
 
 		private void C_EVENT_MouseUp(PointerEventData evt)
 		{
+			if (m_Event != eEvent.Up)
+				return;
 			if (evt.button != m_DetectButton)
 				return;
 			var c = ModelView?.dwCamera;
@@ -98,6 +107,14 @@ namespace Gaia
 
 		private void C_EVENT_MouseDown(PointerEventData evt)
 		{
+			if (m_Event != eEvent.Down)
+				return;
+			if (evt.button != m_DetectButton)
+				return;
+			var c = ModelView?.dwCamera;
+			m_clickInfo.IsClicked = true;
+			m_clickInfo.OS_Pos = c.GetMousePosInOSSpace();
+			m_clickInfo.Monitor_Pos = c.GetMousePosInMonitorSpace();
 		}
 	}
 }
