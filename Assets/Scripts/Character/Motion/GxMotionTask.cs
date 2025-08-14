@@ -176,8 +176,8 @@ namespace Gaia
 		protected override void OnDisposing()
 		{
 			// Debug.Log($"Disposing GxMotionTask: {Key.ShortName} in mState {m_State}, Character={Character}");
-			Character.RemoveAnimationRetarget(this);
-			m_Handler.SelfDespawn();
+			if (Character != null)	Character.RemoveAnimationRetarget(this);
+			if (m_Handler != null)	m_Handler.SelfDespawn();
 			base.OnDisposing();
 			m_Handler = null; // Clear the handler reference
 			m_BlendIn = null;

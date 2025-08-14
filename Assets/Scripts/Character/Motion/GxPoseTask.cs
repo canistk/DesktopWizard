@@ -251,10 +251,10 @@ namespace Gaia
 
 		protected override void OnDisposing()
 		{
-			base.OnDisposing();
 			if (enterTask != null && !enterTask.isCompleted) enterTask.Abort();
 			if (loopTask != null && !loopTask.isCompleted) loopTask.Abort();
 			if (exitTask != null && !exitTask.isCompleted) exitTask.Abort();
+			base.OnDisposing();
 			enterTask = null;
 			loopTask = null;
 			exitTask = null;

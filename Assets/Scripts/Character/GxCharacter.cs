@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using UniGLTF;
 using UnityEngine;
 using UniVRM10;
+
 namespace Gaia
 {
     public class GxCharacter : MonoBehaviour
@@ -189,7 +190,7 @@ namespace Gaia
 			}
 		}
 
-		public void CleanTask()
+		public void CleanAllTasks()
 		{
 			foreach (var task in m_Tasks)
 			{
@@ -199,6 +200,26 @@ namespace Gaia
 				}
 			}
 			m_Tasks.Clear();
+		}
+
+		public void CleanPose()
+		{
+			foreach (var task in m_Tasks)
+			{
+				if (task is not GxPoseTask poseTask)
+					continue;
+				poseTask.Abort();
+			}
+		}
+
+		public void CleanMotions()
+		{
+			foreach (var task in m_Tasks)
+			{
+				if (task is not GxMotionTask motionTask)
+					continue;
+				motionTask.Abort();
+			}
 		}
 
         public void AddAnimationRetarget(IRetarget target)
