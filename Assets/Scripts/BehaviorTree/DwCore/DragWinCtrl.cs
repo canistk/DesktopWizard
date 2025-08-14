@@ -16,15 +16,15 @@ namespace Gaia
 
 		[Header("Processing Data")]
 		[RequiredField]
-		public SharedDragInfo m_DragInfo;
-		private DragInfo dragInfo
+		public SharedDragData m_DragInfo;
+		private DragData dragInfo
 		{
 			get
 			{
 				if (m_DragInfo.Value == null)
 				{
 					Debug.LogWarning("Non init drag info detected.");
-					m_DragInfo.SetValue(new DragInfo());
+					m_DragInfo.SetValue(new DragData());
 				}
 				return m_DragInfo.Value;
 			}

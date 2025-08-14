@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BehaviorDesigner.Runtime
 {
 	[System.Serializable]
-	public class DragInfo
+	public class DragData
 	{
 		public Vector2Int cursorOsPos;
 		public Vector3 InitCursorMonitorPos;
@@ -55,8 +55,8 @@ namespace BehaviorDesigner.Runtime
 	}
 
 	[System.Serializable]
-	public class SharedDragInfo : SharedVariable<DragInfo>
+	public class SharedDragData : SharedVariable<DragData>
 	{
-		public static implicit operator SharedDragInfo(DragInfo value) { return new SharedDragInfo { mValue = value }; }
+		public static implicit operator SharedDragData(DragData value) { return new SharedDragData { mValue = value }; }
 	}
 }
