@@ -34,8 +34,10 @@ namespace Kit2.PieMenu
 			RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform, screenPoint, eventCamera,
 				out Vector2 localPoint);
 
-			float clickAngle = Vector2.SignedAngle(localPoint, Vector2.left);
-			;
+			
+			float clickAngle = fillClockwise ?
+				Vector2.SignedAngle(localPoint, Vector2.up) :
+				Vector2.SignedAngle(localPoint, Vector2.left);
 
 			return (clickAngle >= 0) && (clickAngle < (360f * fillAmount));
 		}

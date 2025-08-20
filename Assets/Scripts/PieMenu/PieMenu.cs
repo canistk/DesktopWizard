@@ -1,3 +1,4 @@
+using Gaia;
 using Kit2.ObjectPool;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,21 +10,43 @@ namespace Kit2.PieMenu
     {
 		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
 		[SerializeField, Range(1, 10)]
-		int m_MenuItemCount;
+		int m_MenuItemCount = 1;
 
 		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
 		[SerializeField, Range(0, 100)]
-		float m_MenuItemSpacing;
+		float m_MenuItemSpacing = 0f;
 
 		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
 		[SerializeField, Range(0, 360)]
-		float m_RotationOffset;
+		float m_RotationOffset = 0f;
 
 		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
-		[SerializeField, Range(250, 1000)]
-		float m_Size;
+		[SerializeField, Range(100f, 1000)]
+		float m_Size = 100f;
 
+		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
+		[SerializeField]
+		bool m_IconEnable = false;
+
+		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
+		[SerializeField, Range(0f, 1f)]
+		float m_IconSlerp = 0.5f;
+
+		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
+		[SerializeField, Range(0, 500)]
+		float m_IconDistance = 100f;
+
+		[Kit2.OnValueChange(nameof(Editor_OnMenuSettingChanged))]
+		[SerializeField, Range(50, 500)]
+		float m_IconSize = 50f;
+
+		[Header("Menu Item")]
 		[SerializeField] PieMenuItem m_PieMenuItemPrefab = null;
+		[SerializeField] RectTransform m_PivotTransform = null;
+
+		[Header("UIs")]
+		[SerializeField] UIText m_Title = null;
+		[SerializeField] UIText m_Description = null;
 
 #if UNITY_EDITOR
 		private void OnEnable()
@@ -92,7 +115,6 @@ namespace Kit2.PieMenu
 			}
 		}
 
-		[SerializeField] private RectTransform m_PivotTransform;
 		private RectTransform PivotTransform
 		{
 			get
@@ -217,16 +239,97 @@ namespace Kit2.PieMenu
 
 			var perAngle	= fillArea / fCnt;
 			var accAngle	= rotationOffset;
+			var slerp		= m_IconSlerp;
+			var iconDis		= m_IconDistance;
 			for (int i = 0; i < menuItemCount; ++i)
 			{
 				var item = m_Items[i];
-				var rot = Quaternion.Euler(0f, 0f, accAngle);
-				item.transform.rotation = rot;
-				item.SetAngle(perAngle);
-				item.SetSize(size);
+				item.Editor_Preview(accAngle, perAngle, size);
+				item.SetIconParams(iconDis, slerp, m_IconSize);
+				//item.SetIcon(null);
 				accAngle += perAngle + menuItemSpacing; // next angle
 			}
 
 		}
+
+		public void SetItems(params ButtonData[] data)
+		{
+			m_MenuItemCount = data.Length;
+			// m_MenuItemSpacing
+			//m_RotationOffset
+			//m_Size
+			HandleItemAmount();
+			HandleItemsSetup();
+			var cnt = m_Items.Count;
+			for (int i = 0; i < cnt; ++i)
+			{
+				var item = m_Items[i];
+				var d = data[i];
+				item.SetIcon(d.icon);
+				item.SetCallback(OnItemEnter, OnItemExit, OnItemClicked);
+				item.SetData(d);
+			}
+		}
+
+		private void OnItemEnter(PieMenuItem item)
+		{
+			var data = item.GetData();
+			SetDescription(data);
+		}
+
+		private void OnItemExit(PieMenuItem item)
+		{
+			CleanDescription();
+		}
+
+		private void OnItemClicked(PieMenuItem item)
+		{
+			// TODO:
+		}
+
+		private void SetDescription(ButtonData data)
+		{
+			if (m_Title)
+				m_Title.Text = data.name;
+			if (m_Description)
+				m_Description.Text = data.description;
+		}
+		private void CleanDescription()
+		{
+			if (m_Title)
+				m_Title.Text = string.Empty;
+			if (m_Description)
+				m_Description.Text = string.Empty;
+		}
+
+		[SerializeField]
+		private ButtonData[] m_Test = new ButtonData[]
+		{
+			new ButtonData("item 01", "Item 01 Desc", null),
+			new ButtonData("item 02", "Item 02 Desc", null),
+			new ButtonData("item 03", "Item 03 Desc", null),
+			new ButtonData("item 04", "Item 04 Desc", null),
+			new ButtonData("item 05", "Item 05 Desc", null),
+		};
+		[ContextMenu("Test01")]
+		private void Test01()
+		{
+			SetItems(m_Test);
+		}
 	}
+
+	[System.Serializable]
+	public class ButtonData
+	{
+		public string name;
+		public string description;
+		public Sprite icon;
+		public ButtonData(string name, string description, Sprite icon)
+		{
+			this.name = name;
+			this.description = description;
+			this.icon = icon;
+		}
+	}
+
 }
