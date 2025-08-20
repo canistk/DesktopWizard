@@ -37,6 +37,13 @@ namespace Kit2.PieMenu
 		[SerializeField] Color m_HoverColor = Color.white;
 		[SerializeField] Color m_PressColor = Color.white;
 
+		private void OnValidate()
+		{
+			if (!this.IsEditorMode())
+				return;
+			m_Image.color = m_NormalColor;
+		}
+
 		private void Awake()
 		{
 			if (m_Image == null)
@@ -44,7 +51,7 @@ namespace Kit2.PieMenu
 			m_Image.fillMethod = UnityEngine.UI.Image.FillMethod.Radial360;
 			m_Image.fillOrigin = 2;
 			m_Image.fillClockwise = true;
-			m_Image.color = m_NormalColor;
+			m_Image.CrossFadeColor(m_NormalColor, 0f, true, true);
 		}
 
 		public void Editor_Preview(float angleStart, float angle, float size)
