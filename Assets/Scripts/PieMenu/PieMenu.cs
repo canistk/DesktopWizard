@@ -1,5 +1,7 @@
 using Gaia;
 using Kit2.ObjectPool;
+using NUnit.Framework.Interfaces;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -254,6 +256,11 @@ namespace Kit2.PieMenu
 
 		public void SetItems(params ButtonData[] data)
 		{
+			SetItems(null, data);
+		}
+
+		public void SetItems(System.Action<ButtonData> overrideAction, params ButtonData[] data)
+		{
 			m_MenuItemCount = data.Length;
 			// m_MenuItemSpacing
 			//m_RotationOffset
@@ -265,6 +272,8 @@ namespace Kit2.PieMenu
 			{
 				var item = m_Items[i];
 				var d = data[i];
+				if (d.callback == null && overrideAction != null)
+					d.callback = overrideAction;
 				item.SetIcon(d.icon);
 				item.SetCallback(OnItemEnter, OnItemExit, OnItemClicked);
 				item.SetData(d);
@@ -284,7 +293,10 @@ namespace Kit2.PieMenu
 
 		private void OnItemClicked(PieMenuItem item)
 		{
-			// TODO:
+			var data = item.GetData();
+			if (data?.callback == null)
+				return;
+			data.callback.TryCatchDispatchEventError(o => o?.Invoke(data));
 		}
 
 		private void SetDescription(ButtonData data)
@@ -310,11 +322,16 @@ namespace Kit2.PieMenu
 			new ButtonData("item 03", "Item 03 Desc", null),
 			new ButtonData("item 04", "Item 04 Desc", null),
 			new ButtonData("item 05", "Item 05 Desc", null),
+
 		};
 		[ContextMenu("Test01")]
 		private void Test01()
 		{
-			SetItems(m_Test);
+			SetItems(BtnClick, m_Test);
+			void BtnClick(ButtonData d)
+			{
+				Debug.Log($"{d.name} clicked");
+			}
 		}
 	}
 
@@ -324,12 +341,15 @@ namespace Kit2.PieMenu
 		public string name;
 		public string description;
 		public Sprite icon;
-		public ButtonData(string name, string description, Sprite icon)
+		public System.Action<ButtonData> callback;
+		public ButtonData(string name, string description, Sprite icon = null, System.Action<ButtonData> callback = null)
 		{
 			this.name = name;
 			this.description = description;
 			this.icon = icon;
+			this.callback = callback;
 		}
+		public ButtonData(string name, string description, System.Action<ButtonData> callback)
+			: this(name, description, null, callback) {}
 	}
-
 }
