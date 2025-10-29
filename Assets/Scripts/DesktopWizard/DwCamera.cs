@@ -603,7 +603,8 @@ namespace DesktopWizard
 				
 				// Capture current render into texture
 				_renderer.sharedMaterial.mainTexture = _camera.targetTexture = renderTexture;
-				_camera.Render();
+				// _camera.Render();
+				_camera.RenderDontRestore();
 			}
 
 			protected override void Dispose(bool disposing)
@@ -834,6 +835,27 @@ namespace DesktopWizard
 			}
             public abstract void Execute(Renderer _renderer, Camera _camera, int _width, int _height);
 
+			/// <summary>
+			/// For specific platforms, Unity has the following specifications:
+			/// On Direct3D-like devices, Unity returns a pointer to the base Texture type(ID3D11Resource on D3D11, ID3D12Resource on D3D12).
+			/// On OpenGL-like devices, the GL Texture "name" is returned; cast the pointer to an integer type to get it.
+			/// On Metal, Unity returns an id<MTLTexture> pointer.
+			/// On Vulkan, Unity returns an VkImage pointer.
+			/// On platforms that do not support native code plug-ins, this function always returns NULL.
+			/// </summary>
+			/// <param name="rtHandle"></param>
+			/// <returns></returns>
+			public bool TryGetNativeTextureHandle(out IntPtr rtHandle, int width, int height)
+			{
+				rtHandle = IntPtr.Zero;
+				if (renderTexture == null)
+					return false;
+				rtHandle = renderTexture.GetNativeTexturePtr();
+				width = renderTexture.width;
+				height = renderTexture.height;
+				return true;
+			}
+
 			protected virtual void Dispose(bool disposing)
 			{
 				if (!IsDisposed)
@@ -874,9 +896,9 @@ namespace DesktopWizard
         private bool m_IsOdd = false;
 
         private Bitmap m_Bitmap = null;
-        private void InitGPU()
+        private void ReInitGPU()
         {
-			using (new DwLogScope(nameof(InitGPU), this))
+			using (new DwLogScope(nameof(ReInitGPU), this))
 			{
 				if (m_RawGPU == null || m_RawGPU.IsDisposed)
 					m_RawGPU = new RawGPUWorker(this);
@@ -954,136 +976,132 @@ namespace DesktopWizard
 			return factor;
 		}
 
-		private void UpdateCore()
-        {
-			if (dwForm == null || !dwForm.Visible)
-				return;
-			
-			// rendering
-			_RenderToTexture();
-			_HandleCoordInOS();
+		private bool ShouldPerformUpdate()
+		{
+			var factor = GetUpdateFactor();
+			if (Time.realtimeSinceStartup - m_LastRenderTime < factor)
+				return false;
+			m_LastRenderTime = Time.realtimeSinceStartup;
+			return true;
+		}
 
-			// update form event within main thread.
-			/// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L544
-			if (_Form == null)
+		private void UpdateCore()
+		{
+			if (linkCamera == null)
+				return;
+
+			// rendering
+			UpdateChromaKeyIfNeeded();
+			WinForm_PreUpdate();
+
+			if (ShouldPerformUpdate())
 			{
-				Debug.LogWarning("Form instance not found.", this);
+				var isRaw	= m_RemoveEffect || m_OutputShader == null;
+				var gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
+				var prevSrc = isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
+				if (!isRaw)
+					m_IsOdd = !m_IsOdd;
+
+				// use existing render texture.
+				if (gpu == null)
+				{
+					// Allow hot plug output shader
+					ReInitGPU();
+					gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
+					prevSrc	= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
+				}
+
+				// Display last processed texture.
+				if (prevSrc != null &&
+					prevSrc.renderTexture != null &&
+					prevSrc.width	== setting.Size.x &&
+					prevSrc.height	== setting.Size.y)
+				{
+#if TRY_CATCH
+					try
+#endif
+					{
+						DwUtils.DumpTexture(prevSrc.renderTexture, m_Texture, Mat_Chromakey.color);
+						DwUtils.DumpTexture(m_Texture, ref m_Bitmap);
+						dwForm.Repaint(m_Bitmap, (byte)(Opacity * 255));
+					}
+#if TRY_CATCH
+					catch (Exception ex)
+					{
+						Debug.LogException(ex);
+					}
+#endif
+				}
+
+				// Capture current render into cache.
+				gpu.Execute(m_Renderer, linkCamera, setting.Size.x, setting.Size.y);
 			}
-			else
-			{
-				// read events from WinForm queues.
-				_Form.ProcessEvents();
-			}
+
+			WinForm_PostUpdate();
 
 			HandlerSelectedObjectEvents();
 			CleanSubmitEvents();
-
-			return;
-
-            void _ChangeRenderTexture(Vector2Int size)
-            {
-                if (linkCamera == null || m_FormSizePre == size)
-                    return;
-				m_FormSizePre = size;
-                m_Texture.Reinitialize(size.x, size.y, TextureFormat.ARGB32, false);
-                dwForm.Size = new Size(size.x, size.y);
-            }
-
-            void _RenderToTexture()
-            {
-				if (dwForm != null && !dwForm.Visible || linkCamera == null)
-				{
-                    return;
-				}
-
-				var factor = GetUpdateFactor();
-				if (Time.realtimeSinceStartup - m_LastRenderTime < factor)
-					return;
-				m_LastRenderTime = Time.realtimeSinceStartup;
-
-				if (m_FormSizePre != setting.Size)
-                {
-                    _ChangeRenderTexture(setting.Size);
-                }
-
-                if (ChromaKeyColor.r != linkCamera.backgroundColor.r ||
-                    ChromaKeyColor.g != linkCamera.backgroundColor.g ||
-                    ChromaKeyColor.b != linkCamera.backgroundColor.b)
-                {
-                    ChromaKeyColor              = 
-                    linkCamera.backgroundColor  = 
-                    Mat_Chromakey.color         = new UnityEngine.Color(ChromaKeyColor.r, ChromaKeyColor.g, ChromaKeyColor.b, 0.0f);
-                }
-
-                if (ChromaKeyRange != chromaKeyRangePre)
-                {
-                    ChromaKeyRange = Mathf.Clamp(ChromaKeyRange, 0.002f, 1.0f);
-                    chromaKeyRangePre = ChromaKeyRange;
-
-                    if (Mat_Chromakey)
-                        Mat_Chromakey.SetFloat("_Amount", chromaKeyRangePre);
-				}
-
-				if (setting.TopMost != dwForm.TopMost)
-				{
-					Debug.Log($"Form.TopMost changed: from {dwForm.TopMost} -> {setting.TopMost}");
-					dwForm.TopMost = setting.TopMost;
-				}
-
-				{
-                    var isRaw   = m_RemoveEffect || m_OutputShader == null;
-                    var gpu     = isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
-                    var prevSrc = isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
-                    if (!isRaw)
-                        m_IsOdd = !m_IsOdd;
-
-                    // use existing render texture.
-                    if (gpu == null)
-                    {
-						// Allow hot plug output shader
-                        InitGPU();
-                        return; // skip this frame
-                    }
-
-                    if (prevSrc != null &&
-						prevSrc.renderTexture != null &&
-						prevSrc.width == setting.Size.x &&
-						prevSrc.height == setting.Size.y)
-                    {
-						// Display last processed texture.
-#if TRY_CATCH
-						try
-#endif
-						{
-							DwUtils.DumpTexture(prevSrc.renderTexture, m_Texture, Mat_Chromakey.color);
-							DwUtils.DumpTexture(m_Texture, ref m_Bitmap);
-							dwForm.Repaint(m_Bitmap, (byte)(Opacity * 255));
-						}
-#if TRY_CATCH
-						catch (Exception ex)
-						{
-							Debug.LogException(ex);
-						}
-#endif
-					}
-
-                    // Capture current render into cache.
-                    gpu.Execute(m_Renderer, linkCamera, setting.Size.x, setting.Size.y);
-                }
-            }
-
-            void _HandleCoordInOS()
-			{
-				var allowDrag = setting == null ? false : setting.dragMethod != eDragMethod.None;
-				if (allowDrag && m_DragFormInfo.isDragging)
-                {
-                    var cursor = DwCore.GetOSCursorPos();
-					dwForm.Left = cursor.x + m_DragFormInfo.offsetX;
-                    dwForm.Top = cursor.y + m_DragFormInfo.offsetY;
-                }
-            }
         }
 
+		/// <summary>Shader, update chroma key if setting was changed.</summary>
+		private void UpdateChromaKeyIfNeeded()
+		{
+			if (ChromaKeyColor.r != linkCamera.backgroundColor.r ||
+				ChromaKeyColor.g != linkCamera.backgroundColor.g ||
+				ChromaKeyColor.b != linkCamera.backgroundColor.b)
+			{
+				ChromaKeyColor =
+				linkCamera.backgroundColor =
+				Mat_Chromakey.color = new UnityEngine.Color(ChromaKeyColor.r, ChromaKeyColor.g, ChromaKeyColor.b, 0.0f);
+			}
+
+			if (ChromaKeyRange != chromaKeyRangePre)
+			{
+				ChromaKeyRange = Mathf.Clamp(ChromaKeyRange, 0.002f, 1.0f);
+				chromaKeyRangePre = ChromaKeyRange;
+
+				if (Mat_Chromakey)
+					Mat_Chromakey.SetFloat("_Amount", chromaKeyRangePre);
+			}
+		}
+
+		private void WinForm_PreUpdate()
+		{
+			if (dwForm == null || !dwForm.Visible)
+				return;
+
+			if (m_FormSizePre != setting.Size)
+			{
+				var size = m_FormSizePre = setting.Size;
+				m_Texture.Reinitialize(size.x, size.y, TextureFormat.ARGB32, false);
+				dwForm.Size = new Size(size.x, size.y);
+			}
+
+			if (setting.TopMost != dwForm.TopMost)
+			{
+				Debug.Log($"Form.TopMost changed: from {dwForm.TopMost} -> {setting.TopMost}");
+				dwForm.TopMost = setting.TopMost;
+			}
+		}
+
+		private void WinForm_PostUpdate()
+		{
+			if (dwForm == null || !dwForm.Visible)
+				return;
+
+			var allowDrag = setting == null ? false : setting.dragMethod != eDragMethod.None;
+			if (allowDrag && m_DragFormInfo.isDragging)
+			{
+				var cursor = DwCore.GetOSCursorPos();
+				dwForm.Left = cursor.x + m_DragFormInfo.offsetX;
+				dwForm.Top = cursor.y + m_DragFormInfo.offsetY;
+			}
+
+			// update form event within main thread.
+			/// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L544
+			// read events from WinForm queues.
+			dwForm.ProcessEvents();
+		}
 		#endregion Window Widget
 
 		#region Mouse Events
@@ -1714,7 +1732,7 @@ namespace DesktopWizard
 		// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L277
 		private void HandlerSelectedObjectEvents()
 		{
-			if (_Form == null || !_Form.Focused)
+			if (dwForm == null || !dwForm.Focused)
 				return;
 
 			// not sure if this is needed, since we already set the selected object in Form_MouseDown.
@@ -2238,6 +2256,5 @@ namespace DesktopWizard
 			return true;
 		}
 		#endregion Win Raycast
-
 	}
 }
