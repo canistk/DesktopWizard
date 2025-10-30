@@ -386,9 +386,10 @@ namespace DesktopWizard
         private Renderer m_Renderer;
 
 		#region Mono
-		/**
 		private void OnValidate()
 		{
+			OnToggleShareMemory();
+			/**
 			if (UnityEngine.Application.isPlaying || Time.timeSinceLevelLoad < 3f)
 				return;
 
@@ -406,8 +407,8 @@ namespace DesktopWizard
                     tex.height = size.y;
                 }
 			}
+			//**/
 		}
-		//**/
 
 		private void Awake()
         {
@@ -503,6 +504,7 @@ namespace DesktopWizard
         [Header("Effect")]
         [SerializeField] bool m_RemoveEffect = false;
 		[SerializeField] private ComputeShader m_OutputShader;
+		private int m_LastOutputShaderInstanceID = -1;
 		[SerializeField, Range(0, 1)] public float m_OpacityVal = 1;
 
 		public bool m_GammaSpace = false;
@@ -845,14 +847,12 @@ namespace DesktopWizard
 			/// </summary>
 			/// <param name="rtHandle"></param>
 			/// <returns></returns>
-			public bool TryGetNativeTextureHandle(out IntPtr rtHandle, int width, int height)
+			public bool TryGetNativeTextureHandle(out IntPtr rtHandle)
 			{
 				rtHandle = IntPtr.Zero;
 				if (renderTexture == null)
 					return false;
 				rtHandle = renderTexture.GetNativeTexturePtr();
-				width = renderTexture.width;
-				height = renderTexture.height;
 				return true;
 			}
 
@@ -905,11 +905,13 @@ namespace DesktopWizard
 
 				if (m_OutputShader != null)
 				{
-					if ((m_GPU01 == null || m_GPU01.IsDisposed))
-						m_GPU01 = new ComputeGPUWorker(this, m_OutputShader);
-
-					if ((m_GPU02 == null || m_GPU02.IsDisposed))
-						m_GPU02 = new ComputeGPUWorker(this, m_OutputShader);
+					if (m_GPU01 != null && !m_GPU01.IsDisposed)
+						m_GPU01.Dispose();
+					m_GPU01 = new ComputeGPUWorker(this, m_OutputShader);
+					
+					if (m_GPU02 != null && !m_GPU02.IsDisposed)
+						m_GPU02.Dispose();
+					m_GPU02 = new ComputeGPUWorker(this, m_OutputShader);
 				}
 			}
 		}
@@ -997,19 +999,19 @@ namespace DesktopWizard
 			if (ShouldPerformUpdate())
 			{
 				var isRaw	= m_RemoveEffect || m_OutputShader == null;
+				if (m_OutputShader != null &&
+					m_OutputShader.GetInstanceID() != m_LastOutputShaderInstanceID)
+				{
+					m_LastOutputShaderInstanceID = m_OutputShader.GetInstanceID();
+					// Allow hot plug output shader, init this frame.
+					ReInitGPU();
+				}
+
 				var gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
 				var prevSrc = isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
 				if (!isRaw)
 					m_IsOdd = !m_IsOdd;
 
-				// use existing render texture.
-				if (gpu == null)
-				{
-					// Allow hot plug output shader
-					ReInitGPU();
-					gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
-					prevSrc	= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
-				}
 
 				// Display last processed texture.
 				if (prevSrc != null &&
@@ -1035,6 +1037,8 @@ namespace DesktopWizard
 
 				// Capture current render into cache.
 				gpu.Execute(m_Renderer, linkCamera, setting.Size.x, setting.Size.y);
+
+				ShareMemory_Update(gpu);
 			}
 
 			WinForm_PostUpdate();
@@ -2256,5 +2260,141 @@ namespace DesktopWizard
 			return true;
 		}
 		#endregion Win Raycast
+
+		#region Share Memory - WinOverlayer
+		public int m_CameraId = 0;
+		private enum eUpdateMethod : int
+		{
+			WinForm,
+			ShareMemory,
+		}
+		[SerializeField] private eUpdateMethod m_UpdateMethod = eUpdateMethod.WinForm;
+		private eUpdateMethod m_LastUpdateMethod = eUpdateMethod.WinForm;
+
+		private void OnToggleShareMemory()
+		{
+			if (m_LastUpdateMethod != m_UpdateMethod)
+			{
+				m_LastUpdateMethod = m_UpdateMethod;
+				if (m_UpdateMethod == eUpdateMethod.ShareMemory)
+				{
+					ShareMemory_Init();
+				}
+				else
+				{
+					ShareMemory_Dispose();
+				}
+			}
+		}
+		private void ShareMemory_Init()
+		{
+		}
+		private void ShareMemory_Dispose()
+		{
+
+		}
+
+		private void ShareMemory_Update(GPUWorker gpu)
+		{
+			if (gpu == null || gpu.renderTexture == null)
+				return;
+			/*
+			Note: renderTexture.GetNativeDepthBufferPtr() documentation
+			For specific platforms, Unity has the following specifications:
+			On Direct3D-like devices, Unity returns a pointer to the base Texture type(ID3D11Resource on D3D11, ID3D12Resource on D3D12).
+			On OpenGL-like devices, the GL Texture "name" is returned; cast the pointer to an integer type to get it.
+			On Metal, Unity returns an id<MTLTexture> pointer.
+			On Vulkan, Unity returns an VkImage pointer.
+			On platforms that do not support native code plug-ins, this function always returns NULL.
+			 */
+			var rtHandle = gpu.renderTexture.GetNativeDepthBufferPtr();
+
+			var width = gpu.renderTexture.width;
+			var height = gpu.renderTexture.height;
+			var format = gpu.renderTexture.format;
+			var depth = gpu.renderTexture.depth;
+			var bytesPerPixel = GetBytesPerPixel(format);
+
+			var rowPitch = width * bytesPerPixel;
+			var totalSize = height * rowPitch;
+
+			switch (SystemInfo.graphicsDeviceType)
+			{
+				case UnityEngine.Rendering.GraphicsDeviceType.Direct3D11:
+				case UnityEngine.Rendering.GraphicsDeviceType.Direct3D12:
+				// DirectX may require row pitch alignment (typically 256 bytes)
+				rowPitch = AlignToPowerOfTwo(rowPitch, 256);
+				totalSize = height * rowPitch;
+				break;
+
+				case UnityEngine.Rendering.GraphicsDeviceType.OpenGLES2:
+				case UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3:
+				case UnityEngine.Rendering.GraphicsDeviceType.OpenGLCore:
+				// OpenGL typically doesn't require special alignment for texture data
+				break;
+
+				case UnityEngine.Rendering.GraphicsDeviceType.Metal:// Metal may require specific alignment
+				rowPitch = AlignToPowerOfTwo(rowPitch, 64);
+				totalSize = height * rowPitch;
+				break;
+				default:
+					throw new NotSupportedException($"Graphics API {SystemInfo.graphicsDeviceType} not supported yet.");
+			}
+
+
+			Debug.Log($"Texture memory info: {width}x{height}, format: {format}, " +
+					  $"bytesPerPixel: {bytesPerPixel}, rowPitch: {rowPitch}, totalSize: {totalSize} bytes");
+
+			// TODO: Use rtHandle and totalSize for actual memory sharing implementation
+		}
+		private int AlignToPowerOfTwo(int value, int alignment)
+		{
+			return ((value + alignment - 1) / alignment) * alignment;
+		}
+		private int GetBytesPerPixel(RenderTextureFormat format)
+		{
+			return format switch
+			{
+				// 8-bit formats
+				RenderTextureFormat.R8 => 1,
+				RenderTextureFormat.RG16 => 2,
+				RenderTextureFormat.RGB565 => 2,
+
+				// 16-bit formats  
+				RenderTextureFormat.ARGB4444 => 2,
+				RenderTextureFormat.ARGB1555 => 2,
+				RenderTextureFormat.RHalf => 2,
+				RenderTextureFormat.RGHalf => 4,
+
+				// 32-bit formats
+				RenderTextureFormat.ARGB32 => 4,
+				RenderTextureFormat.BGRA32 => 4,
+				RenderTextureFormat.RFloat => 4,
+				RenderTextureFormat.RGFloat => 8,
+				RenderTextureFormat.RInt => 4,
+				RenderTextureFormat.RGInt => 8,
+
+				// 64-bit formats
+				RenderTextureFormat.ARGBHalf => 8,
+				RenderTextureFormat.RGBAUShort => 8,
+
+				// 128-bit formats
+				RenderTextureFormat.ARGBFloat => 16,
+				RenderTextureFormat.ARGBInt => 16,
+
+				// Depth formats
+				RenderTextureFormat.Depth => 4,
+				RenderTextureFormat.Shadowmap => 4,
+
+				// Compressed formats (size varies, these are approximations)
+				RenderTextureFormat.BC4 => 1,  // 4 bits per pixel
+				RenderTextureFormat.BC5 => 1,  // 8 bits per pixel
+				RenderTextureFormat.BC6H => 1, // 8 bits per pixel
+				RenderTextureFormat.BC7 => 1,  // 8 bits per pixel
+
+				_ => throw new NotSupportedException($"RenderTexture format {format} not supported yet."),
+			};
+		}
+		#endregion Share Memory - WinOverlayer
 	}
 }
