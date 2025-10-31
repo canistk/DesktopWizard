@@ -18,7 +18,7 @@ namespace DesktopWizard
 		public readonly ComputeShader shader;
 		public readonly int kernelIdx;
 
-		public GPU_ComputeShaderWorker(DwCamera dwc, ComputeShader s) : base(dwc)
+		public GPU_ComputeShaderWorker(DwCamera dwc, int subId, ComputeShader s) : base(dwc, subId)
 		{
 			this.kernelIdx = s.FindKernel("DwCameraGPUKernel");
 			this.shader = s;

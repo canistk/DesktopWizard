@@ -574,7 +574,7 @@ namespace DesktopWizard
         {
 			var isRaw = m_RemoveEffect || m_OutputShader == null;
 			if (m_RawGPU == null || m_RawGPU.IsDisposed)
-				m_RawGPU = new GPU_RawWorker(this);
+				m_RawGPU = new GPU_RawWorker(this, 0);
 
 			var materialChange = m_OutputShader != null &&
 				m_OutputShader.GetInstanceID() != m_LastOutputShaderInstanceID;
@@ -590,11 +590,11 @@ namespace DesktopWizard
 				// Allow hot plug output shader, init this frame.
 				if (m_GPU01 != null && !m_GPU01.IsDisposed)
 					m_GPU01.Dispose();
-				m_GPU01 = new GPU_ComputeShaderWorker(this, m_OutputShader);
+				m_GPU01 = new GPU_ComputeShaderWorker(this, 1, m_OutputShader);
 
 				if (m_GPU02 != null && !m_GPU02.IsDisposed)
 					m_GPU02.Dispose();
-				m_GPU02 = new GPU_ComputeShaderWorker(this, m_OutputShader);
+				m_GPU02 = new GPU_ComputeShaderWorker(this, 2, m_OutputShader);
 			}
 
 			gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
@@ -1945,6 +1945,8 @@ namespace DesktopWizard
 		[SerializeField] private eUpdateMethod m_UpdateMethod = eUpdateMethod.WinForm;
 		private eUpdateMethod m_LastUpdateMethod = eUpdateMethod.WinForm;
 
+		private const string MMF_NAME = "DwCamera";
+
 		private void OnToggleShareMemory()
 		{
 			if (m_LastUpdateMethod != m_UpdateMethod)
@@ -1972,96 +1974,7 @@ namespace DesktopWizard
 		{
 			if (gpu == null || gpu.renderTexture == null)
 				return;
-			/*
-			Note: renderTexture.GetNativeDepthBufferPtr() documentation
-			For specific platforms, Unity has the following specifications:
-			On Direct3D-like devices, Unity returns a pointer to the base Texture type(ID3D11Resource on D3D11, ID3D12Resource on D3D12).
-			On OpenGL-like devices, the GL Texture "name" is returned; cast the pointer to an integer type to get it.
-			On Metal, Unity returns an id<MTLTexture> pointer.
-			On Vulkan, Unity returns an VkImage pointer.
-			On platforms that do not support native code plug-ins, this function always returns NULL.
-			 */
-			var rtHandle = gpu.renderTexture.GetNativeDepthBufferPtr();
-
-			var width = gpu.renderTexture.width;
-			var height = gpu.renderTexture.height;
-			var format = gpu.renderTexture.format;
-			var depth = gpu.renderTexture.depth;
-			var bytesPerPixel = GetBytesPerPixel(format);
-
-			var rowPitch = width * bytesPerPixel;
-			var totalSize = height * rowPitch;
-
-			switch (SystemInfo.graphicsDeviceType)
-			{
-				case UnityEngine.Rendering.GraphicsDeviceType.Direct3D11:
-				case UnityEngine.Rendering.GraphicsDeviceType.Direct3D12:
-				// DirectX may require row pitch alignment (typically 256 bytes)
-				rowPitch = AlignToPowerOfTwo(rowPitch, 256);
-				totalSize = height * rowPitch;
-				break;
-
-				case UnityEngine.Rendering.GraphicsDeviceType.OpenGLES2:
-				case UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3:
-				case UnityEngine.Rendering.GraphicsDeviceType.OpenGLCore:
-				// OpenGL typically doesn't require special alignment for texture data
-				break;
-
-				case UnityEngine.Rendering.GraphicsDeviceType.Metal:// Metal may require specific alignment
-				rowPitch = AlignToPowerOfTwo(rowPitch, 64);
-				totalSize = height * rowPitch;
-				break;
-				default:
-					throw new NotSupportedException($"Graphics API {SystemInfo.graphicsDeviceType} not supported yet.");
-			}
-
-
-			Debug.Log($"Texture memory info: {width}x{height}, format: {format}, " +
-					  $"bytesPerPixel: {bytesPerPixel}, rowPitch: {rowPitch}, totalSize: {totalSize} bytes");
-
-			// TODO: Use rtHandle and totalSize for actual memory sharing implementation
-		}
-		private int AlignToPowerOfTwo(int value, int alignment)
-		{
-			return ((value + alignment - 1) / alignment) * alignment;
-		}
-		private int GetBytesPerPixel(RenderTextureFormat format)
-		{
-			return format switch
-			{
-				// 8-bit formats
-				RenderTextureFormat.R8 => 1,
-				RenderTextureFormat.RG16 => 2,
-				RenderTextureFormat.RGB565 => 2,
-
-				// 16-bit formats  
-				RenderTextureFormat.ARGB4444 => 2,
-				RenderTextureFormat.ARGB1555 => 2,
-				RenderTextureFormat.RHalf => 2,
-				RenderTextureFormat.RGHalf => 4,
-
-				// 32-bit formats
-				RenderTextureFormat.ARGB32 => 4,
-				RenderTextureFormat.BGRA32 => 4,
-				RenderTextureFormat.RFloat => 4,
-				RenderTextureFormat.RGFloat => 8,
-				RenderTextureFormat.RInt => 4,
-				RenderTextureFormat.RGInt => 8,
-
-				// 64-bit formats
-				RenderTextureFormat.ARGBHalf => 8,
-				RenderTextureFormat.RGBAUShort => 8,
-
-				// 128-bit formats
-				RenderTextureFormat.ARGBFloat => 16,
-				RenderTextureFormat.ARGBInt => 16,
-
-				// Depth formats
-				RenderTextureFormat.Depth => 4,
-				RenderTextureFormat.Shadowmap => 4,
-
-				_ => throw new NotSupportedException($"RenderTexture format {format} not supported yet."),
-			};
+			gpu.UpdateMemory();
 		}
 		#endregion Share Memory - WinOverlayer
 	}

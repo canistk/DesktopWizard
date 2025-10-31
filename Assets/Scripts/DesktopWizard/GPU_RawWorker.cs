@@ -5,7 +5,7 @@ namespace DesktopWizard
 {
 	public class GPU_RawWorker : GPUWorker
 	{
-		public GPU_RawWorker(DwCamera dwc) : base(dwc) { }
+		public GPU_RawWorker(DwCamera dwc, int subId) : base(dwc, subId) { }
 		private void HandleRenderTextureSize(int _w, int _h)
 		{
 			if (width == _w && height == _h)
