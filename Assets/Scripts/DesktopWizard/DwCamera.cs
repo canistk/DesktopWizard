@@ -896,24 +896,37 @@ namespace DesktopWizard
         private bool m_IsOdd = false;
 
         private Bitmap m_Bitmap = null;
-        private void ReInitGPU()
+        private void PrepareGPU(out GPUWorker gpu, out GPUWorker prevSrc)
         {
-			using (new DwLogScope(nameof(ReInitGPU), this))
-			{
-				if (m_RawGPU == null || m_RawGPU.IsDisposed)
-					m_RawGPU = new RawGPUWorker(this);
+			var isRaw = m_RemoveEffect || m_OutputShader == null;
+			if (m_RawGPU == null || m_RawGPU.IsDisposed)
+				m_RawGPU = new RawGPUWorker(this);
 
-				if (m_OutputShader != null)
-				{
-					if (m_GPU01 != null && !m_GPU01.IsDisposed)
-						m_GPU01.Dispose();
-					m_GPU01 = new ComputeGPUWorker(this, m_OutputShader);
-					
-					if (m_GPU02 != null && !m_GPU02.IsDisposed)
-						m_GPU02.Dispose();
-					m_GPU02 = new ComputeGPUWorker(this, m_OutputShader);
-				}
+			var materialChange = m_OutputShader != null &&
+				m_OutputShader.GetInstanceID() != m_LastOutputShaderInstanceID;
+			
+			if (!isRaw &&
+				m_OutputShader != null &&
+				materialChange &&
+				m_LastOutputShaderInstanceID != m_OutputShader.GetInstanceID()
+				)
+			{
+				m_LastOutputShaderInstanceID = m_OutputShader.GetInstanceID();
+
+				// Allow hot plug output shader, init this frame.
+				if (m_GPU01 != null && !m_GPU01.IsDisposed)
+					m_GPU01.Dispose();
+				m_GPU01 = new ComputeGPUWorker(this, m_OutputShader);
+
+				if (m_GPU02 != null && !m_GPU02.IsDisposed)
+					m_GPU02.Dispose();
+				m_GPU02 = new ComputeGPUWorker(this, m_OutputShader);
 			}
+
+			gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
+			prevSrc	= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
+			if (!isRaw)
+				m_IsOdd = !m_IsOdd;
 		}
         private void DeinitGPU()
         {
@@ -998,20 +1011,7 @@ namespace DesktopWizard
 
 			if (ShouldPerformUpdate())
 			{
-				var isRaw	= m_RemoveEffect || m_OutputShader == null;
-				if (m_OutputShader != null &&
-					m_OutputShader.GetInstanceID() != m_LastOutputShaderInstanceID)
-				{
-					m_LastOutputShaderInstanceID = m_OutputShader.GetInstanceID();
-					// Allow hot plug output shader, init this frame.
-					ReInitGPU();
-				}
-
-				var gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
-				var prevSrc = isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
-				if (!isRaw)
-					m_IsOdd = !m_IsOdd;
-
+				PrepareGPU(out var gpu, out var prevSrc);
 
 				// Display last processed texture.
 				if (prevSrc != null &&
@@ -2385,12 +2385,6 @@ namespace DesktopWizard
 				// Depth formats
 				RenderTextureFormat.Depth => 4,
 				RenderTextureFormat.Shadowmap => 4,
-
-				// Compressed formats (size varies, these are approximations)
-				RenderTextureFormat.BC4 => 1,  // 4 bits per pixel
-				RenderTextureFormat.BC5 => 1,  // 8 bits per pixel
-				RenderTextureFormat.BC6H => 1, // 8 bits per pixel
-				RenderTextureFormat.BC7 => 1,  // 8 bits per pixel
 
 				_ => throw new NotSupportedException($"RenderTexture format {format} not supported yet."),
 			};
