@@ -18,8 +18,7 @@ namespace WinOverlay
             }
             else
             {
-                var config = ParseArgs(args);
-                Application.Run(new TransparentOverlay(config));
+                Application.Run(new OverlayManager());
             }
         }
 
