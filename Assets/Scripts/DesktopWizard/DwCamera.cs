@@ -1936,7 +1936,8 @@ namespace DesktopWizard
 		#endregion Win Raycast
 
 		#region Share Memory - WinOverlayer
-		public int m_CameraId = 0;
+		[SerializeField] private int m_CameraId = 0;
+		public int id => m_CameraId;
 		private enum eUpdateMethod : int
 		{
 			WinForm,

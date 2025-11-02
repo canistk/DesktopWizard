@@ -1,4 +1,6 @@
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,59 +10,62 @@ namespace WinOverlay
     public class Unity3DConnector : IDisposable
     {
         private NamedPipeClientStream pipeClient;
-        private System.Timers.Timer heartbeatTimer;
-        private DateTime lastHeartbeat = DateTime.Now;
-        private bool isConnected = false;
-        
         public event Action<string> MessageReceived;
-        public event Action ConnectionLost;
         public event Action ConnectionEstablished;
 
-        public bool IsConnected => isConnected && pipeClient?.IsConnected == true;
+        public bool IsConnected => pipeClient?.IsConnected == true;
 
-        public async Task<bool> ConnectAsync()
+        private bool m_IsStartupCompleteAck = false;
+		public void ReceivedStartupComplete()
+        {
+            m_IsStartupCompleteAck = true;
+		}
+		public async Task<bool> ConnectAsync()
         {
             try
             {
                 pipeClient?.Dispose();
                 pipeClient = new NamedPipeClientStream(".", "DwCamera_Control", PipeDirection.InOut);
-                
-                await pipeClient.ConnectAsync(5000);
-                isConnected = true;
-                lastHeartbeat = DateTime.Now;
-                
-                StartHeartbeat();
+
+				await pipeClient.ConnectAsync(1000);
                 _ = Task.Run(ListenForMessages);
-                
+
+                int retryCount = 2;
+				while (!m_IsStartupCompleteAck && retryCount-- > 0)
+                {
+                    // wait for Listener to be ready
+                    await Task.Delay(100);
+                    StartupComplete();
+                }
+
+                if (!m_IsStartupCompleteAck)
+                {
+                    Dispose();
+                    return false;
+                }
+
                 ConnectionEstablished?.Invoke();
                 return true;
             }
             catch
             {
-                isConnected = false;
                 return false;
             }
         }
 
-        private void StartHeartbeat()
+        private void StartupComplete()
         {
-            heartbeatTimer?.Stop();
-            heartbeatTimer = new System.Timers.Timer(1000); // 每秒檢查一次
-            heartbeatTimer.Elapsed += (s, e) => CheckHeartbeatTimeout();
-            heartbeatTimer.Start();
-        }
+			// Placeholder for any startup complete logic if needed
+			//var message = new MyAction(OverlayManager.CMD.StartupComplete).ToJson();
+            if (pipeClient == null || !pipeClient.IsConnected)
+                return;
+			var message = $"{{\"action\":\"{OverlayManager.CMD.StartupComplete}\"}}";
+			var data = Encoding.UTF8.GetBytes(message);
+			pipeClient.Write(data, 0, data.Length);
+			pipeClient.Flush();
+		}
 
-        private void CheckHeartbeatTimeout()
-        {
-            // 檢查心跳超時 - WinOverlay 被動接收 Unity3D 的心跳
-            if ((DateTime.Now - lastHeartbeat).TotalSeconds > 10)
-            {
-                isConnected = false;
-                ConnectionLost?.Invoke();
-            }
-        }
-
-        private async void ListenForMessages()
+		private async void ListenForMessages()
         {
             byte[] buffer = new byte[1024];
             
@@ -71,43 +76,58 @@ namespace WinOverlay
                     int bytesRead = await pipeClient.ReadAsync(buffer, 0, buffer.Length);
                     if (bytesRead > 0)
                     {
-                        lastHeartbeat = DateTime.Now;
                         string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                         MessageReceived?.Invoke(message);
                     }
                 }
                 catch
                 {
-                    isConnected = false;
-                    ConnectionLost?.Invoke();
                     break;
                 }
             }
         }
 
-        public void SendMessage(string message)
+		public void SendMessage(MyAction action)
+			=> SendMessage(action.ToJson());
+
+		public void SendMessage(string message)
         {
-            if (IsConnected)
+            if (!IsConnected)
+                return;
+            try
             {
-                try
-                {
-                    var data = Encoding.UTF8.GetBytes(message);
-                    pipeClient.Write(data, 0, data.Length);
-                    pipeClient.Flush();
-                }
-                catch
-                {
-                    isConnected = false;
-                    ConnectionLost?.Invoke();
-                }
+                var data = Encoding.UTF8.GetBytes(message);
+                pipeClient.Write(data, 0, data.Length);
+                pipeClient.Flush();
+            }
+            catch
+            {
             }
         }
 
-        public void Dispose()
+		public void Dispose()
         {
-            heartbeatTimer?.Stop();
-            heartbeatTimer?.Dispose();
             pipeClient?.Dispose();
         }
     }
+
+
+	public class MyAction : Dictionary<string, object>, IDisposable
+	{
+		public MyAction(string value)
+		{
+			this.Add("action", value);
+		}
+		public override string ToString() => ToJson();
+		public string ToJson()
+		{
+			return JsonConvert.SerializeObject(this);
+		}
+
+		public void Dispose()
+		{
+			this.Clear();
+		}
+	}
+
 }

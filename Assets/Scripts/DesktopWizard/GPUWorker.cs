@@ -119,7 +119,7 @@ namespace DesktopWizard
 				Debug.Log($"Texture memory info: {width}x{height}, format: {renderTexture.format}, " +
 						  $"bytesPerPixel: {bytesPerPixel}, rowPitch: {rowPitch}, totalSize: {totalSize} bytes");
 				
-				var shareName = $"DwCamera_{dwc.m_CameraId}_{SubId}";
+				var shareName = $"DwCamera_{dwc.id}_{SubId}";
 				mmf = MemoryMappedFile.CreateOrOpen(shareName, totalSize);
 				var size = Marshal.SizeOf<ShareInfo>();
 				accessor = mmf.CreateViewAccessor(0, size, MemoryMappedFileAccess.Write);

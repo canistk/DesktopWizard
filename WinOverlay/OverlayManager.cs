@@ -1,16 +1,31 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 namespace WinOverlay
 {
+
     public class OverlayManager : ApplicationContext
     {
+		public static class CMD
+		{
+            public const string Action = "action";
+            public const string Ping = "ping";
+			public const string Heartbeat = "HB";
+            public const string HeartbeatAck = "HB_ACK";
+			public const string RegisterCamera = "REG_CAM";
+            public const string SlaveError =  "SLAVE_ERROR";
+            public const string SlaveWarning = "SLAVE_WARN";
+            public const string StartupComplete = "STARTUP_COMPLETE";
+            public const string StartupAck = "STARTUP_ACK";
+		}
         private Unity3DConnector connector;
         private System.Timers.Timer reconnectTimer;
         private const int RECONNECT_INTERVAL = 3000;
-
-        public OverlayManager()
+        
+		public OverlayManager()
         {
             InitializeConnector();
             StartReconnectTimer();
@@ -20,35 +35,79 @@ namespace WinOverlay
         {
             connector = new Unity3DConnector();
             connector.MessageReceived += OnMessageReceived;
-            connector.ConnectionLost += OnConnectionLost;
             connector.ConnectionEstablished += OnConnectionEstablished;
             
             _ = Task.Run(async () => await connector.ConnectAsync());
+
         }
 
+        private const string ACTION = "action";
+        private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
         private void OnMessageReceived(string message)
         {
-            // 處理來自 Unity3D 的訊息
-            if (message.Contains("HEARTBEAT"))
+			JObject jObj = JObject.Parse(message);
+            if (!jObj.TryGetValue(ACTION, IGNORE,
+                out var aToken))
             {
-                // 回應 Unity3D 的心跳
-                connector.SendMessage("{\"action\":\"HEARTBEAT_ACK\", \"msg\":\"Hello World\"}");
+                return;
             }
-            else if (message.Contains("UPDATE_CAMERAS"))
+			var action = aToken.Value<string>();
+            switch (action)
             {
-                // 處理相機更新訊息
+                case CMD.Heartbeat:
+                    const string ack = "{\"action\":\"HB_ACK\"}";
+                    // var ack2 = new MyAction(CMD.HeartbeatAck).ToString();
+				    connector.SendMessage(ack);
+                    break;
+                case CMD.StartupAck:
+                    connector.ReceivedStartupComplete();
+				break;
+                case CMD.RegisterCamera:
+				    RegisterCamera(jObj);
+				    break;
+                case CMD.Ping:
+                    break;
+				default:
+                    SendError("SLAVE: Unknown action received: " + action);
+                    break;
+			}
+        }
+
+        private void RegisterCamera(JObject jObj)
+        {
+            if (!jObj.TryGetValue("cameraId", IGNORE,
+                out var camIdToken))
+            {
+                SendError("RegisterCamera missing cameraId");
+                return;
+			}
+            var cameraId = camIdToken.Value<int>();
+
+            var prefix = $"DwCamera_{cameraId}";
+            var sm1 = $"{prefix}_1";
+            var sm2 = $"{prefix}_2";
+		}
+
+		public void SendError(string message)
+        {
+            using (var err = new MyAction(CMD.SlaveError))
+            {
+                err.Add("message", message);
+                connector.SendMessage(err);
+            }
+		}
+		public void SendWarning(string message)
+        {
+            using (var warn = new MyAction(CMD.SlaveWarning))
+            {
+                warn.Add("message", message);
+                connector.SendMessage(warn);
             }
         }
 
-        private void OnConnectionLost()
+        private async void OnConnectionEstablished()
         {
-            // 連接丟失時的處理
-        }
-
-        private void OnConnectionEstablished()
-        {
-            // 連接建立時的處理
-        }
+		}
 
         private void StartReconnectTimer()
         {
