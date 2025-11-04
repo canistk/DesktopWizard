@@ -23,6 +23,18 @@ namespace WinOverlay
         public long Timestamp;
     }
 
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct ShareInfo
+    {
+        public IntPtr rtHandler;        // Native texture handle (platform-specific)
+        public DateTime timestamp;      // UTC timestamp for synchronization
+        public int width;               // Texture width in pixels
+        public int height;              // Texture height in pixels  
+        public int rowPitch;            // Row pitch in bytes (width * bytesPerPixel)
+        public int bytesPerPixel;       // Bytes per pixel based on format
+        public int totalSize;           // Total texture size in bytes
+    }
+
     public struct OverlayConfig
     {
         public String CameraId;
