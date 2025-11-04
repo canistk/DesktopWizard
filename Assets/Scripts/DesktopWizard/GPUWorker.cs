@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO.MemoryMappedFiles;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using GraphicsDeviceType = UnityEngine.Rendering.GraphicsDeviceType;
@@ -47,6 +48,7 @@ namespace DesktopWizard
 		public struct ShareInfo
 		{
 			public IntPtr rtHandler;
+			public DateTime timestamp;
 			public int width;
 			public int height;
 			public int rowPitch;
@@ -56,6 +58,17 @@ namespace DesktopWizard
 		private ShareInfo m_ShareInfo;
 		private MemoryMappedFile mmf = null;
 		private MemoryMappedViewAccessor accessor = null;
+		
+		private void InitializeMemoryMappedFile()
+		{
+			accessor?.Dispose();
+			mmf?.Dispose();
+
+			var shareName = $"DwCamera_{dwc.id}_{SubId}";
+			mmf = MemoryMappedFile.CreateOrOpen(shareName, m_ShareInfo.totalSize);
+			var size = Marshal.SizeOf<ShareInfo>();
+			accessor = mmf.CreateViewAccessor(0, size, MemoryMappedFileAccess.Write);
+		}
 		private void DisposeMemoryMappedFile()
 		{
 			accessor?.Dispose();
@@ -83,46 +96,43 @@ namespace DesktopWizard
 			var bytesPerPixel			=
 			m_ShareInfo.bytesPerPixel	= GetBytesPerPixel(renderTexture.format);
 
-			var rowPitch	= width * bytesPerPixel;
-			var totalSize	= -1;
+			var rowPitch				= 0;
+			var newTotalSize			= 0;
 
 			switch (SystemInfo.graphicsDeviceType)
 			{
 				case GraphicsDeviceType.Direct3D11:
 				case GraphicsDeviceType.Direct3D12:
 				// DirectX may require row pitch alignment (typically 256 bytes)
-				rowPitch = AlignToPowerOfTwo(rowPitch, 256);
-				totalSize = height * rowPitch;
+				rowPitch = AlignToPowerOfTwo(width * bytesPerPixel, 256);
+				newTotalSize = height * rowPitch;
 				break;
 
 				case GraphicsDeviceType.OpenGLES2:
 				case GraphicsDeviceType.OpenGLES3:
 				case GraphicsDeviceType.OpenGLCore:
 				// OpenGL typically doesn't require special alignment for texture data
-				totalSize = height * rowPitch;
+				rowPitch = width * bytesPerPixel;
+				newTotalSize = height * rowPitch;
 				break;
 
 				case GraphicsDeviceType.Metal:// Metal may require specific alignment
 				rowPitch = AlignToPowerOfTwo(rowPitch, 64);
-				totalSize = height * rowPitch;
+				newTotalSize = height * rowPitch;
 				break;
 				default:
 				throw new NotSupportedException($"Graphics API {SystemInfo.graphicsDeviceType} not supported yet.");
 			}
 
 			m_ShareInfo.rowPitch		= m_ShareInfo.width * m_ShareInfo.bytesPerPixel;
-			m_ShareInfo.totalSize		= totalSize;
+			m_ShareInfo.timestamp		= DateTime.UtcNow;
+			var isTotalSizeChanged		= m_ShareInfo.totalSize != newTotalSize;
+			m_ShareInfo.totalSize		= newTotalSize;
 
-			// TODO: Use rtHandle and totalSize for actual memory sharing implementation
-			if (accessor == null)
+			if (isTotalSizeChanged || // Re-initialize memory-mapped file if size changed
+				accessor == null)
 			{
-				Debug.Log($"Texture memory info: {width}x{height}, format: {renderTexture.format}, " +
-						  $"bytesPerPixel: {bytesPerPixel}, rowPitch: {rowPitch}, totalSize: {totalSize} bytes");
-				
-				var shareName = $"DwCamera_{dwc.id}_{SubId}";
-				mmf = MemoryMappedFile.CreateOrOpen(shareName, totalSize);
-				var size = Marshal.SizeOf<ShareInfo>();
-				accessor = mmf.CreateViewAccessor(0, size, MemoryMappedFileAccess.Write);
+				InitializeMemoryMappedFile();
 			}
 			// Write ShareInfo to memory-mapped file
 			accessor.Write(0, ref m_ShareInfo);

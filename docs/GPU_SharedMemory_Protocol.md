@@ -1,142 +1,308 @@
 # GPU Shared Memory Protocol for Unity3D and WinOverlay
 
 ## Overview
-This document defines the protocol for using GPU shared memory between Unity3D and WinOverlay. The protocol leverages DirectX shared resources (`ID3D11Texture2D`) to enable efficient real-time image transfer. It also incorporates a Ping-Pong Buffer mechanism to handle synchronization and desynchronization issues.
+This document defines the protocol for using GPU shared memory between Unity3D and WinOverlay. The protocol leverages DirectX shared resources (`ID3D11Texture2D`) and memory-mapped files for efficient real-time image transfer with metadata synchronization. It incorporates a Ping-Pong Buffer mechanism using two alternating GPUWorker instances to handle synchronization and desynchronization issues.
 
 ---
 
 ## Key Features
-- **DirectX Shared Resources**: GPU-based shared memory for high-performance image transfer.
-- **Ping-Pong Buffer**: Two alternating buffers to avoid read/write conflicts.
-- **Overwrite Oldest Buffer**: Ensures Unity3D can continue rendering even if WinOverlay lags behind.
+- **DirectX Shared Resources**: GPU-based shared memory for high-performance image transfer using native texture handles.
+- **Memory-Mapped Files**: Efficient metadata sharing using `MemoryMappedFile` for synchronization and state management.
+- **Ping-Pong Buffer**: Two alternating GPUWorker instances (`GPU01`/`GPU02`) to avoid read/write conflicts.
+- **Multi-Graphics API Support**: Supports DirectX 11/12, OpenGL, and Metal with appropriate alignment handling.
 - **1:N Communication**: Supports one Unity3D instance and multiple WinOverlay instances.
+- **FPS-Based Updates**: Configurable frame rate limiting for efficient resource usage.
 
 ---
 
-## Buffer Structure
-Each buffer consists of:
-1. **Shared Texture**: A `ID3D11Texture2D` resource for storing image data.
-2. **Metadata**: A small memory-mapped file for synchronization and state management.
+## Architecture Components
 
-### Metadata Layout
-| Offset | Size (Bytes) | Description                          |
-|--------|--------------|--------------------------------------|
-| 0      | 1            | Buffer State (0=Idle, 1=Written)    |
-| 1      | 8            | Timestamp (Unix time in milliseconds) |
-| 9      | 4            | Width of the texture                |
-| 13     | 4            | Height of the texture               |
+### GPUWorker Structure
+Each GPUWorker instance manages:
+1. **RenderTexture**: Unity's render texture for GPU processing
+2. **ShareInfo**: Metadata structure containing texture information
+3. **MemoryMappedFile**: Shared memory for metadata access
+4. **Native Texture Handle**: Platform-specific texture pointer for direct GPU access
+
+### ShareInfo Metadata Layout
+```csharp
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+public struct ShareInfo
+{
+    public IntPtr rtHandler;        // Native texture handle (platform-specific)
+    public DateTime timestamp;      // UTC timestamp for synchronization
+    public int width;               // Texture width in pixels
+    public int height;              // Texture height in pixels  
+    public int rowPitch;            // Row pitch in bytes (width * bytesPerPixel)
+    public int bytesPerPixel;       // Bytes per pixel based on format
+    public int totalSize;           // Total texture size in bytes
+}
+```
+
+### Memory Layout Details
+| Field | Size (Bytes) | Description |
+|-------|--------------|-------------|
+| rtHandler | 8 | Native texture handle (IntPtr) |
+| timestamp | 8 | DateTime structure |
+| width | 4 | Texture width |
+| height | 4 | Texture height |
+| rowPitch | 4 | Row pitch for texture data |
+| bytesPerPixel | 4 | Bytes per pixel |
+| totalSize | 4 | Total texture size |
+
+---
+
+## Naming Convention
+
+### Memory-Mapped File Names
+- **Format**: `DwCamera_{cameraId}_{subId}`
+- **Examples**:
+  - `DwCamera_0_1` - Camera 0, GPUWorker SubId 1
+  - `DwCamera_0_2` - Camera 0, GPUWorker SubId 2
+  - `DwCamera_1_1` - Camera 1, GPUWorker SubId 1
+
+### Communication Channels
+- **Named Pipe**: `DwCamera_Control` - For registration and control messages
+- **Shared Memory**: Individual memory-mapped files per GPUWorker instance
 
 ---
 
 ## Workflow
 
 ### Unity3D (Producer)
-1. **Initialization**:
-   - Create two shared textures (`ID3D11Texture2D`) with the `D3D11_RESOURCE_MISC_SHARED` flag.
-   - Create metadata files for each buffer.
 
-2. **Rendering**:
-   - Check the state of each buffer:
-     - If a buffer is `Idle (0)`, write the rendered frame to it.
-     - If both buffers are `Written (1)`, overwrite the oldest buffer (based on the timestamp).
+#### Initialization
+1. **Create GPUWorker Instances**:
+   ```csharp
+   m_RawGPU = new GPU_RawWorker(this, 0);      // SubId 0 (raw processing)
+   m_GPU01 = new GPU_ComputeShaderWorker(this, 1, shader);  // SubId 1 
+   m_GPU02 = new GPU_ComputeShaderWorker(this, 2, shader);  // SubId 2
+   ```
 
-3. **Update Metadata**:
-   - After writing to a buffer, update its metadata:
-     - Set the state to `Written (1)`.
-     - Update the timestamp, width, and height.
+2. **Register with DwConnector**:
+   ```csharp
+   DwConnector.Instance.Register(camera);
+   // Sends RegisterCamera message via named pipe
+   ```
 
-4. **Notify WinOverlay**:
-   - Optionally, signal WinOverlay (e.g., via an event or named pipe) that a new frame is available.
+#### Rendering Process
+1. **Frame Rate Control**:
+   - Check if update should be performed based on configured FPS
+   - Skip rendering if frame rate limit not reached
+
+2. **Ping-Pong Buffer Selection**:
+   ```csharp
+   PrepareGPU(out var gpu, out var prevSrc);
+   // Alternates between GPU01 and GPU02 for ping-pong buffering
+   ```
+
+3. **Texture Capture**:
+   ```csharp
+   gpu.Execute(renderer, camera, width, height);
+   // Renders current frame to selected GPUWorker's RenderTexture
+   ```
+
+4. **Memory Update**:
+   ```csharp
+   gpu.UpdateMemory();
+   // Updates ShareInfo and writes to memory-mapped file
+   ```
+
+#### Memory-Mapped File Management
+```csharp
+private void UpdateMemory()
+{
+    // Update ShareInfo with current texture data
+    m_ShareInfo.rtHandler = renderTexture.GetNativeDepthBufferPtr();
+    m_ShareInfo.width = renderTexture.width;
+    m_ShareInfo.height = renderTexture.height;
+    m_ShareInfo.bytesPerPixel = GetBytesPerPixel(renderTexture.format);
+    m_ShareInfo.timestamp = DateTime.UtcNow;
+    
+    // Handle platform-specific alignment
+    var rowPitch = AlignToPowerOfTwo(width * bytesPerPixel, alignment);
+    m_ShareInfo.totalSize = height * rowPitch;
+    
+    // Recreate memory-mapped file if size changed
+    if (sizesChanged || accessor == null)
+        InitializeMemoryMappedFile();
+    
+    // Write metadata to shared memory
+    accessor.Write(0, ref m_ShareInfo);
+}
+```
 
 ### WinOverlay (Consumer)
-1. **Initialization**:
-   - Open the shared textures and metadata files.
 
-2. **Reading**:
-   - Check the state of each buffer:
-     - If a buffer is `Written (1)`, read the texture.
-   - If no buffer is available, wait or skip the frame.
+#### Initialization
+1. **Connect to Unity3D**:
+   ```csharp
+   await connector.ConnectAsync();
+   // Connects to "DwCamera_Control" named pipe
+   ```
 
-3. **Process Data**:
-   - Use the texture for rendering or other purposes.
+2. **Register for Camera Updates**:
+   - Receive `RegisterCamera` messages with camera IDs
+   - Open corresponding memory-mapped files:
+     - `DwCamera_{cameraId}_1`
+     - `DwCamera_{cameraId}_2`
 
-4. **NamedPipe Notification**:
-   - Notify Unity3D via NamedPipe about the buffer being read (optional).
+#### Reading Process
+1. **Check Available Buffers**:
+   ```csharp
+   // Read ShareInfo from both memory-mapped files
+   var shareInfo1 = ReadShareInfo("DwCamera_{cameraId}_1");
+   var shareInfo2 = ReadShareInfo("DwCamera_{cameraId}_2");
+   ```
+
+2. **Select Most Recent Buffer**:
+   - Compare timestamps to find the latest data
+   - Open shared texture using native handle
+
+3. **Texture Processing**:
+   - Use the native texture handle to access GPU resource
+   - Render or process the texture data
+
+---
+
+## Platform-Specific Implementation
+
+### DirectX 11/12
+```csharp
+case GraphicsDeviceType.Direct3D11:
+case GraphicsDeviceType.Direct3D12:
+    // DirectX requires row pitch alignment (typically 256 bytes)
+    rowPitch = AlignToPowerOfTwo(width * bytesPerPixel, 256);
+    newTotalSize = height * rowPitch;
+    break;
+```
+
+### OpenGL
+```csharp
+case GraphicsDeviceType.OpenGLES2:
+case GraphicsDeviceType.OpenGLES3:
+case GraphicsDeviceType.OpenGLCore:
+    // OpenGL typically doesn't require special alignment
+    rowPitch = width * bytesPerPixel;
+    newTotalSize = height * rowPitch;
+    break;
+```
+
+### Metal
+```csharp
+case GraphicsDeviceType.Metal:
+    // Metal may require specific alignment (64 bytes)
+    rowPitch = AlignToPowerOfTwo(rowPitch, 64);
+    newTotalSize = height * rowPitch;
+    break;
+```
 
 ---
 
 ## Synchronization
-- **Buffer State**:
-  - Unity3D writes to a buffer only if it is `Idle (0)` or if both buffers are full (overwriting the oldest).
-  - WinOverlay reads from a buffer only if it is `Written (1)`.
 
-- **Timestamp**:
-  - Used to determine the oldest buffer when both are full.
+### Temporal Synchronization
+- **Timestamp-Based**: Uses `DateTime.UtcNow` for ordering frames
+- **FPS Limiting**: Configurable frame rate prevents excessive updates
+- **Ping-Pong Buffering**: Alternating between two buffers prevents conflicts
 
-- **Thread Safety**:
-  - Ensure atomic updates to the buffer state and timestamp to avoid race conditions.
+### Memory Safety
+- **Atomic Updates**: ShareInfo structure written atomically to memory-mapped file
+- **Size Change Handling**: Recreates memory-mapped file when texture size changes
+- **Proper Disposal**: Ensures proper cleanup of GPU resources and memory-mapped files
 
 ---
 
 ## Error Handling
-- **Desynchronization**:
-  - If WinOverlay lags behind, Unity3D will overwrite the oldest buffer, ensuring the latest data is always available.
 
-- **Resource Cleanup**:
-  - Both Unity3D and WinOverlay must release shared resources properly to avoid memory leaks.
+### Desynchronization
+- Unity3D continues rendering using ping-pong buffer even if WinOverlay lags
+- Most recent buffer is always available through timestamp comparison
+
+### Resource Management
+```csharp
+protected virtual void Dispose(bool disposing)
+{
+    if (!IsDisposed)
+    {
+        if (disposing)
+        {
+            DisposeMemoryMappedFile();
+            renderTexture?.Release();
+        }
+        renderTexture = null;
+    }
+    IsDisposed = true;
+}
+```
+
+### Connection Handling
+- Named pipe reconnection logic with retry mechanism
+- Automatic WinOverlay process restart on connection loss
+- Graceful handling of missing memory-mapped files
+
+---
+
+## Performance Optimizations
+
+### Texture Format Support
+The implementation supports various texture formats with optimized bytes-per-pixel calculations:
+- 8-bit formats: R8 (1 byte)
+- 16-bit formats: RG16, RGB565, ARGB4444 (2 bytes)
+- 32-bit formats: ARGB32, BGRA32, RFloat (4 bytes)
+- 64-bit formats: ARGBHalf, RGBAUShort (8 bytes)
+- 128-bit formats: ARGBFloat, ARGBInt (16 bytes)
+
+### Memory Alignment
+```csharp
+private int AlignToPowerOfTwo(int value, int alignment)
+{
+    return ((value + alignment - 1) / alignment) * alignment;
+}
+```
+
+### FPS-Based Updates
+```csharp
+private bool ShouldPerformUpdate()
+{
+    var factor = 1f / Mathf.Clamp(setting.FPS, 1f, 60f);
+    if (Time.realtimeSinceStartup - m_LastRenderTime < factor)
+        return false;
+    m_LastRenderTime = Time.realtimeSinceStartup;
+    return true;
+}
+```
 
 ---
 
 ## Implementation Notes
-- **DirectX Texture Creation**:
-  - Use the following flags for shared textures:
-    ```cpp
-    D3D11_TEXTURE2D_DESC desc = {};
-    desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-    ```
 
-- **Metadata Access**:
-  - Use `MemoryMappedFile` in C# for metadata synchronization.
+### Unity3D Side
+- Use `renderTexture.GetNativeDepthBufferPtr()` for native texture handle
+- Handle different graphics APIs with appropriate alignment
+- Implement proper disposal pattern for GPU resources
+- Use ping-pong buffering with GPUWorker instances
 
-- **Performance**:
-  - Minimize CPU-GPU synchronization to maintain high frame rates.
+### WinOverlay Side  
+- Connect to named pipe for control messages
+- Open memory-mapped files based on camera registration
+- Read ShareInfo structure to get texture metadata
+- Use native texture handle for direct GPU access
 
----
-
-## Example Code
-
-### Unity3D: Writing to Shared Texture
-```csharp
-void WriteToBuffer(int bufferIndex, Texture2D texture) {
-    // Update shared texture
-    IntPtr sharedHandle = GetSharedHandle(bufferIndex);
-    ID3D11Texture2D sharedTexture = OpenSharedTexture(sharedHandle);
-    CopyTextureToSharedResource(texture, sharedTexture);
-
-    // Update metadata
-    UpdateMetadata(bufferIndex, texture.width, texture.height);
-}
-```
-
-### WinOverlay: Reading from Shared Texture
-```csharp
-void ReadFromBuffer(int bufferIndex) {
-    // Check buffer state
-    if (GetBufferState(bufferIndex) == 1) {
-        // Read shared texture
-        ID3D11Texture2D sharedTexture = OpenSharedTexture(bufferIndex);
-        RenderTexture(sharedTexture);
-    }
-}
-```
+### Communication Protocol
+- Named pipe for control messages (registration, errors, warnings)
+- Memory-mapped files for high-frequency texture metadata
+- JSON-based message format for control commands
 
 ---
 
 ## Future Enhancements
-- **Dynamic Buffer Count**: Allow more than two buffers for higher flexibility.
-- **Compression**: Compress texture data to reduce memory usage.
-- **Cross-Platform Support**: Add support for OpenGL or Vulkan for non-Windows platforms.
+- **Dynamic Buffer Count**: Allow more than two buffers for higher flexibility
+- **Compression**: Compress texture data to reduce memory usage  
+- **Cross-Platform Vulkan Support**: Add Vulkan support for broader compatibility
+- **Adaptive Quality**: Dynamic texture resolution based on performance
+- **Multi-Camera Optimization**: Shared resources across multiple cameras
 
 ---
 
-This protocol ensures efficient and synchronized data transfer between Unity3D and WinOverlay, even under high frame rate and desynchronization conditions.
+This protocol ensures efficient and synchronized data transfer between Unity3D and WinOverlay, leveraging both GPU shared resources and memory-mapped files for optimal performance under high frame rate conditions.

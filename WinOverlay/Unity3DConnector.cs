@@ -16,7 +16,6 @@ namespace WinOverlay
         public event Action ConnectionLosted;
 
         public bool IsConnected => m_HandShaked && pipeClient?.IsConnected == true;
-        private bool m_IsShake = false;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
 		
 		public async Task ConnectAsync()
@@ -31,14 +30,14 @@ namespace WinOverlay
 
                 // First handshake
                 int retryCount = 2;
-				while (!m_IsShake && retryCount-- > 0)
+				while (!m_HandShaked && retryCount-- > 0)
                 {
                     // wait for Listener to be ready
-                    await Task.Delay(100);
+                    await Task.Delay(500);
                     InternalSent("Ping");
                 }
 
-				if (!m_IsShake)
+				if (!m_HandShaked)
 				{
 					throw new Exception("Handshake failed.");
 				}

@@ -709,7 +709,7 @@ namespace DesktopWizard
 #endif
 				}
 
-				// Capture current render into cache.
+				// Capture current render into renderTexture.
 				gpu.Execute(m_Renderer, linkCamera, setting.Size.x, setting.Size.y);
 
 				ShareMemory_Update(gpu);
@@ -1217,6 +1217,7 @@ namespace DesktopWizard
 				if (dwForm != null)
 					throw new System.Exception("Form duplicate.");
 				_Form = new DwForm(this);
+				DwConnector.Instance.Register(this);
 
 				Debug.Log($"Form created: {gameObject.name}, add events.", this);
 				AddEvents(dwForm);
@@ -1225,6 +1226,7 @@ namespace DesktopWizard
 		}
         private void InternalFormDestory()
         {
+			DwConnector.Instance.Unregister(this);
             if (dwForm != null)
             {
 				EVENT_Closed.TryCatchDispatchEventError(o => o?.Invoke());
@@ -1232,7 +1234,7 @@ namespace DesktopWizard
 				RemoveEvents(dwForm);
                 dwForm.Close();
             }
-            _Form = null;
+			_Form = null;
         }
         #endregion DwForm state handle
 
@@ -1971,6 +1973,10 @@ namespace DesktopWizard
 
 		}
 
+		/// <summary>
+		/// assume camera.Render() has been called.
+		/// </summary>
+		/// <param name="gpu"></param>
 		private void ShareMemory_Update(GPUWorker gpu)
 		{
 			if (gpu == null || gpu.renderTexture == null)
