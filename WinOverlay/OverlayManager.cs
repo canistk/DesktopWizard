@@ -12,14 +12,9 @@ namespace WinOverlay
 		public static class CMD
 		{
             public const string Action = "action";
-            public const string Ping = "ping";
-			public const string Heartbeat = "HB";
-            public const string HeartbeatAck = "HB_ACK";
 			public const string RegisterCamera = "REG_CAM";
             public const string SlaveError =  "SLAVE_ERROR";
             public const string SlaveWarning = "SLAVE_WARN";
-            public const string StartupComplete = "STARTUP_COMPLETE";
-            public const string StartupAck = "STARTUP_ACK";
 		}
         private Unity3DConnector connector;
         private System.Timers.Timer reconnectTimer;
@@ -54,19 +49,9 @@ namespace WinOverlay
 			var action = aToken.Value<string>();
             switch (action)
             {
-                case CMD.Heartbeat:
-                    const string ack = "{\"action\":\"HB_ACK\"}";
-                    // var ack2 = new MyAction(CMD.HeartbeatAck).ToString();
-				    connector.SendMessage(ack);
-                    break;
-                case CMD.StartupAck:
-                    connector.ReceivedStartupComplete();
-				break;
                 case CMD.RegisterCamera:
 				    RegisterCamera(jObj);
 				    break;
-                case CMD.Ping:
-                    break;
 				default:
                     SendError("SLAVE: Unknown action received: " + action);
                     break;

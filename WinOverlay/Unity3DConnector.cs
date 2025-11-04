@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,15 +13,13 @@ namespace WinOverlay
         private NamedPipeClientStream pipeClient;
         public event Action<string> MessageReceived;
         public event Action ConnectionEstablished;
+        public event Action ConnectionLosted;
 
-        public bool IsConnected => pipeClient?.IsConnected == true;
-
-        private bool m_IsStartupCompleteAck = false;
-		public void ReceivedStartupComplete()
-        {
-            m_IsStartupCompleteAck = true;
-		}
-		public async Task<bool> ConnectAsync()
+        public bool IsConnected => m_HandShaked && pipeClient?.IsConnected == true;
+        private bool m_IsShake = false;
+        private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
+		
+		public async Task ConnectAsync()
         {
             try
             {
@@ -30,61 +29,77 @@ namespace WinOverlay
 				await pipeClient.ConnectAsync(1000);
                 _ = Task.Run(ListenForMessages);
 
+                // First handshake
                 int retryCount = 2;
-				while (!m_IsStartupCompleteAck && retryCount-- > 0)
+				while (!m_IsShake && retryCount-- > 0)
                 {
                     // wait for Listener to be ready
                     await Task.Delay(100);
-                    StartupComplete();
+                    InternalSent("Ping");
                 }
 
-                if (!m_IsStartupCompleteAck)
-                {
-                    Dispose();
-                    return false;
-                }
+				if (!m_IsShake)
+				{
+					throw new Exception("Handshake failed.");
+				}
 
-                ConnectionEstablished?.Invoke();
-                return true;
+				ConnectionEstablished?.Invoke();
             }
             catch
             {
-                return false;
-            }
+                OnConnectionLosted();
+			}
         }
 
-        private void StartupComplete()
-        {
-			// Placeholder for any startup complete logic if needed
-			//var message = new MyAction(OverlayManager.CMD.StartupComplete).ToJson();
-            if (pipeClient == null || !pipeClient.IsConnected)
-                return;
-			var message = $"{{\"action\":\"{OverlayManager.CMD.StartupComplete}\"}}";
-			var data = Encoding.UTF8.GetBytes(message);
-			pipeClient.Write(data, 0, data.Length);
-			pipeClient.Flush();
-		}
-
+        bool m_HandShaked = false;
+        byte[] m_Buffer = new byte[1024];
 		private async void ListenForMessages()
         {
-            byte[] buffer = new byte[1024];
-            
-            while (pipeClient?.IsConnected == true)
+			while (pipeClient?.IsConnected == true)
             {
                 try
                 {
-                    int bytesRead = await pipeClient.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead > 0)
+                    int bytesRead = await pipeClient.ReadAsync(m_Buffer, 0, m_Buffer.Length);
+
+					if (bytesRead > 0)
                     {
-                        string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        MessageReceived?.Invoke(message);
-                    }
-                }
+                        var msg = Encoding.UTF8.GetString(m_Buffer, 0, bytesRead);
+                        OnMessageReceived(msg);
+					}
+                    // TODO: support message over 1024.
+				}
                 catch
                 {
                     break;
                 }
             }
+
+            OnConnectionLosted();
+		}
+
+        private void OnMessageReceived(string message)
+        {
+            if (message == null || message.Length == 0)
+                return;
+
+			if (message.Equals("Ping", IGNORE))
+			{
+				InternalSent("Pong");
+                return;
+			}
+            if (message.Equals("Pong", IGNORE))
+            {
+                m_HandShaked = true;
+                return;
+			}
+
+			MessageReceived?.Invoke(message);
+		}
+
+        private void OnConnectionLosted()
+        {
+            m_HandShaked = false;
+			ConnectionLosted?.Invoke();
         }
 
 		public void SendMessage(MyAction action)
@@ -94,18 +109,26 @@ namespace WinOverlay
         {
             if (!IsConnected)
                 return;
+            InternalSent(message);
+        }
+
+        private void InternalSent(string message)
+        {
+            if (pipeClient == null || !pipeClient.IsConnected)
+                return;
             try
             {
                 var data = Encoding.UTF8.GetBytes(message);
                 pipeClient.Write(data, 0, data.Length);
                 pipeClient.Flush();
             }
-            catch
+            catch (System.Exception ex)
             {
+                Console.Error.WriteLine(ex.Message);
             }
         }
 
-		public void Dispose()
+        public void Dispose()
         {
             pipeClient?.Dispose();
         }

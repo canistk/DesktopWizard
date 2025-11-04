@@ -1,6 +1,7 @@
 using Kit2;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using PlasticPipe.PlasticProtocol.Client;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -18,36 +19,31 @@ namespace DesktopWizard
 		public static class CMD
 		{
 			public const string Action = "action";
-            public const string Ping = "ping";
-			public const string Heartbeat = "HB";
-			public const string HeartbeatAck = "HB_ACK";
+            public const string Ping = "Ping";
+            public const string Pong = "Pong";
 			public const string RegisterCamera = "REG_CAM";
 			public const string SlaveError = "SLAVE_ERROR";
 			public const string SlaveWarning = "SLAVE_WARN";
-			public const string StartupComplete = "STARTUP_COMPLETE";
-			public const string StartupAck = "STARTUP_ACK";
 		}
 
         private bool isConnected => pipeServer?.IsConnected == true;
 
-		[ReadOnly, SerializeField]
-        private bool isWinOverlayReady = false;
+		
         
         private NamedPipeServerStream pipeServer;
         private System.Diagnostics.Process winOverlayProcess;
-        private Coroutine heartbeatCoroutine;
 
+		[ReadOnly, SerializeField]
+		bool m_HandShaked = false;
 		private const int BUFFER_SIZE = 1024;
-		
+		private byte[] m_Buffer = new byte[BUFFER_SIZE];
+
 		[SerializeField, Min(0)] int maxRetryCount = 3;
 		[SerializeField, Min(1f)] float startupTimeout = 10f; // Timeout for startup completion
+		[SerializeField] bool m_ForceRestart = false;
 
-        [SerializeField] bool m_ForceRestart = false;
-        
-        private int consecutiveHeartbeatFailures = 0;
-        private float lastHeartbeatTime = 0f;
-        private const float HEARTBEAT_TIMEOUT = 10f; // 10 seconds timeout for heartbeat response
-
+		private Queue<string> m_Messages = new Queue<string>();
+		private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 		void OnEnable()
         {
             StartServer();
@@ -74,25 +70,21 @@ namespace DesktopWizard
                 }
             }
 		}
+		void OnDestroy()
+		{
+			StopServer();
+		}
+
 
 		private void RestartServer()
 		{
 			Debug.Log("Restarting server...");
-			consecutiveHeartbeatFailures = 0;
-			isWinOverlayReady = false;
 			StopServer();
 			StartServer();
 		}
 		private void StopServer()
 		{
-			isWinOverlayReady = false;
-
-			if (heartbeatCoroutine != null)
-			{
-				StopCoroutine(heartbeatCoroutine);
-				heartbeatCoroutine = null;
-			}
-
+            m_HandShaked = false;
 			pipeServer?.Dispose();
 			pipeServer = null;
 
@@ -134,16 +126,25 @@ namespace DesktopWizard
 			try
 			{
 				await pipeServer.WaitForConnectionAsync();
-				consecutiveHeartbeatFailures = 0;
+                _ = Task.Run(ListenForMessages);
 				Debug.Log("WinOverlay connected, waiting for startup complete signal...");
 
-                _ = Task.Run(ListenForMessages);
 
-                await Task.Delay(100); // Small delay to ensure listener is ready
-				SendMessage(CMD.Ping);
+                // Wait for handshake
+                m_HandShaked = false;
+				int retryCount = 0;
+				var startTime = Time.time;
+                do
+                {
+                    await Task.Delay(500);
+                    SendMessage(CMD.Ping);
+                }
+                while (!m_HandShaked && retryCount++ < 10);
 
-				// Wait for startup complete signal with timeout
-				await WaitForStartupComplete();
+                if (m_HandShaked)
+                    Debug.Log($"Connection established, retry = {retryCount}.");
+                else
+                    Debug.LogWarning("Handshake failed, but continuing...");
 			}
 			catch (System.Exception e)
 			{
@@ -153,89 +154,53 @@ namespace DesktopWizard
 			}
 		}
 
-        private async Task WaitForStartupComplete()
-        {
-            var startTime = Time.time;
-            
-            while (!isWinOverlayReady && isConnected)
-            {
-                if (Time.time - startTime > startupTimeout)
-                {
-                    Debug.LogError($"WinOverlay startup timeout ({startupTimeout}s). Force starting heartbeat...");
-                    break;
-                }
-                
-                await Task.Delay(100); // Check every 100ms
-            }
-            
-            // Send startup acknowledgment
-            const string startupAck = "{\"action\":\"" + CMD.StartupAck + "\"}";
-            SendMessage(startupAck);
-                
-            // Start heartbeat after WinOverlay is ready
-            Debug.Log("WinOverlay ready, starting heartbeat...");
-            heartbeatCoroutine = StartCoroutine(SendHeartbeat());
-        }
-
-		private IEnumerator SendHeartbeat()
-        {
-            while (isConnected && isWinOverlayReady)
-            {
-                lastHeartbeatTime = Time.time;
-
-				const string HEARTBEAT = "{\"action\":\"" + CMD.Heartbeat + "\"}";
-		        SendMessage(HEARTBEAT);
-                
-                // Wait for heartbeat interval
-                yield return new WaitForSeconds(2f);
-                
-                // Check if we received a response within timeout
-                if (Time.time - lastHeartbeatTime > HEARTBEAT_TIMEOUT)
-                {
-                    consecutiveHeartbeatFailures++;
-                    Debug.LogWarning($"Heartbeat timeout! Consecutive failures: {consecutiveHeartbeatFailures}");
-                    
-                    if (consecutiveHeartbeatFailures >= maxRetryCount)
-                    {
-                        Debug.LogError($"Max heartbeat failures ({maxRetryCount}) reached. Restarting server...");
-                        RestartServer();
-                        yield break;
-                    }
-                }
-            }
-        }
-        
 		private async void ListenForMessages()
         {
-            byte[] buffer = new byte[BUFFER_SIZE];
             while (pipeServer?.IsConnected == true)
             {
                 try
                 {
-                    int bytesRead = await pipeServer.ReadAsync(buffer, 0, buffer.Length);
+                    int bytesRead = await pipeServer.ReadAsync(m_Buffer, 0, m_Buffer.Length);
                     if (bytesRead > 0)
                     {
-						string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                        string message = Encoding.UTF8.GetString(m_Buffer, 0, bytesRead);
                         lock (m_Messages)
                         {
                             m_Messages.Enqueue(message);
                         }
                     }
                 }
-                catch
+                catch (System.Exception ex)
                 {
-                    break;
+                    Debug.LogError($"Error: {ex.Message}");
+					break;
                 }
             }
-            isWinOverlayReady = false;
-            Debug.LogWarning("Lost connection to WinOverlay.");
-        }
 
-        private Queue<string> m_Messages = new Queue<string>();
-        private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
+			// Reconnection logic + restart WinOverlay
+			if (this.isActiveAndEnabled)
+            {
+                Debug.LogWarning("Lost connection to WinOverlay.");
+                RestartServer();
+            }
+		}
+
         private void ProcessMessage(string message)
         {
-            var jObj = JObject.Parse(message);
+            // System level
+            switch (message)
+            {
+                case CMD.Ping:
+                SendMessage(CMD.Pong);
+                return;
+                case CMD.Pong:
+                m_HandShaked = true;
+                Debug.Log("Received Pong from WinOverlay.");
+                return;
+            }
+
+			// Application level
+			var jObj = JObject.Parse(message);
             if (!jObj.TryGetValue(CMD.Action, IGNORE,
                 out var aToken))
             {
@@ -246,15 +211,6 @@ namespace DesktopWizard
 
             switch(action)
             {
-                case CMD.StartupComplete:
-                    isWinOverlayReady = true;
-                    Debug.Log("WinOverlay startup complete signal received");
-                    break;
-                case CMD.HeartbeatAck:
-                    // Reset failure counter on successful heartbeat response
-                    consecutiveHeartbeatFailures = 0;
-                    // Debug.Log($"Received {message}");
-                    break;
                 case CMD.SlaveWarning:
                     Debug.LogWarning(message);
                     break;
@@ -283,15 +239,6 @@ namespace DesktopWizard
             }
         }
         
-        void OnDestroy()
-        {
-            if (heartbeatCoroutine != null)
-                StopCoroutine(heartbeatCoroutine);
-                
-            pipeServer?.Dispose();
-            winOverlayProcess?.Kill();
-        }
-
 		public void Register(DwCamera camera)
         {
             // Only register camera if WinOverlay is ready
