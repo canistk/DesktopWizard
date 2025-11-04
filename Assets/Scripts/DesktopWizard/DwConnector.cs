@@ -264,10 +264,16 @@ namespace DesktopWizard
             switch (action)
             {
                 case CMD.SlaveWarning:
-                Debug.LogWarning(message);
+                {
+                    var msg = jObj.GetValue("message", IGNORE);
+                    Debug.LogWarning(msg);
+                }
                 break;
                 case CMD.SlaveError:
-                Debug.LogError(message);
+                {
+                    var msg = jObj.GetValue("message", IGNORE);
+                    Debug.LogError(msg);
+                }
                 break;
                 default:
                 Debug.LogError($"Received unknown action: {action}");

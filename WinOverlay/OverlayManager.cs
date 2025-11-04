@@ -19,7 +19,7 @@ namespace WinOverlay
             public const string RegisterCamera = "REG_CAM";
             public const string UnregisterCamera = "UNREG_CAM";
         }
-        private Unity3DConnector connector;
+        private Unity3DConnector u3d => Unity3DConnector.Instance;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
         private Dictionary<string /* prefix */, DwForm> m_ActiveCameras = new Dictionary<string, DwForm>();
 
@@ -38,18 +38,17 @@ namespace WinOverlay
                 }
                 m_ActiveCameras.Clear();
                 
-                connector?.Dispose();
+                Unity3DConnector.DisposeInstance();
             }
             base.Dispose(disposing);
         }
 
         private void InitializeConnector()
         {
-            connector = new Unity3DConnector();
-            connector.MessageReceived += OnMessageReceived;
-            connector.ConnectionLosted += OnConnectionLost;
+            u3d.MessageReceived += OnMessageReceived;
+            u3d.ConnectionLosted += OnConnectionLost;
 
-            _ = Task.Run(async () => await connector.ConnectAsync());
+            _ = Task.Run(async () => await u3d.ConnectAsync());
         }
 
         private void OnMessageReceived(string message)
@@ -86,7 +85,7 @@ namespace WinOverlay
             using (var err = new MyAction(CMD.SlaveError))
             {
                 err.Add("message", message);
-                connector.SendMessage(err);
+                u3d.SendMessage(err);
             }
         }
         public void SendWarning(string message)
@@ -94,7 +93,7 @@ namespace WinOverlay
             using (var warn = new MyAction(CMD.SlaveWarning))
             {
                 warn.Add("message", message);
-                connector.SendMessage(warn);
+                u3d.SendMessage(warn);
             }
         }
 
@@ -106,6 +105,10 @@ namespace WinOverlay
                 SendError("RegisterCamera missing cameraId");
                 return;
             }
+
+            SendWarning("RegisterCamera received");
+            return;
+
             var cameraId = camIdToken.Value<int>();
 
             var prefix = $"DwCamera_{cameraId}";
@@ -127,8 +130,9 @@ namespace WinOverlay
                 
                 // Show the form
                 dwForm.Show();
-                
-                SendWarning($"Camera {cameraId} registered successfully");
+                dwForm.TopLevel = true;
+
+				SendWarning($"Camera {cameraId} registered successfully");
             }
             catch (Exception ex)
             {

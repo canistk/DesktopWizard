@@ -10,6 +10,29 @@ namespace WinOverlay
 {
     public class Unity3DConnector : IDisposable
     {
+        private static Unity3DConnector _instance;
+        private static readonly object _lock = new object();
+
+        public static Unity3DConnector Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new Unity3DConnector();
+                        }
+                    }
+                }
+                return _instance;
+            }
+        }
+
+        private Unity3DConnector() { }
+
         private NamedPipeClientStream pipeClient;
         public event Action<string> MessageReceived;
         public event Action ConnectionEstablished;
@@ -111,7 +134,24 @@ namespace WinOverlay
             InternalSent(message);
         }
 
-        private void InternalSent(string message)
+		public void SendError(string message)
+		{
+			using (var err = new MyAction(OverlayManager.CMD.SlaveError))
+			{
+				err.Add("message", message);
+				SendMessage(err);
+			}
+		}
+		public void SendWarning(string message)
+		{
+			using (var warn = new MyAction(OverlayManager.CMD.SlaveWarning))
+			{
+				warn.Add("message", message);
+				SendMessage(warn);
+			}
+		}
+
+		private void InternalSent(string message)
         {
             if (pipeClient == null || !pipeClient.IsConnected)
                 return;
@@ -129,7 +169,19 @@ namespace WinOverlay
 
         public void Dispose()
         {
-            pipeClient?.Dispose();
+            lock (_lock)
+            {
+                pipeClient?.Dispose();
+                _instance = null;
+            }
+        }
+
+        public static void DisposeInstance()
+        {
+            lock (_lock)
+            {
+                _instance?.Dispose();
+            }
         }
     }
 

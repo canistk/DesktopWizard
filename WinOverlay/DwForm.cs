@@ -10,8 +10,9 @@ using System.Windows.Forms;
 namespace WinOverlay
 {
     public class DwForm : Form
-    {
-        private int cameraId;
+	{
+		private Unity3DConnector u3d => Unity3DConnector.Instance;
+		private int cameraId;
         private string prefix;
         private MemoryMappedFile mmf1, mmf2;
         private MemoryMappedViewAccessor accessor1, accessor2;
@@ -30,6 +31,7 @@ namespace WinOverlay
         {
             this.cameraId = cameraId;
             this.prefix = $"DwCamera_{cameraId}";
+            this.Text = this.prefix;
             
             InitializeForm();
             InitializeSharedMemory();
@@ -53,13 +55,14 @@ namespace WinOverlay
             
             // Default size - will be updated based on texture size
             Size = new Size(640, 480);
-            
-            Text = $"DwCamera_{cameraId}";
         }
 
-        private void InitializeSharedMemory()
-        {
-            Task.Run(async () =>
+        private bool m_SharedMemoryInitialized = false;
+		private void InitializeSharedMemory()
+		{
+            m_SharedMemoryInitialized = false;
+
+			Task.Run(async () =>
             {
                 int retryCount = 0;
                 const int maxRetries = 30; // Wait up to 30 seconds
@@ -68,7 +71,7 @@ namespace WinOverlay
                 {
                     try
                     {
-                        var sm1 = $"{prefix}_1";
+						var sm1 = $"{prefix}_1";
                         var sm2 = $"{prefix}_2";
                         
                         mmf1 = MemoryMappedFile.OpenExisting(sm1);
@@ -76,32 +79,39 @@ namespace WinOverlay
                         
                         mmf2 = MemoryMappedFile.OpenExisting(sm2);
                         accessor2 = mmf2.CreateViewAccessor();
-                        
-                        break;
+                        m_SharedMemoryInitialized = true;
+
+						break;
                     }
                     catch (FileNotFoundException)
                     {
                         retryCount++;
-                        await Task.Delay(1000);
+                        u3d.SendError($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})");
+						await Task.Delay(1000);
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Error opening shared memory: {ex.Message}");
-                        retryCount++;
+                        u3d.SendError($"Error connecting to shared memory for camera {cameraId}: {ex.Message}");
+						retryCount++;
                         await Task.Delay(1000);
                     }
                 }
                 
                 if (retryCount >= maxRetries)
                 {
-                    MessageBox.Show($"Failed to connect to shared memory for camera {cameraId}", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    u3d.SendError($"Failed to connect to shared memory for camera {cameraId} after multiple attempts.");
+					// MessageBox.Show($"Failed to connect to shared memory for camera {cameraId}", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     BeginInvoke(new Action(() => Close()));
                 }
             });
         }
 
-        private void StartRenderTimer()
+        private async void StartRenderTimer()
         {
+            while (!m_SharedMemoryInitialized)
+            {
+                await Task.Delay(100);
+            }
             renderTimer = new Timer();
             renderTimer.Interval = 16; // ~60 FPS
             renderTimer.Tick += OnRenderTimer;
@@ -160,6 +170,7 @@ namespace WinOverlay
                 }));
             }
             
+            /*
             // Convert the native texture handle to a bitmap and display it
             var newBitmap = CreateBitmapFromNativeTexture(latestShareInfo);
             if (newBitmap != null)
@@ -172,6 +183,7 @@ namespace WinOverlay
                     Invalidate(); // Trigger repaint
                 }));
             }
+            //**/
         }
 
         private ShareInfo ReadShareInfo(MemoryMappedViewAccessor accessor)
@@ -279,7 +291,9 @@ namespace WinOverlay
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             isDisposed = true;
-            base.OnFormClosing(e);
+            m_SharedMemoryInitialized = false;
+
+			base.OnFormClosing(e);
         }
 
         protected override void Dispose(bool disposing)
@@ -297,7 +311,9 @@ namespace WinOverlay
                     mmf2?.Dispose();
                 }
                 isDisposed = true;
-            }
+                m_SharedMemoryInitialized = false;
+
+			}
             base.Dispose(disposing);
         }
     }

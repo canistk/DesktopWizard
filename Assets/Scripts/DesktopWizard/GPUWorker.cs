@@ -20,6 +20,7 @@ namespace DesktopWizard
 		{
 			this.dwc = dwc;
 			this.SubId = subId;
+			InitializeMemoryMappedFile();
 		}
 		public abstract void Execute(Renderer _renderer, Camera _camera, int _width, int _height);
 
@@ -61,12 +62,9 @@ namespace DesktopWizard
 		
 		private void InitializeMemoryMappedFile()
 		{
-			accessor?.Dispose();
-			mmf?.Dispose();
-
 			var shareName = $"DwCamera_{dwc.id}_{SubId}";
-			mmf = MemoryMappedFile.CreateOrOpen(shareName, m_ShareInfo.totalSize);
 			var size = Marshal.SizeOf<ShareInfo>();
+			mmf = MemoryMappedFile.CreateOrOpen(shareName, size);
 			accessor = mmf.CreateViewAccessor(0, size, MemoryMappedFileAccess.Write);
 		}
 		private void DisposeMemoryMappedFile()
@@ -97,7 +95,7 @@ namespace DesktopWizard
 			m_ShareInfo.bytesPerPixel	= GetBytesPerPixel(renderTexture.format);
 
 			var rowPitch				= 0;
-			var newTotalSize			= 0;
+			var totalSize				= 0;
 
 			switch (SystemInfo.graphicsDeviceType)
 			{
@@ -105,7 +103,7 @@ namespace DesktopWizard
 				case GraphicsDeviceType.Direct3D12:
 				// DirectX may require row pitch alignment (typically 256 bytes)
 				rowPitch = AlignToPowerOfTwo(width * bytesPerPixel, 256);
-				newTotalSize = height * rowPitch;
+				totalSize = height * rowPitch;
 				break;
 
 				case GraphicsDeviceType.OpenGLES2:
@@ -113,12 +111,12 @@ namespace DesktopWizard
 				case GraphicsDeviceType.OpenGLCore:
 				// OpenGL typically doesn't require special alignment for texture data
 				rowPitch = width * bytesPerPixel;
-				newTotalSize = height * rowPitch;
+				totalSize = height * rowPitch;
 				break;
 
 				case GraphicsDeviceType.Metal:// Metal may require specific alignment
 				rowPitch = AlignToPowerOfTwo(rowPitch, 64);
-				newTotalSize = height * rowPitch;
+				totalSize = height * rowPitch;
 				break;
 				default:
 				throw new NotSupportedException($"Graphics API {SystemInfo.graphicsDeviceType} not supported yet.");
@@ -126,14 +124,8 @@ namespace DesktopWizard
 
 			m_ShareInfo.rowPitch		= m_ShareInfo.width * m_ShareInfo.bytesPerPixel;
 			m_ShareInfo.timestamp		= DateTime.UtcNow;
-			var isTotalSizeChanged		= m_ShareInfo.totalSize != newTotalSize;
-			m_ShareInfo.totalSize		= newTotalSize;
+			m_ShareInfo.totalSize		= totalSize;
 
-			if (isTotalSizeChanged || // Re-initialize memory-mapped file if size changed
-				accessor == null)
-			{
-				InitializeMemoryMappedFile();
-			}
 			// Write ShareInfo to memory-mapped file
 			accessor.Write(0, ref m_ShareInfo);
 		}
