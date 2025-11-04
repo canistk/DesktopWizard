@@ -1217,16 +1217,34 @@ namespace DesktopWizard
 				if (dwForm != null)
 					throw new System.Exception("Form duplicate.");
 				_Form = new DwForm(this);
-				DwConnector.Instance.Register(this);
 
 				Debug.Log($"Form created: {gameObject.name}, add events.", this);
 				AddEvents(dwForm);
 				dwForm.Show();
+
+			}
+			try
+			{
+				// DwConnector.Instance.Register(this);
+			}
+			catch(Exception ex)
+			{
+				Debug.LogError("Fail to register DwForm to DwConnector.", this);
+				Debug.LogException(ex, this);
 			}
 		}
         private void InternalFormDestory()
         {
-			DwConnector.Instance.Unregister(this);
+			try
+			{
+				// DwConnector.Instance.Unregister(this);
+			}
+			catch (Exception ex)
+			{
+   				Debug.LogError("Fail to unregister DwForm from DwConnector.", this);
+				Debug.LogException(ex, this);
+			}
+
             if (dwForm != null)
             {
 				EVENT_Closed.TryCatchDispatchEventError(o => o?.Invoke());
@@ -1235,6 +1253,7 @@ namespace DesktopWizard
                 dwForm.Close();
             }
 			_Form = null;
+
         }
         #endregion DwForm state handle
 

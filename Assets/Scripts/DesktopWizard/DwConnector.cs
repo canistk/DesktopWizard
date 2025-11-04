@@ -36,7 +36,7 @@ namespace DesktopWizard
                 if (!s_AppQuit && s_Instance == null)
                 {
                     var go = new GameObject("OSProxy");
-                    s_Instance = go.AddComponent<DwConnector>();
+                    go.AddComponent<DwConnector>();
                     DontDestroyOnLoad(go);
                 }
                 return s_Instance;
@@ -65,8 +65,18 @@ namespace DesktopWizard
         private Queue<string> m_Messages = new Queue<string>();
         private const System.StringComparison IGNORE = System.StringComparison.OrdinalIgnoreCase;
 
-        #region System
-        void OnEnable()
+		#region System
+
+		private void Awake()
+		{
+            if (s_Instance != null && s_Instance != this)
+            {
+                Destroy(this.gameObject);
+                return;
+			}
+			s_Instance = this;
+		}
+		void OnEnable()
         {
             StartServer();
         }
@@ -102,6 +112,8 @@ namespace DesktopWizard
 
         private void RestartServer()
         {
+            if (s_AppQuit)
+                return;
             Debug.Log("Restarting server...");
             StopServer();
             StartServer();
@@ -121,6 +133,8 @@ namespace DesktopWizard
 
         private async void StartServer()
         {
+            if (s_AppQuit)
+                return;
             try
             {
                 pipeServer = new NamedPipeServerStream(
@@ -178,9 +192,10 @@ namespace DesktopWizard
 				}
                 m_CacheIPC.Clear();
 			}
-            catch (System.Exception e)
+            catch (System.Exception ex)
             {
-                Debug.LogError($"Connection failed: {e.Message}");
+                Debug.LogError($"Connection failed:");
+                Debug.LogException(ex);
                 StopServer();
                 Invoke(nameof(RestartServer), 2f); // Retry after 2 seconds
             }
@@ -190,7 +205,9 @@ namespace DesktopWizard
         {
             while (pipeServer?.IsConnected == true)
             {
-                try
+                if (s_AppQuit)
+                    return;
+				try
                 {
                     int bytesRead = await pipeServer.ReadAsync(m_Buffer, 0, m_Buffer.Length);
                     if (bytesRead > 0)
@@ -210,7 +227,7 @@ namespace DesktopWizard
             }
 
             // Reconnection logic + restart WinOverlay
-            if (this.isActiveAndEnabled)
+            if (this.isActiveAndEnabled && !s_AppQuit)
             {
                 Debug.LogWarning("Lost connection to WinOverlay.");
                 RestartServer();
