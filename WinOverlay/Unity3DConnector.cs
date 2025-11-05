@@ -151,6 +151,15 @@ namespace WinOverlay
 			}
 		}
 
+        public void SendInfo(string message)
+        {
+            using (var info = new MyAction(OverlayManager.CMD.SlaveInfo))
+            {
+                info.Add("message", message);
+                SendMessage(info);
+            }
+		}
+
 		private void InternalSent(string message)
         {
             if (pipeClient == null || !pipeClient.IsConnected)

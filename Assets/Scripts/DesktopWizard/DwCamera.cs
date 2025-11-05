@@ -504,7 +504,7 @@ namespace DesktopWizard
         [Header("Effect")]
         [SerializeField] bool m_RemoveEffect = false;
 		[SerializeField] private ComputeShader m_OutputShader;
-		private int m_LastOutputShaderInstanceID = -1;
+		
 		[SerializeField, Range(0, 1)] public float m_OpacityVal = 1;
 
 		public bool m_GammaSpace = false;
@@ -566,41 +566,41 @@ namespace DesktopWizard
 			[Range(0, 1)] public float softThreshold = 0.5f;
 		}
 
-        private GPUWorker m_RawGPU, m_GPU01, m_GPU02; // GPU01/02 Ping-Pong buffer
-        private bool m_IsOdd = false;
+        private GPUWorker m_GPU01, m_GPU02; // GPU01/02 Ping-Pong buffer
+        private bool m_IsOdd = false; // gpu ping-pong flag, 01 or 02
 
-        private Bitmap m_Bitmap = null;
-        private void PrepareGPU(out GPUWorker gpu, out GPUWorker prevSrc)
+		private Bitmap m_Bitmap = null;
+		private int m_LastOutputShaderInstanceID = -1;
+		private void PrepareGPU(out GPUWorker gpu, out GPUWorker prevSrc)
         {
 			var isRaw = m_RemoveEffect || m_OutputShader == null;
-			if (m_RawGPU == null || m_RawGPU.IsDisposed)
-				m_RawGPU = new GPU_RawWorker(this, 0);
-
-			var materialChange = m_OutputShader != null &&
-				m_OutputShader.GetInstanceID() != m_LastOutputShaderInstanceID;
 			
-			if (!isRaw &&
-				m_OutputShader != null &&
-				materialChange &&
-				m_LastOutputShaderInstanceID != m_OutputShader.GetInstanceID()
-				)
+			if (isRaw)
 			{
-				m_LastOutputShaderInstanceID = m_OutputShader.GetInstanceID();
-
-				// Allow hot plug output shader, init this frame.
-				if (m_GPU01 != null && !m_GPU01.IsDisposed)
-					m_GPU01.Dispose();
-				m_GPU01 = new GPU_ComputeShaderWorker(this, 1, m_OutputShader);
-
-				if (m_GPU02 != null && !m_GPU02.IsDisposed)
-					m_GPU02.Dispose();
-				m_GPU02 = new GPU_ComputeShaderWorker(this, 2, m_OutputShader);
+				if (m_LastOutputShaderInstanceID != -1 || // switched from compute shader to raw
+					m_GPU01 == null || m_GPU02 == null) // first init
+				{
+					m_GPU01?.Dispose();	m_GPU01 = new GPU_RawWorker(this, 1);
+					m_GPU02?.Dispose();	m_GPU02 = new GPU_RawWorker(this, 2);
+					m_LastOutputShaderInstanceID = -1;
+				}
+			}
+			else if (m_OutputShader != null)
+			{
+				var id = m_OutputShader.GetInstanceID();
+				if (id != m_LastOutputShaderInstanceID)
+				{
+					// Allow hot plug output shader, init this frame.
+					m_LastOutputShaderInstanceID = id;
+					m_GPU01?.Dispose();	m_GPU01 = new GPU_ComputeShaderWorker(this, 1, m_OutputShader);
+					m_GPU02?.Dispose();	m_GPU02 = new GPU_ComputeShaderWorker(this, 2, m_OutputShader);
+				}
 			}
 
-			gpu		= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU01 : m_GPU02);
-			prevSrc	= isRaw ? m_RawGPU : (m_IsOdd ? m_GPU02 : m_GPU01);
-			if (!isRaw)
-				m_IsOdd = !m_IsOdd;
+			gpu		= m_IsOdd ? m_GPU01 : m_GPU02;
+			prevSrc	= m_IsOdd ? m_GPU02 : m_GPU01;
+			m_IsOdd = !m_IsOdd;
+			// Debug.Assert(gpu != null, "GPU worker is null.", this);
 		}
         private void DeinitGPU()
         {
@@ -614,10 +614,6 @@ namespace DesktopWizard
 			if (m_GPU02 != null)
 				m_GPU02.Dispose();
 			m_GPU02 = null;
-
-			if (m_RawGPU != null)
-                m_RawGPU.Dispose();
-            m_RawGPU = null;
 
 			if (m_Bitmap != null)
 				m_Bitmap.Dispose();
@@ -1223,21 +1219,36 @@ namespace DesktopWizard
 				dwForm.Show();
 
 			}
+		}
+
+		private int m_DelayFrame = 0;
+		private bool m_Registered = false;
+		private void RegistShareMemory()
+		{
+			if (m_Registered)
+				return;
+			if (m_DelayFrame < 4)
+			{
+				++m_DelayFrame;
+				return; // wait a few frames to ensure GPU worker is ready.
+			}
 			try
 			{
-				// DwConnector.Instance.Register(this);
+				DwConnector.Instance.Register(this);
+				m_Registered = true;
 			}
-			catch(Exception ex)
+			catch (Exception ex)
 			{
 				Debug.LogError("Fail to register DwForm to DwConnector.", this);
 				Debug.LogException(ex, this);
 			}
 		}
-        private void InternalFormDestory()
+		private void InternalFormDestory()
         {
 			try
 			{
-				// DwConnector.Instance.Unregister(this);
+				m_Registered = false;
+				DwConnector.Instance.Unregister(this);
 			}
 			catch (Exception ex)
 			{
@@ -1245,7 +1256,8 @@ namespace DesktopWizard
 				Debug.LogException(ex, this);
 			}
 
-            if (dwForm != null)
+
+			if (dwForm != null)
             {
 				EVENT_Closed.TryCatchDispatchEventError(o => o?.Invoke());
 				CancelAllDragging();
@@ -2001,6 +2013,9 @@ namespace DesktopWizard
 			if (gpu == null || gpu.renderTexture == null)
 				return;
 			gpu.UpdateMemory();
+
+			if (!m_Registered)
+				RegistShareMemory();
 		}
 		#endregion Share Memory - WinOverlayer
 	}

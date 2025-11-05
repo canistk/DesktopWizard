@@ -16,6 +16,7 @@ namespace WinOverlay
             public const string Pong = "Pong";
             public const string SlaveError = "SLAVE_ERROR";
             public const string SlaveWarning = "SLAVE_WARN";
+            public const string SlaveInfo = "SLAVE_INFO";
             public const string RegisterCamera = "REG_CAM";
             public const string UnregisterCamera = "UNREG_CAM";
         }
@@ -97,7 +98,16 @@ namespace WinOverlay
             }
         }
 
-        private void RegisterCamera(JObject jObj)
+        public void SendInfo(string message)
+        {
+            using (var info = new MyAction(CMD.SlaveInfo))
+            {
+                info.Add("message", message);
+                u3d.SendMessage(info);
+            }
+		}
+
+		private void RegisterCamera(JObject jObj)
         {
             if (!jObj.TryGetValue("cameraId", IGNORE,
                 out var camIdToken))
@@ -106,19 +116,13 @@ namespace WinOverlay
                 return;
             }
 
-            SendWarning("RegisterCamera received");
-            return;
-
             var cameraId = camIdToken.Value<int>();
 
             var prefix = $"DwCamera_{cameraId}";
-            var sm1 = $"{prefix}_1";
-            var sm2 = $"{prefix}_2";
-            
             // Check if camera is already registered
             if (m_ActiveCameras.ContainsKey(prefix))
             {
-                SendWarning($"Camera {cameraId} is already registered");
+                SendError($"Camera {cameraId} is already registered");
                 return;
             }
             

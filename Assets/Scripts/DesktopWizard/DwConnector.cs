@@ -22,6 +22,7 @@ namespace DesktopWizard
             public const string Pong = "Pong";
 			public const string SlaveError = "SLAVE_ERROR";
 			public const string SlaveWarning = "SLAVE_WARN";
+            public const string SlaveInfo = "SLAVE_INFO";
 			public const string RegisterCamera = "REG_CAM";
             public const string UnregisterCamera = "UNREG_CAM";
         }
@@ -263,16 +264,22 @@ namespace DesktopWizard
 
             switch (action)
             {
-                case CMD.SlaveWarning:
+                case CMD.SlaveInfo:
                 {
                     var msg = jObj.GetValue("message", IGNORE);
-                    Debug.LogWarning(msg);
+                    Debug.Log($"SLAVE:" + msg);
+				}
+                break;
+				case CMD.SlaveWarning:
+                {
+                    var msg = jObj.GetValue("message", IGNORE);
+                    Debug.LogWarning($"SLAVE:" + msg);
                 }
                 break;
                 case CMD.SlaveError:
                 {
                     var msg = jObj.GetValue("message", IGNORE);
-                    Debug.LogError(msg);
+                    Debug.LogError($"SLAVE:" + msg);
                 }
                 break;
                 default:

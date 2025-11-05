@@ -14,9 +14,8 @@ namespace WinOverlay
 		private Unity3DConnector u3d => Unity3DConnector.Instance;
 		private int cameraId;
         private string prefix;
-        private MemoryMappedFile mmf1, mmf2;
-        private MemoryMappedViewAccessor accessor1, accessor2;
-        private Timer renderTimer;
+        private GPUFunnel m_GPU01, m_GPU02;
+		private Timer renderTimer;
         private Bitmap currentBitmap;
         private DateTime lastUpdateTime = DateTime.MinValue;
         private bool isDisposed = false;
@@ -33,10 +32,11 @@ namespace WinOverlay
             this.prefix = $"DwCamera_{cameraId}";
             this.Text = this.prefix;
             
-            InitializeForm();
-            InitializeSharedMemory();
-            StartRenderTimer();
-        }
+            // InitializeForm();
+            // InitializeSharedMemory();
+            // StartRenderTimer();
+            u3d.SendInfo($"DwForm for camera {cameraId} created.");
+		}
 
         private void InitializeForm()
         {
@@ -66,43 +66,36 @@ namespace WinOverlay
             {
                 int retryCount = 0;
                 const int maxRetries = 30; // Wait up to 30 seconds
-                
-                while (retryCount < maxRetries && !isDisposed)
+                u3d.SendWarning($"Attempting to connect to shared memory for camera {cameraId}...");
+				while (retryCount < maxRetries && !isDisposed)
                 {
                     try
                     {
-						var sm1 = $"{prefix}_1";
-                        var sm2 = $"{prefix}_2";
-                        
-                        mmf1 = MemoryMappedFile.OpenExisting(sm1);
-                        accessor1 = mmf1.CreateViewAccessor();
-                        
-                        mmf2 = MemoryMappedFile.OpenExisting(sm2);
-                        accessor2 = mmf2.CreateViewAccessor();
+                        m_GPU01 = new GPUFunnel($"{prefix}_1");
+                        m_GPU02 = new GPUFunnel($"{prefix}_2");
                         m_SharedMemoryInitialized = true;
-
-						break;
+                        break;
                     }
                     catch (FileNotFoundException)
                     {
-                        retryCount++;
+                        ++retryCount;
                         u3d.SendError($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})");
 						await Task.Delay(1000);
                     }
                     catch (Exception ex)
                     {
                         u3d.SendError($"Error connecting to shared memory for camera {cameraId}: {ex.Message}");
-						retryCount++;
+						++retryCount;
                         await Task.Delay(1000);
                     }
                 }
-                
-                if (retryCount >= maxRetries)
+				if (retryCount >= maxRetries)
                 {
                     u3d.SendError($"Failed to connect to shared memory for camera {cameraId} after multiple attempts.");
 					// MessageBox.Show($"Failed to connect to shared memory for camera {cameraId}", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     BeginInvoke(new Action(() => Close()));
                 }
+				u3d.SendWarning($"Connected to shared memory for camera {cameraId}.");
             });
         }
 
@@ -120,7 +113,7 @@ namespace WinOverlay
 
         private void OnRenderTimer(object sender, EventArgs e)
         {
-            if (isDisposed || accessor1 == null || accessor2 == null)
+            if (isDisposed)
                 return;
 
             try
@@ -129,16 +122,16 @@ namespace WinOverlay
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error updating frame: {ex.Message}");
+                // System.Diagnostics.Debug.WriteLine($"Error updating frame: {ex.Message}");
             }
         }
 
         private void UpdateFrame()
         {
             // Read ShareInfo from both memory-mapped files
-            var shareInfo1 = ReadShareInfo(accessor1);
-            var shareInfo2 = ReadShareInfo(accessor2);
-            
+            m_GPU01.TryRead(out var shareInfo1);
+            m_GPU02.TryRead(out var shareInfo2);
+
             // Select the most recent buffer based on timestamp
             ShareInfo latestShareInfo;
             if (shareInfo1.timestamp > shareInfo2.timestamp)
@@ -169,8 +162,8 @@ namespace WinOverlay
                     );
                 }));
             }
-            
-            /*
+
+			/*
             // Convert the native texture handle to a bitmap and display it
             var newBitmap = CreateBitmapFromNativeTexture(latestShareInfo);
             if (newBitmap != null)
@@ -184,7 +177,7 @@ namespace WinOverlay
                 }));
             }
             //**/
-        }
+		}
 
         private ShareInfo ReadShareInfo(MemoryMappedViewAccessor accessor)
         {
@@ -194,19 +187,7 @@ namespace WinOverlay
             try
             {
                 // Read the ShareInfo structure from shared memory
-                var shareInfo = new ShareInfo();
-                shareInfo.rtHandler = new IntPtr(accessor.ReadInt64(0));
-                
-                // Read DateTime - convert from binary
-                var timestampBinary = accessor.ReadInt64(8);
-                shareInfo.timestamp = DateTime.FromBinary(timestampBinary);
-                
-                shareInfo.width = accessor.ReadInt32(16);
-                shareInfo.height = accessor.ReadInt32(20);
-                shareInfo.rowPitch = accessor.ReadInt32(24);
-                shareInfo.bytesPerPixel = accessor.ReadInt32(28);
-                shareInfo.totalSize = accessor.ReadInt32(32);
-                
+                var shareInfo = new ShareInfo(accessor);
                 return shareInfo;
             }
             catch (Exception ex)
@@ -264,7 +245,9 @@ namespace WinOverlay
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (currentBitmap != null)
+            base.OnPaint(e);
+            return;
+			if (currentBitmap != null)
             {
                 e.Graphics.DrawImage(currentBitmap, 0, 0, Width, Height);
             }
@@ -305,10 +288,8 @@ namespace WinOverlay
                     renderTimer?.Stop();
                     renderTimer?.Dispose();
                     currentBitmap?.Dispose();
-                    accessor1?.Dispose();
-                    accessor2?.Dispose();
-                    mmf1?.Dispose();
-                    mmf2?.Dispose();
+                    m_GPU01?.Dispose();
+                    m_GPU02?.Dispose();
                 }
                 isDisposed = true;
                 m_SharedMemoryInitialized = false;
