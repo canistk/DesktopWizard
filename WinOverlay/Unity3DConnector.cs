@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WinOverlay
@@ -134,21 +135,21 @@ namespace WinOverlay
             InternalSent(message);
         }
 
-		public void SendError(string message)
-		{
-			using (var err = new MyAction(OverlayManager.CMD.SlaveError))
-			{
-				err.Add("message", message);
-				SendMessage(err);
-			}
+        public void SendError(string message)
+        {
+            using (var err = new MyAction(OverlayManager.CMD.SlaveError))
+            {
+                err.Add("message", message);
+                SendMessage(err);
+            }
 		}
-		public void SendWarning(string message)
-		{
-			using (var warn = new MyAction(OverlayManager.CMD.SlaveWarning))
-			{
-				warn.Add("message", message);
-				SendMessage(warn);
-			}
+        public void SendWarning(string message)
+        {
+            using (var warn = new MyAction(OverlayManager.CMD.SlaveWarning))
+            {
+                warn.Add("message", message);
+                SendMessage(warn);
+            }
 		}
 
         public void SendInfo(string message)
@@ -160,20 +161,29 @@ namespace WinOverlay
             }
 		}
 
+		private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
 		private void InternalSent(string message)
         {
-            if (pipeClient == null || !pipeClient.IsConnected)
-                return;
-            try
+            Task.Run(async () =>
             {
-                var data = Encoding.UTF8.GetBytes(message);
-                pipeClient.Write(data, 0, data.Length);
-                pipeClient.Flush();
-            }
-            catch (System.Exception ex)
-            {
-                Console.Error.WriteLine(ex.Message);
-            }
+                if (pipeClient == null || !pipeClient.IsConnected)
+                    return;
+                await _sendSemaphore.WaitAsync();
+                try
+                {
+                    var data = Encoding.UTF8.GetBytes(message);
+                    await pipeClient.WriteAsync(data, 0, data.Length);
+                    await pipeClient.FlushAsync();
+                }
+                catch (System.Exception ex)
+                {
+                    Console.Error.WriteLine(ex.Message);
+                }
+                finally
+                {
+                    _sendSemaphore.Release();
+				}
+			});
         }
 
         public void Dispose()

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -32,7 +32,7 @@ namespace WinOverlay
             this.prefix = $"DwCamera_{cameraId}";
             this.Text = this.prefix;
             
-            // InitializeForm();
+            InitializeForm();
             // InitializeSharedMemory();
             // StartRenderTimer();
             u3d.SendInfo($"DwForm for camera {cameraId} created.");
@@ -41,20 +41,20 @@ namespace WinOverlay
         private void InitializeForm()
         {
             // Set up the overlay window
-            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
-            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
-            SetStyle(ControlStyles.UserPaint, true);
-            SetStyle(ControlStyles.DoubleBuffer, true);
+            //SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            //SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            //SetStyle(ControlStyles.UserPaint, true);
+            //SetStyle(ControlStyles.DoubleBuffer, true);
             
-            BackColor = Color.Lime;
-            TransparencyKey = Color.Lime;
-            FormBorderStyle = FormBorderStyle.None;
+            //BackColor = Color.Lime;
+            //TransparencyKey = Color.Lime;
+            //FormBorderStyle = FormBorderStyle.None;
             TopMost = true;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterScreen;
             
             // Default size - will be updated based on texture size
-            Size = new Size(640, 480);
+            Size = new Size(100, 100);
         }
 
         private bool m_SharedMemoryInitialized = false;
@@ -246,37 +246,34 @@ namespace WinOverlay
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            return;
-			if (currentBitmap != null)
+            
+            // 添加測試繪製內容
+            using (var brush = new SolidBrush(Color.LightBlue))
             {
-                e.Graphics.DrawImage(currentBitmap, 0, 0, Width, Height);
+                e.Graphics.FillRectangle(brush, ClientRectangle);
             }
-            else
+            
+            using (var font = new Font("Arial", 16, FontStyle.Bold))
+            using (var textBrush = new SolidBrush(Color.Black))
             {
-                // Draw placeholder when no image is available
-                using (var brush = new SolidBrush(Color.FromArgb(128, Color.Gray)))
-                {
-                    e.Graphics.FillRectangle(brush, ClientRectangle);
-                }
-                
-                using (var font = new Font("Arial", 16))
-                using (var textBrush = new SolidBrush(Color.White))
-                {
-                    var text = $"Waiting for Camera {cameraId}...";
-                    var textSize = e.Graphics.MeasureString(text, font);
-                    var x = (Width - textSize.Width) / 2;
-                    var y = (Height - textSize.Height) / 2;
-                    e.Graphics.DrawString(text, font, textBrush, x, y);
-                }
+                var text = $"Camera {cameraId} Test Window";
+                var textSize = e.Graphics.MeasureString(text, font);
+                var x = (Width - textSize.Width) / 2;
+                var y = (Height - textSize.Height) / 2;
+                e.Graphics.DrawString(text, font, textBrush, x, y);
+            }
+            
+            // 繪製邊框
+            using (var pen = new Pen(Color.Red, 2))
+            {
+                e.Graphics.DrawRectangle(pen, 1, 1, Width - 2, Height - 2);
             }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            isDisposed = true;
-            m_SharedMemoryInitialized = false;
-
 			base.OnFormClosing(e);
+            Dispose(true);
         }
 
         protected override void Dispose(bool disposing)

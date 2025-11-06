@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Process = System.Diagnostics.Process;
@@ -103,7 +104,12 @@ namespace DesktopWizard
                     ProcessMessage(message);
                 }
             }
-        }
+
+            lock (s_ExceptionLock)
+            {
+                UnPackMutilThreadLogs();
+            }
+		}
         void OnDestroy()
         {
             s_AppQuit = true;
@@ -132,7 +138,71 @@ namespace DesktopWizard
             }
         }
 
-        private async void StartServer()
+		#region MultiThread
+		private abstract class MTBase { }
+        private class MTException : MTBase
+        {
+            public Exception exception;
+            public string msg;
+			public MTException(string msg, Exception ex)
+            {
+                this.msg = msg;
+                this.exception = ex;
+			}
+		}
+        private class MTLog : MTBase
+        {
+            public string msg;
+            public MTLog(string msg)  => this.msg = msg;
+        }
+
+        private class MTWarn : MTBase
+        {
+            public string msg;
+            public MTWarn(string msg) => this.msg = msg;
+		}
+
+		private List<MTBase> m_MulitThreadLogs = new List<MTBase>();
+        private static readonly object s_ExceptionLock = new object();
+        private void UnPackMutilThreadLogs()
+        {
+            if (m_MulitThreadLogs.Count == 0)
+                return;
+			lock (s_ExceptionLock)
+            {
+                for (int i = 0; i < m_MulitThreadLogs.Count; ++i)
+                {
+                    var log = m_MulitThreadLogs[i];
+                    if (log is MTException ex)
+                    {
+                        if (!string.IsNullOrEmpty(ex.msg))
+                            Debug.LogError(ex.msg);
+                        var x = ex.exception;
+                        while (x != null)
+                        {
+                            Debug.LogError(x.Message);
+                            x = x.InnerException;
+						}
+                    }
+                    else if (log is MTLog logMsg)
+                    {
+                        Debug.Log(logMsg.msg);
+                    }
+                    else if (log is MTWarn warnMsg)
+                    {
+                        Debug.LogWarning(warnMsg.msg);
+					}
+				}
+                m_MulitThreadLogs.Clear();
+			}
+		}
+        private void tLogError(Exception ex, string msg = null) { lock (s_ExceptionLock) m_MulitThreadLogs.Add(new MTException(msg, ex)); }
+        private void tLogWarning(string msg) { lock (s_ExceptionLock) m_MulitThreadLogs.Add(new MTWarn(msg)); }
+        private void tLog(string msg) { lock (s_ExceptionLock) m_MulitThreadLogs.Add(new MTLog(msg)); }
+
+		#endregion MultiThread
+
+		private async void StartServer()
         {
             if (s_AppQuit)
                 return;
@@ -148,7 +218,7 @@ namespace DesktopWizard
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"Failed to start server: {e.Message}");
+                tLogError(e, $"Failed to start server: {e.Message}");
             }
 
             try
@@ -159,7 +229,7 @@ namespace DesktopWizard
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"Failed to start WinOverlay: {e.Message}");
+				tLogError(e, $"Failed to start WinOverlay: {e.Message}");
             }
 
             try
@@ -167,7 +237,7 @@ namespace DesktopWizard
                 m_HandShaked0 = m_HandShaked1 = false;
                 await pipeServer.WaitForConnectionAsync();
                 _ = Task.Run(ListenForMessages);
-                Debug.Log("WinOverlay connected, waiting for startup complete signal...");
+                tLog("WinOverlay connected, waiting for startup complete signal...");
 
 
                 // Wait for handshake
@@ -184,7 +254,7 @@ namespace DesktopWizard
                 if (!HandShaked)
                     throw new Exception("Handshake failed.");
 
-                Debug.Log($"Connection established, retry = {retryCount - 1}.");
+                tLog($"Connection established, retry = {retryCount - 1}.");
 
 				// Process cached messages
 				for (int i = 0; i < m_CacheIPC.Count; i++)
@@ -195,8 +265,7 @@ namespace DesktopWizard
 			}
             catch (System.Exception ex)
             {
-                Debug.LogError($"Connection failed:");
-                Debug.LogException(ex);
+                tLogError(ex, $"Connection failed:");
                 StopServer();
                 Invoke(nameof(RestartServer), 2f); // Retry after 2 seconds
             }
@@ -222,7 +291,7 @@ namespace DesktopWizard
                 }
                 catch (System.Exception ex)
                 {
-                    Debug.LogError($"Error: {ex.Message}");
+                    tLogError(ex, $"Receive message failed:");
                     break;
                 }
             }
@@ -230,7 +299,7 @@ namespace DesktopWizard
             // Reconnection logic + restart WinOverlay
             if (this.isActiveAndEnabled && !s_AppQuit)
             {
-                Debug.LogWarning("Lost connection to WinOverlay.");
+                tLogWarning("Lost connection to WinOverlay.");
                 RestartServer();
             }
         }
@@ -288,24 +357,35 @@ namespace DesktopWizard
             }
         }
 
-        public void SendMessage(MyAction action) => IPC(action.ToJson());
+		private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
+		public void SendMessage(MyAction action) => IPC(action.ToJson());
 		public void IPC(string message)
         {
-            if (!isConnected)
+            if (s_AppQuit)
+                return;
+			if (!isConnected)
             {
 				m_CacheIPC.Add(message);
 				return;
             }
-            try
+            Task.Run(async () =>
             {
-                var data = Encoding.UTF8.GetBytes(message);
-                pipeServer.Write(data, 0, data.Length);
-                pipeServer.Flush();
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning("Failed to send message: " + message);
-            }
+                await _sendSemaphore.WaitAsync();
+                try
+                {
+                    var data = Encoding.UTF8.GetBytes(message);
+                    pipeServer.Write(data, 0, data.Length);
+                    pipeServer.Flush();
+                }
+                catch (Exception ex)
+                {
+					tLogError(ex, "Failed to send message: " + message);
+				}
+				finally
+                {
+                    _sendSemaphore.Release();
+				}
+            });
         }
 
         public void Register(DwCamera camera)
