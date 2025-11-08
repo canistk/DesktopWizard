@@ -1,5 +1,4 @@
 using Kit2;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
@@ -47,15 +46,14 @@ namespace DesktopWizard
         #endregion Singleton
 
         private NamedPipeServerStream pipeServer;
-        private bool isConnected => pipeServer?.IsConnected == true;
+        private NamedPipeClientStream pipeClient;
+		private CancellationTokenSource m_CancelSrc = null;
+		private bool isConnected => pipeServer?.IsConnected == true;
         private System.Diagnostics.Process winOverlayProcess;
 
-        [ReadOnly, SerializeField]
-        bool m_HandShaked0 = false; // client to server
-        bool m_HandShaked1 = false; // server to client
         private bool HandShaked
         {
-            get => m_HandShaked0 && m_HandShaked1;
+            get => pipeServer?.IsConnected == true && pipeClient?.IsConnected == true;
         }
         private const int BUFFER_SIZE = 1024;
         private byte[] m_Buffer = new byte[BUFFER_SIZE];
@@ -117,50 +115,7 @@ namespace DesktopWizard
         }
         #endregion System
 
-        private void RestartServer()
-        {
-            if (s_AppQuit)
-                return;
-            Debug.Log("Restarting server...");
-            StopServer();
-            StartServer();
-        }
-        private void StopServer()
-        {
-            m_HandShaked0 = m_HandShaked1 = false;
-            pipeServer?.Dispose();
-            pipeServer = null;
-
-			if (winOverlayProcess != null && !winOverlayProcess.HasExited)
-            {
-                winOverlayProcess.Kill();
-                winOverlayProcess = null;
-            }
-        }
-
 		#region MultiThread
-		private abstract class MTBase { }
-        private class MTException : MTBase
-        {
-            public Exception exception;
-            public string msg;
-			public MTException(string msg, Exception ex)
-            {
-                this.msg = msg;
-                this.exception = ex;
-			}
-		}
-        private class MTLog : MTBase
-        {
-            public string msg;
-            public MTLog(string msg)  => this.msg = msg;
-        }
-
-        private class MTWarn : MTBase
-        {
-            public string msg;
-            public MTWarn(string msg) => this.msg = msg;
-		}
 
 		private List<MTBase> m_MulitThreadLogs = new List<MTBase>();
         private static readonly object s_ExceptionLock = new object();
@@ -202,20 +157,63 @@ namespace DesktopWizard
 
 		#endregion MultiThread
 
+		private void RestartServer()
+		{
+			if (s_AppQuit)
+				return;
+			Debug.Log("Restarting server...");
+			StopServer();
+			StartServer();
+		}
+		private void StopServer()
+		{
+            m_CancelSrc?.Cancel();
+            m_CancelSrc?.Dispose();
+            m_CancelSrc = null;
+			pipeServer?.Dispose();
+			pipeServer = null;
+            pipeClient?.Dispose();
+            pipeClient = null;
+
+			if (winOverlayProcess != null && !winOverlayProcess.HasExited)
+			{
+				winOverlayProcess.Kill();
+				winOverlayProcess = null;
+			}
+		}
+
 		private async void StartServer()
         {
             if (s_AppQuit)
                 return;
             try
             {
-                pipeServer = new NamedPipeServerStream(
-                    "DwCamera_Control",
-                    PipeDirection.InOut,
+                if (m_CancelSrc == null)
+                {
+                    m_CancelSrc = new CancellationTokenSource();
+                }
+                else
+                {
+                    m_CancelSrc.Cancel();
+                    m_CancelSrc.Dispose();
+                    m_CancelSrc = new CancellationTokenSource();
+				}
+				pipeServer?.Dispose();
+				pipeServer = new NamedPipeServerStream(
+                    "Unity3DServer",
+                    PipeDirection.Out,
                     1,
                     PipeTransmissionMode.Byte,
                     PipeOptions.Asynchronous
                 );
-            }
+                pipeClient?.Dispose();
+				pipeClient = new NamedPipeClientStream(
+                    ".",
+                    "WinOverlay",
+                    PipeDirection.In,
+                    PipeOptions.Asynchronous
+                );
+			}
             catch (System.Exception e)
             {
                 tLogError(e, $"Failed to start server: {e.Message}");
@@ -223,8 +221,8 @@ namespace DesktopWizard
 
             try
             {
-                string exePath = Path.Combine(Application.streamingAssetsPath, "WinOverlay", "WinOverlay.exe");
-                winOverlayProcess = Process.Start(exePath, "-test");
+                //string exePath = Path.Combine(Application.streamingAssetsPath, "WinOverlay", "WinOverlay.exe");
+                //winOverlayProcess = Process.Start(exePath, "-test");
                 Debug.Log("WinOverlay process started, waiting for startup completion...");
             }
             catch (System.Exception e)
@@ -234,27 +232,14 @@ namespace DesktopWizard
 
             try
             {
-                m_HandShaked0 = m_HandShaked1 = false;
-                await pipeServer.WaitForConnectionAsync();
+                var job0 = pipeServer.WaitForConnectionAsync(m_CancelSrc.Token);
+                var job1 = pipeClient.ConnectAsync(m_CancelSrc.Token);
+                await Task.WhenAll(job0, job1);
+                tLog("WinOverlay connected...");
                 _ = Task.Run(ListenForMessages);
-                tLog("WinOverlay connected, waiting for startup complete signal...");
-
-
-                // Wait for handshake
-                int retryCount = 0;
-                var startTime = Time.time;
-                do
-                {
-                    await Task.Delay(500);
-                    if (!m_HandShaked0)
-                        IPC(CMD.Ping);
-                }
-                while (!HandShaked && retryCount++ <= m_MaxRetryCount);
 
                 if (!HandShaked)
                     throw new Exception("Handshake failed.");
-
-                tLog($"Connection established, retry = {retryCount - 1}.");
 
 				// Process cached messages
 				for (int i = 0; i < m_CacheIPC.Count; i++)
@@ -273,16 +258,17 @@ namespace DesktopWizard
 
         private async void ListenForMessages()
         {
-            while (pipeServer?.IsConnected == true)
+            while (pipeClient?.IsConnected == true)
             {
                 if (s_AppQuit)
                     return;
 				try
                 {
-                    int bytesRead = await pipeServer.ReadAsync(m_Buffer, 0, m_Buffer.Length);
+                    int bytesRead = await pipeClient.ReadAsync(m_Buffer, 0, m_Buffer.Length);
                     if (bytesRead > 0)
                     {
                         string message = Encoding.UTF8.GetString(m_Buffer, 0, bytesRead);
+
                         lock (m_Messages)
                         {
                             m_Messages.Enqueue(message);
@@ -306,21 +292,6 @@ namespace DesktopWizard
 
         private void ProcessMessage(string message)
         {
-            // System level
-            switch (message)
-            {
-                // Ping-pong handshake
-                case CMD.Ping: // client to server
-                m_HandShaked0 = true;
-                IPC(CMD.Pong);
-                Debug.Log($"Received WinOverlay {(m_HandShaked0 ? 'T' : 'F')}{(m_HandShaked1 ? 'T' : 'F')}");
-                return;
-                case CMD.Pong: // server to client
-                m_HandShaked1 = true;
-                Debug.Log($"Received WinOverlay {(m_HandShaked0 ? 'T' : 'F')}{(m_HandShaked1 ? 'T' : 'F')}");
-                return;
-            }
-
             // Application level
             var jObj = JObject.Parse(message);
             if (!jObj.TryGetValue(CMD.Action, IGNORE,
@@ -357,8 +328,8 @@ namespace DesktopWizard
             }
         }
 
-		private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
-		public void SendMessage(MyAction action) => IPC(action.ToJson());
+		private readonly SemaphoreSlim m_SendSemaphore = new SemaphoreSlim(1, 1);
+		public void SendMessage(MTAction action) => IPC(action.ToJson());
 		public void IPC(string message)
         {
             if (s_AppQuit)
@@ -370,7 +341,7 @@ namespace DesktopWizard
             }
             Task.Run(async () =>
             {
-                await _sendSemaphore.WaitAsync();
+                await m_SendSemaphore.WaitAsync();
                 try
                 {
                     var data = Encoding.UTF8.GetBytes(message);
@@ -383,14 +354,14 @@ namespace DesktopWizard
 				}
 				finally
                 {
-                    _sendSemaphore.Release();
+                    m_SendSemaphore.Release();
 				}
             });
         }
 
         public void Register(DwCamera camera)
         {
-            using (var data = new MyAction(CMD.RegisterCamera))
+            using (var data = new MTAction(CMD.RegisterCamera))
             {
                 data.Add("cameraId", camera.id);
                 SendMessage(data);
@@ -399,7 +370,7 @@ namespace DesktopWizard
 
         public void Unregister(DwCamera camera)
         {
-            using (var data = new MyAction(CMD.UnregisterCamera))
+            using (var data = new MTAction(CMD.UnregisterCamera))
             {
                 data.Add("cameraId", camera.id);
                 SendMessage(data);
@@ -407,21 +378,4 @@ namespace DesktopWizard
 		}
     }
 
-	public class MyAction : Dictionary<string, object>, IDisposable
-	{
-		public MyAction(string value)
-		{
-			this.Add("action", value);
-		}
-		public override string ToString() => ToJson();
-		public string ToJson()
-		{
-			return JsonConvert.SerializeObject(this);
-		}
-
-		public void Dispose()
-		{
-			this.Clear();
-		}
-	}
 }

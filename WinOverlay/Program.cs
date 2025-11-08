@@ -12,14 +12,14 @@ namespace WinOverlay
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             
-            if (args.Length == 0)
-            {
-                Application.Run(new NoSignalForm());
-            }
-            else
-            {
-                Application.Run(new OverlayManager());
-            }
+            //if (args.Length == 0)
+            //{
+            //    Application.Run(new NoSignalForm());
+            //}
+            //else
+            //{
+            //}
+            Application.Run(new OverlayManager());
         }
 
         private static OverlayConfig ParseArgs(string[] args)

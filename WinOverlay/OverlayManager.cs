@@ -46,7 +46,9 @@ namespace WinOverlay
 
         private void InitializeConnector()
         {
-            u3d.MessageReceived += OnMessageReceived;
+			u3d.MessageReceived -= OnMessageReceived;
+            u3d.ConnectionLosted -= OnConnectionLost;
+			u3d.MessageReceived += OnMessageReceived;
             u3d.ConnectionLosted += OnConnectionLost;
 
             _ = Task.Run(async () => await u3d.ConnectAsync());
@@ -74,12 +76,20 @@ namespace WinOverlay
                 break;
             }
         }
-        private void OnConnectionLost()
+
+
+		private void Log(string message) => System.Diagnostics.Debug.WriteLine(message, "INFO");
+		private void Warn(string message) => System.Diagnostics.Debug.WriteLine(message, "WARNING");
+		private void Error(string message) => System.Diagnostics.Debug.WriteLine(message, "ERROR");
+
+		private void OnConnectionLost()
         {
             // Exit application when connection is lost
-            Dispose();
-            ExitThread();
-        }
+            Error("Connection lost. Exiting OverlayManager.");
+            InitializeConnector();
+			//Dispose();
+			//ExitThread();
+		}
 
         public void SendError(string message)
         {
@@ -116,7 +126,23 @@ namespace WinOverlay
                 return;
             }
 
-            var cameraId = camIdToken.Value<int>();
+			var cameraId = camIdToken.Value<int>();
+            SendWarning($"RegisterCamera #{cameraId} callback.");
+            try
+            {
+                var obj = new DwFormPrototype(cameraId);
+			    SendWarning($"---- RegisterCamera #{cameraId} Form prototype should be created.");
+            }
+            catch (Exception ex)
+            {
+                SendError($"Failed to create DwFormPrototype for camera {cameraId}: {ex.Message}");
+                return;
+			}
+            finally
+            {
+                SendWarning($"---- RegisterCamera #{cameraId} Form prototype finally");
+			}
+			return;
 
             var prefix = $"DwCamera_{cameraId}";
             // Check if camera is already registered
