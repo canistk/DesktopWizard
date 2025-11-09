@@ -1234,6 +1234,7 @@ namespace DesktopWizard
 			}
 			try
 			{
+				Debug.LogWarning("**** Sent to register DwForm to DwConnector.", this);
 				DwConnector.Instance.Register(this);
 				m_Registered = true;
 			}

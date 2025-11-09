@@ -50,11 +50,11 @@ namespace WinOverlay
             //TransparencyKey = Color.Lime;
             //FormBorderStyle = FormBorderStyle.None;
             TopMost = true;
-            ShowInTaskbar = false;
+            ShowInTaskbar = true;
             StartPosition = FormStartPosition.CenterScreen;
             
             // Default size - will be updated based on texture size
-            Size = new Size(100, 100);
+            Size = new Size(100, 200);
         }
 
         private bool m_SharedMemoryInitialized = false;

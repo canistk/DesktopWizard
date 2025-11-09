@@ -99,7 +99,7 @@ namespace WinOverlay
 
                 }
 				await FlushCachedMessages();
-                SendWarning("Are we done yet?.");
+                SendWarning("WinOverlay started.");
 
                 _syncContext.Post(_ => ConnectionEstablished?.Invoke(), null);
             }

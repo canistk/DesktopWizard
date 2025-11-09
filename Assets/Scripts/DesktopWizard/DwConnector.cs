@@ -58,6 +58,7 @@ namespace DesktopWizard
         private const int BUFFER_SIZE = 1024;
         private byte[] m_Buffer = new byte[BUFFER_SIZE];
 		private List<string> m_CacheIPC = new List<string>(4);
+		private readonly object s_CacheIPSLock = new object();
 
 		[SerializeField, Min(0)] int m_MaxRetryCount = 3;
         [SerializeField] bool m_ForceRestart = false;
@@ -240,13 +241,10 @@ namespace DesktopWizard
 
                 if (!HandShaked)
                     throw new Exception("Handshake failed.");
+                tLog("Handshake succeeded.");
 
-				// Process cached messages
-				for (int i = 0; i < m_CacheIPC.Count; i++)
-                {
-                    IPC(m_CacheIPC[i]);
-				}
-                m_CacheIPC.Clear();
+                // Process cached messages
+                FlushCachedIPS();
 			}
             catch (System.Exception ex)
             {
@@ -336,7 +334,10 @@ namespace DesktopWizard
                 return;
 			if (!isConnected)
             {
-				m_CacheIPC.Add(message);
+                lock (s_CacheIPSLock)
+                {
+					m_CacheIPC.Add(message);
+                }
 				return;
             }
             Task.Run(async () =>
@@ -358,7 +359,17 @@ namespace DesktopWizard
 				}
             });
         }
-
+        private void FlushCachedIPS()
+        {
+            lock (s_CacheIPSLock)
+            {
+                for (int i = 0; i < m_CacheIPC.Count; i++)
+                {
+                    IPC(m_CacheIPC[i]);
+                }
+                m_CacheIPC.Clear();
+            }
+		}
         public void Register(DwCamera camera)
         {
             using (var data = new MTAction(CMD.RegisterCamera))

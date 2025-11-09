@@ -22,7 +22,7 @@ namespace WinOverlay
         }
         private Unity3DConnector u3d => Unity3DConnector.Instance;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
-        private Dictionary<string /* prefix */, DwForm> m_ActiveCameras = new Dictionary<string, DwForm>();
+        private Dictionary<string /* prefix */, object> m_ActiveCameras = new Dictionary<string, object>();
 
         public OverlayManager()
         {
@@ -35,7 +35,7 @@ namespace WinOverlay
                 // Dispose all active cameras
                 foreach (var kvp in m_ActiveCameras)
                 {
-                    kvp.Value?.Dispose();
+                    // kvp.Value?.Dispose();
                 }
                 m_ActiveCameras.Clear();
                 
@@ -127,22 +127,6 @@ namespace WinOverlay
             }
 
 			var cameraId = camIdToken.Value<int>();
-            SendWarning($"RegisterCamera #{cameraId} callback.");
-            try
-            {
-                var obj = new DwFormPrototype(cameraId);
-			    SendWarning($"---- RegisterCamera #{cameraId} Form prototype should be created.");
-            }
-            catch (Exception ex)
-            {
-                SendError($"Failed to create DwFormPrototype for camera {cameraId}: {ex.Message}");
-                return;
-			}
-            finally
-            {
-                SendWarning($"---- RegisterCamera #{cameraId} Form prototype finally");
-			}
-			return;
 
             var prefix = $"DwCamera_{cameraId}";
             // Check if camera is already registered
@@ -155,7 +139,8 @@ namespace WinOverlay
             try
             {
                 // Create DwForm for the camera
-                var dwForm = new DwForm(cameraId);
+                // var dwForm = new DwForm(cameraId);
+                var dwForm = new DwFormPrototype(cameraId);
                 m_ActiveCameras.Add(prefix, dwForm);
                 
                 // Show the form
@@ -194,8 +179,8 @@ namespace WinOverlay
                 try
                 {
                     // Close and dispose the form
-                    dwForm.Close();
-                    dwForm.Dispose();
+                    //dwForm.Close();
+                    //dwForm.Dispose();
                     m_ActiveCameras.Remove(prefix);
                     
                     SendWarning($"Camera {cameraId} unregistered successfully");
