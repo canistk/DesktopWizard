@@ -19,6 +19,9 @@ namespace WinOverlay
         private Bitmap currentBitmap;
         private DateTime lastUpdateTime = DateTime.MinValue;
         private bool isDisposed = false;
+        
+        // Bitmap converters for dual-buffer system
+        private BitmapConverter m_Converter01, m_Converter02;
 
         [DllImport("d3d11.dll", SetLastError = true)]
         private static extern IntPtr D3D11CreateDevice(IntPtr pAdapter, int driverType, IntPtr software, uint flags, IntPtr pFeatureLevels, uint featureLevels, uint sdkVersion, out IntPtr ppDevice, IntPtr pFeatureLevel, IntPtr ppImmediateContext);
@@ -46,6 +49,10 @@ namespace WinOverlay
 
 			// Default size - will be updated based on texture size
 			this.Size = new Size(100, 200);
+            
+            // Initialize converters
+            m_Converter01 = new BitmapConverter(prefix, 1);
+            m_Converter02 = new BitmapConverter(prefix, 2);
             
             InitializeSharedMemory();
             StartRenderTimer();
@@ -106,68 +113,32 @@ namespace WinOverlay
             renderTimer.Start();
         }
 
-        private bool m_Time2Update = false;
 		private void OnRenderTimer(object sender, EventArgs e)
         {
-            if (isDisposed)
+            if (isDisposed || !m_SharedMemoryInitialized)
                 return;
-            m_Time2Update = true;
-			this.Invalidate();
-		}
-
-		protected override void OnPrint(PaintEventArgs e)
-		{
-			base.OnPrint(e);
-            RenderDebugInfo(e);
-
-            if (!m_Time2Update)
-                return;
-            UpdateFrame(e);
-		}
-
-        private void RenderDebugInfo(PaintEventArgs e)
-        {
-			var g = e.Graphics;
-
-			using (var titleFont = new Font("Arial", 20, FontStyle.Bold))
-			using (var titleBrush = new SolidBrush(Color.DarkBlue))
-			{
-				var title = $"Prototype Camera {cameraId}";
-				var titleSize = g.MeasureString(title, titleFont);
-				var titleX = (Width - titleSize.Width) / 2;
-				g.DrawString(title, titleFont, titleBrush, titleX, 50);
-			}
-
-			// Draw status info
-			using (var infoFont = new Font("Arial", 12))
-			using (var infoBrush = new SolidBrush(Color.Black))
-			{
-				var info =
-						  $"Size: {Width} x {Height}\n" +
-						  $"Created: {DateTime.Now:HH:mm:ss}";
-				g.DrawString(info, infoFont, infoBrush, 20, 120);
-			}
-		}
-
-        private void UpdateFrame(PaintEventArgs e)
-        {
+            
             // Read ShareInfo from both memory-mapped files
             m_GPU01.TryRead(out var shareInfo1);
             m_GPU02.TryRead(out var shareInfo2);
 
-            // Select the oldest buffer based on timestamp
+            // Select the latest buffer based on timestamp
             ShareInfo latestShareInfo;
+            BitmapConverter activeConverter;
+            
             if (shareInfo1.timestamp > shareInfo2.timestamp)
             {
                 latestShareInfo = shareInfo1;
+                activeConverter = m_Converter01;
             }
             else
             {
                 latestShareInfo = shareInfo2;
+                activeConverter = m_Converter02;
             }
             
             // Only update if we have new data
-            if (latestShareInfo.timestamp <= lastUpdateTime || latestShareInfo.rtHandler == IntPtr.Zero)
+            if (latestShareInfo.timestamp <= lastUpdateTime || latestShareInfo.totalSize <= 0)
                 return;
                 
             lastUpdateTime = latestShareInfo.timestamp;
@@ -186,48 +157,79 @@ namespace WinOverlay
                 }));
             }
 
-			// TODO: Implement DirectX texture reading using latestShareInfo.rtHandler
-            ConvertDirectXTextureToBitmap(latestShareInfo, out Bitmap bitmap);
-            if (bitmap != null)
+            // Convert shared memory pixel data to Bitmap
+            if (activeConverter.TryConvertToBitmap(latestShareInfo, out Bitmap bitmap))
             {
-                BeginInvoke(new Action(() =>
-                {
-                    var oldBitmap = currentBitmap;
-                    currentBitmap = bitmap;
-                    oldBitmap?.Dispose();
-                    Invalidate(); // Trigger repaint
-                }));
+                var oldBitmap = currentBitmap;
+                currentBitmap = bitmap;
+                oldBitmap?.Dispose();
+                Invalidate(); // Trigger repaint
 			}
-			// TODO: Implement OpenGL texture reading if needed
+            else
+            {
+                u3d.SendError($"[Camera {cameraId}] Failed to convert texture to bitmap");
+            }
 		}
 
-		private void ConvertDirectXTextureToBitmap(ShareInfo data, out Bitmap bitmap)
-        {
-            throw new NotImplementedException();
-        }
+        // Remove OnPrint - it's not called by Invalidate()
+        // OnPrint is for printing, not screen rendering
 
+        private void RenderDebugInfo(Graphics g)
+        {
+			using (var titleFont = new Font("Arial", 20, FontStyle.Bold))
+			using (var titleBrush = new SolidBrush(Color.DarkBlue))
+			{
+				var title = $"Prototype Camera {cameraId}";
+				var titleSize = g.MeasureString(title, titleFont);
+				var titleX = (Width - titleSize.Width) / 2;
+				g.DrawString(title, titleFont, titleBrush, titleX, 50);
+			}
+
+			// Draw status info
+			using (var infoFont = new Font("Arial", 12))
+			using (var infoBrush = new SolidBrush(Color.Black))
+			{
+				var info =
+						  $"Size: {Width} x {Height}\n" +
+						  $"Last Update: {lastUpdateTime:HH:mm:ss.fff}";
+				g.DrawString(info, infoFont, infoBrush, 20, 120);
+			}
+		}
+
+        // Remove old UpdateFrame method - moved to OnRenderTimer
 
 		protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
             
-            // 添加測試繪製內容
-            using (var brush = new SolidBrush(Color.LightBlue))
+            // Draw current bitmap if available
+            if (currentBitmap != null)
             {
-                e.Graphics.FillRectangle(brush, ClientRectangle);
+                e.Graphics.DrawImage(currentBitmap, 0, 0, Width, Height);
+            }
+            else
+            {
+                // Fallback: draw debug info when no bitmap is available
+                using (var brush = new SolidBrush(Color.LightBlue))
+                {
+                    e.Graphics.FillRectangle(brush, ClientRectangle);
+                }
+                
+                using (var font = new Font("Arial", 16, FontStyle.Bold))
+                using (var textBrush = new SolidBrush(Color.Black))
+                {
+                    var text = $"Camera {cameraId} (Waiting for texture...)";
+                    var textSize = e.Graphics.MeasureString(text, font);
+                    var x = (Width - textSize.Width) / 2;
+                    var y = (Height - textSize.Height) / 2;
+                    e.Graphics.DrawString(text, font, textBrush, x, y);
+                }
+                
+                // Show debug info while waiting
+                RenderDebugInfo(e.Graphics);
             }
             
-            using (var font = new Font("Arial", 16, FontStyle.Bold))
-            using (var textBrush = new SolidBrush(Color.Black))
-            {
-                var text = $"Camera {cameraId} Test Window";
-                var textSize = e.Graphics.MeasureString(text, font);
-                var x = (Width - textSize.Width) / 2;
-                var y = (Height - textSize.Height) / 2;
-                e.Graphics.DrawString(text, font, textBrush, x, y);
-            }
-            
-            // 繪製邊框
+            // Draw border
             using (var pen = new Pen(Color.Red, 2))
             {
                 e.Graphics.DrawRectangle(pen, 1, 1, Width - 2, Height - 2);
@@ -251,6 +253,8 @@ namespace WinOverlay
                     currentBitmap?.Dispose();
                     m_GPU01?.Dispose();
                     m_GPU02?.Dispose();
+                    m_Converter01?.Dispose();
+                    m_Converter02?.Dispose();
                 }
                 isDisposed = true;
                 m_SharedMemoryInitialized = false;

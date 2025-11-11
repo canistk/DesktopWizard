@@ -57,27 +57,61 @@ namespace DesktopWizard
 			public int totalSize;
 		}
 		private ShareInfo m_ShareInfo;
+		
+		// ShareInfo MMF
 		private MemoryMappedFile mmf = null;
 		private MemoryMappedViewAccessor accessor = null;
+		
+		// Pixels MMF (new)
+		private MemoryMappedFile mmfPixels = null;
+		private MemoryMappedViewAccessor accessorPixels = null;
+		
+		// Temporary texture for ReadPixels
+		private Texture2D m_TempTexture = null;
 		
 		private void InitializeMemoryMappedFile()
 		{
 			var shareName = $"DwCamera_{dwc.id}_{SubId}";
+			var shareNamePixels = $"DwCamera_{dwc.id}_{SubId}_Pixels";
+			
+			// ShareInfo MMF
 			var size = Marshal.SizeOf<ShareInfo>();
 			mmf = MemoryMappedFile.CreateOrOpen(shareName, size);
 			accessor = mmf.CreateViewAccessor(0, size, MemoryMappedFileAccess.Write);
+			
+			// Pixels MMF (initial size: 10MB)
+			const long initialPixelBufferSize = 1024 * 1024 * 10; // 10MB
+			mmfPixels = MemoryMappedFile.CreateOrOpen(shareNamePixels, initialPixelBufferSize);
+			accessorPixels = mmfPixels.CreateViewAccessor(0, initialPixelBufferSize, MemoryMappedFileAccess.Write);
 		}
+		
 		private void DisposeMemoryMappedFile()
 		{
+			// Dispose ShareInfo MMF
 			accessor?.Dispose();
 			mmf?.Dispose();
 			accessor = null;
 			mmf = null;
+			
+			// Dispose Pixels MMF
+			accessorPixels?.Dispose();
+			mmfPixels?.Dispose();
+			accessorPixels = null;
+			mmfPixels = null;
+			
+			// Dispose temp texture
+			if (m_TempTexture != null)
+			{
+				UnityEngine.Object.Destroy(m_TempTexture);
+				m_TempTexture = null;
+			}
 		}
+		
 		internal void UpdateMemory()
 		{
 			if (renderTexture == null)
 				return;
+			
 			/*
 			Note: renderTexture.GetNativeTexturePtr() documentation
 			For specific platforms, Unity has the following specifications:
@@ -88,43 +122,62 @@ namespace DesktopWizard
 			On platforms that do not support native code plug-ins, this function always returns NULL.
 			 */
 
-			m_ShareInfo.rtHandler		= renderTexture.GetNativeTexturePtr();
-			m_ShareInfo.width			= renderTexture.width;
-			m_ShareInfo.height			= renderTexture.height;
-			var bytesPerPixel			=
-			m_ShareInfo.bytesPerPixel	= GetBytesPerPixel(renderTexture.format);
-
-			var rowPitch				= 0;
-			var totalSize				= 0;
-
-			switch (SystemInfo.graphicsDeviceType)
+			// 1. Read pixels using existing DumpTexture logic
+			if (m_TempTexture == null || 
+			    m_TempTexture.width != renderTexture.width || 
+			    m_TempTexture.height != renderTexture.height)
 			{
-				case GraphicsDeviceType.Direct3D11:
-				case GraphicsDeviceType.Direct3D12:
-				// DirectX may require row pitch alignment (typically 256 bytes)
-				rowPitch = AlignToPowerOfTwo(width * bytesPerPixel, 256);
-				totalSize = height * rowPitch;
-				break;
-
-				case GraphicsDeviceType.OpenGLES2:
-				case GraphicsDeviceType.OpenGLES3:
-				case GraphicsDeviceType.OpenGLCore:
-				// OpenGL typically doesn't require special alignment for texture data
-				rowPitch = width * bytesPerPixel;
-				totalSize = height * rowPitch;
-				break;
-
-				case GraphicsDeviceType.Metal:// Metal may require specific alignment
-				rowPitch = AlignToPowerOfTwo(rowPitch, 64);
-				totalSize = height * rowPitch;
-				break;
-				default:
-				throw new NotSupportedException($"Graphics API {SystemInfo.graphicsDeviceType} not supported yet.");
+				if (m_TempTexture != null)
+					UnityEngine.Object.Destroy(m_TempTexture);
+				
+				m_TempTexture = new Texture2D(
+					renderTexture.width, 
+					renderTexture.height, 
+					TextureFormat.RGBA32, 
+					mipChain: false, 
+					linear: false)
+				{
+					wrapMode = TextureWrapMode.Clamp,
+					filterMode = FilterMode.Point,
+					hideFlags = HideFlags.DontSave,
+				};
 			}
-
-			m_ShareInfo.rowPitch		= m_ShareInfo.width * m_ShareInfo.bytesPerPixel;
-			m_ShareInfo.timestamp		= DateTime.UtcNow;
-			m_ShareInfo.totalSize		= totalSize;
+			
+			// 2. Read pixels from RenderTexture to Texture2D
+			RenderTexture.active = renderTexture;
+			m_TempTexture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0, false);
+			m_TempTexture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
+			RenderTexture.active = null;
+			
+			// 3. Get raw pixel data
+			byte[] pixels = m_TempTexture.GetRawTextureData();
+			
+			if (pixels != null && pixels.Length > 0)
+			{
+				// Resize MMF if needed
+				if (accessorPixels.Capacity < pixels.Length)
+				{
+					accessorPixels?.Dispose();
+					mmfPixels?.Dispose();
+					
+					var shareNamePixels = $"DwCamera_{dwc.id}_{SubId}_Pixels";
+					long newSize = pixels.Length + (1024 * 1024); // Add 1MB buffer
+					mmfPixels = MemoryMappedFile.CreateOrOpen(shareNamePixels, newSize);
+					accessorPixels = mmfPixels.CreateViewAccessor(0, newSize, MemoryMappedFileAccess.Write);
+				}
+				
+				// Write pixel data to MMF
+				accessorPixels.WriteArray(0, pixels, 0, pixels.Length);
+			}
+			
+			// 4. Update ShareInfo
+			m_ShareInfo.rtHandler = renderTexture.GetNativeTexturePtr();
+			m_ShareInfo.width = renderTexture.width;
+			m_ShareInfo.height = renderTexture.height;
+			m_ShareInfo.bytesPerPixel = 4; // RGBA32
+			m_ShareInfo.rowPitch = renderTexture.width * 4;
+			m_ShareInfo.totalSize = pixels?.Length ?? 0;
+			m_ShareInfo.timestamp = DateTime.UtcNow;
 
 			// Write ShareInfo to memory-mapped file
 			accessor.Write(0, ref m_ShareInfo);
@@ -134,6 +187,7 @@ namespace DesktopWizard
 		{
 			return ((value + alignment - 1) / alignment) * alignment;
 		}
+		
 		private int GetBytesPerPixel(RenderTextureFormat format)
 		{
 			return format switch
