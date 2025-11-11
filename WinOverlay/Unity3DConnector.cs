@@ -5,6 +5,7 @@ using System.IO.Pipes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace WinOverlay
 {
@@ -38,7 +39,7 @@ namespace WinOverlay
         
         private Unity3DConnector() 
         {
-            _syncContext = SynchronizationContext.Current ?? new SynchronizationContext();
+            _syncContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         }
 
         private NamedPipeServerStream pipeClient;

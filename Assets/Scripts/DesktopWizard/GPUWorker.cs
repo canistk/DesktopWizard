@@ -79,7 +79,7 @@ namespace DesktopWizard
 			if (renderTexture == null)
 				return;
 			/*
-			Note: renderTexture.GetNativeDepthBufferPtr() documentation
+			Note: renderTexture.GetNativeTexturePtr() documentation
 			For specific platforms, Unity has the following specifications:
 			On Direct3D-like devices, Unity returns a pointer to the base Texture type(ID3D11Resource on D3D11, ID3D12Resource on D3D12).
 			On OpenGL-like devices, the GL Texture "name" is returned; cast the pointer to an integer type to get it.
@@ -87,8 +87,8 @@ namespace DesktopWizard
 			On Vulkan, Unity returns an VkImage pointer.
 			On platforms that do not support native code plug-ins, this function always returns NULL.
 			 */
-			
-			m_ShareInfo.rtHandler		= renderTexture.GetNativeDepthBufferPtr();
+
+			m_ShareInfo.rtHandler		= renderTexture.GetNativeTexturePtr();
 			m_ShareInfo.width			= renderTexture.width;
 			m_ShareInfo.height			= renderTexture.height;
 			var bytesPerPixel			=

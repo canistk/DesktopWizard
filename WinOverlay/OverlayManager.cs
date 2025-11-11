@@ -22,7 +22,7 @@ namespace WinOverlay
         }
         private Unity3DConnector u3d => Unity3DConnector.Instance;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
-        private Dictionary<string /* prefix */, object> m_ActiveCameras = new Dictionary<string, object>();
+        private Dictionary<string /* prefix */, DwForm> m_ActiveCameras = new Dictionary<string, DwForm>();
 
         public OverlayManager()
         {
@@ -139,8 +139,7 @@ namespace WinOverlay
             try
             {
                 // Create DwForm for the camera
-                // var dwForm = new DwForm(cameraId);
-                var dwForm = new DwFormPrototype(cameraId);
+                var dwForm = new DwForm(cameraId);
                 m_ActiveCameras.Add(prefix, dwForm);
                 
                 // Show the form
@@ -179,8 +178,8 @@ namespace WinOverlay
                 try
                 {
                     // Close and dispose the form
-                    //dwForm.Close();
-                    //dwForm.Dispose();
+                    dwForm.Close();
+                    dwForm.Dispose();
                     m_ActiveCameras.Remove(prefix);
                     
                     SendWarning($"Camera {cameraId} unregistered successfully");

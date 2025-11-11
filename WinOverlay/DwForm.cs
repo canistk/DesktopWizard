@@ -31,31 +31,26 @@ namespace WinOverlay
             this.cameraId = cameraId;
             this.prefix = $"DwCamera_{cameraId}";
             this.Text = this.prefix;
+			// Set up the overlay window
+			SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+			SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+			SetStyle(ControlStyles.UserPaint, true);
+			SetStyle(ControlStyles.DoubleBuffer, true);
+
+			this.TopMost = true;
+			this.ShowInTaskbar = true; // for debug purpose
+			this.BackColor = Color.Lime;
+			this.TransparencyKey = Color.Lime;
+			this.FormBorderStyle = FormBorderStyle.None;
+			this.StartPosition = FormStartPosition.CenterScreen;
+
+			// Default size - will be updated based on texture size
+			this.Size = new Size(100, 200);
             
-            InitializeForm();
-            // InitializeSharedMemory();
-            // StartRenderTimer();
+            InitializeSharedMemory();
+            StartRenderTimer();
             u3d.SendInfo($"DwForm for camera {cameraId} created.");
 		}
-
-        private void InitializeForm()
-        {
-            // Set up the overlay window
-            //SetStyle(ControlStyles.SupportsTransparentBackColor, true);
-            //SetStyle(ControlStyles.AllPaintingInWmPaint, true);
-            //SetStyle(ControlStyles.UserPaint, true);
-            //SetStyle(ControlStyles.DoubleBuffer, true);
-            
-            //BackColor = Color.Lime;
-            //TransparencyKey = Color.Lime;
-            //FormBorderStyle = FormBorderStyle.None;
-            TopMost = true;
-            ShowInTaskbar = true;
-            StartPosition = FormStartPosition.CenterScreen;
-            
-            // Default size - will be updated based on texture size
-            Size = new Size(100, 200);
-        }
 
         private bool m_SharedMemoryInitialized = false;
 		private void InitializeSharedMemory()
@@ -111,28 +106,56 @@ namespace WinOverlay
             renderTimer.Start();
         }
 
-        private void OnRenderTimer(object sender, EventArgs e)
+        private bool m_Time2Update = false;
+		private void OnRenderTimer(object sender, EventArgs e)
         {
             if (isDisposed)
                 return;
+            m_Time2Update = true;
+			this.Invalidate();
+		}
 
-            try
-            {
-                UpdateFrame();
-            }
-            catch (Exception ex)
-            {
-                // System.Diagnostics.Debug.WriteLine($"Error updating frame: {ex.Message}");
-            }
-        }
+		protected override void OnPrint(PaintEventArgs e)
+		{
+			base.OnPrint(e);
+            RenderDebugInfo(e);
 
-        private void UpdateFrame()
+            if (!m_Time2Update)
+                return;
+            UpdateFrame(e);
+		}
+
+        private void RenderDebugInfo(PaintEventArgs e)
+        {
+			var g = e.Graphics;
+
+			using (var titleFont = new Font("Arial", 20, FontStyle.Bold))
+			using (var titleBrush = new SolidBrush(Color.DarkBlue))
+			{
+				var title = $"Prototype Camera {cameraId}";
+				var titleSize = g.MeasureString(title, titleFont);
+				var titleX = (Width - titleSize.Width) / 2;
+				g.DrawString(title, titleFont, titleBrush, titleX, 50);
+			}
+
+			// Draw status info
+			using (var infoFont = new Font("Arial", 12))
+			using (var infoBrush = new SolidBrush(Color.Black))
+			{
+				var info =
+						  $"Size: {Width} x {Height}\n" +
+						  $"Created: {DateTime.Now:HH:mm:ss}";
+				g.DrawString(info, infoFont, infoBrush, 20, 120);
+			}
+		}
+
+        private void UpdateFrame(PaintEventArgs e)
         {
             // Read ShareInfo from both memory-mapped files
             m_GPU01.TryRead(out var shareInfo1);
             m_GPU02.TryRead(out var shareInfo2);
 
-            // Select the most recent buffer based on timestamp
+            // Select the oldest buffer based on timestamp
             ShareInfo latestShareInfo;
             if (shareInfo1.timestamp > shareInfo2.timestamp)
             {
@@ -163,87 +186,28 @@ namespace WinOverlay
                 }));
             }
 
-			/*
-            // Convert the native texture handle to a bitmap and display it
-            var newBitmap = CreateBitmapFromNativeTexture(latestShareInfo);
-            if (newBitmap != null)
+			// TODO: Implement DirectX texture reading using latestShareInfo.rtHandler
+            ConvertDirectXTextureToBitmap(latestShareInfo, out Bitmap bitmap);
+            if (bitmap != null)
             {
                 BeginInvoke(new Action(() =>
                 {
                     var oldBitmap = currentBitmap;
-                    currentBitmap = newBitmap;
+                    currentBitmap = bitmap;
                     oldBitmap?.Dispose();
                     Invalidate(); // Trigger repaint
                 }));
-            }
-            //**/
+			}
+			// TODO: Implement OpenGL texture reading if needed
 		}
 
-        private ShareInfo ReadShareInfo(MemoryMappedViewAccessor accessor)
+		private void ConvertDirectXTextureToBitmap(ShareInfo data, out Bitmap bitmap)
         {
-            if (accessor == null)
-                return new ShareInfo();
-                
-            try
-            {
-                // Read the ShareInfo structure from shared memory
-                var shareInfo = new ShareInfo(accessor);
-                return shareInfo;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error reading ShareInfo: {ex.Message}");
-                return new ShareInfo();
-            }
+            throw new NotImplementedException();
         }
 
-        private Bitmap CreateBitmapFromNativeTexture(ShareInfo shareInfo)
-        {
-            // For now, create a placeholder bitmap with gradient
-            // TODO: Implement actual DirectX texture reading using shareInfo.rtHandler
-            
-            if (shareInfo.width <= 0 || shareInfo.height <= 0)
-                return null;
-                
-            try
-            {
-                var bitmap = new Bitmap(shareInfo.width, shareInfo.height, PixelFormat.Format32bppArgb);
-                
-                // Create a simple colored background as placeholder
-                using (var graphics = Graphics.FromImage(bitmap))
-                {
-                    // Create a simple gradient effect manually
-                    for (int x = 0; x < shareInfo.width; x++)
-                    {
-                        var ratio = (float)x / shareInfo.width;
-                        var red = (int)(255 * ratio);
-                        var blue = (int)(255 * (1 - ratio));
-                        using (var brush = new SolidBrush(Color.FromArgb(255, red, 0, blue)))
-                        using (var pen = new Pen(brush))
-                        {
-                            graphics.DrawLine(pen, x, 0, x, shareInfo.height);
-                        }
-                    }
-                    
-                    // Draw some info text
-                    using (var font = new Font("Arial", 12))
-                    using (var textBrush = new SolidBrush(Color.White))
-                    {
-                        var text = $"Camera {cameraId}\n{shareInfo.width}x{shareInfo.height}\n{shareInfo.timestamp:HH:mm:ss.fff}";
-                        graphics.DrawString(text, font, textBrush, 10, 10);
-                    }
-                }
-                
-                return bitmap;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error creating bitmap: {ex.Message}");
-                return null;
-            }
-        }
 
-        protected override void OnPaint(PaintEventArgs e)
+		protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
             
