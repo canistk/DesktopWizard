@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.IO.MemoryMappedFiles;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -22,12 +19,6 @@ namespace WinOverlay
         
         // Bitmap converters for dual-buffer system
         private BitmapConverter m_Converter01, m_Converter02;
-
-        [DllImport("d3d11.dll", SetLastError = true)]
-        private static extern IntPtr D3D11CreateDevice(IntPtr pAdapter, int driverType, IntPtr software, uint flags, IntPtr pFeatureLevels, uint featureLevels, uint sdkVersion, out IntPtr ppDevice, IntPtr pFeatureLevel, IntPtr ppImmediateContext);
-
-        [DllImport("d3d11.dll", SetLastError = true)]
-        private static extern int ID3D11Device_OpenSharedResource(IntPtr device, IntPtr hResource, ref Guid riid, out IntPtr ppResource);
 
         public DwForm(int cameraId)
         {
@@ -108,10 +99,23 @@ namespace WinOverlay
                 await Task.Delay(100);
             }
             renderTimer = new Timer();
-            renderTimer.Interval = 16; // ~60 FPS
+            renderTimer.Interval = m_TargetFPS; // ~60 FPS
             renderTimer.Tick += OnRenderTimer;
             renderTimer.Start();
         }
+
+        private int m_TargetFPS = 60;
+		private void SetTargetFPS(int fps)
+        {
+            if (m_TargetFPS == fps)
+                return;
+			if (renderTimer != null && fps > 0)
+            {
+                var val = 1000.0f / fps;
+                if (val < 0f) val = 0f; else if (val > 1000) val = 1000;
+                renderTimer.Interval = Convert.ToInt32(val);
+            }
+		}
 
 		private void OnRenderTimer(object sender, EventArgs e)
         {
@@ -225,15 +229,12 @@ namespace WinOverlay
                     e.Graphics.DrawString(text, font, textBrush, x, y);
                 }
                 
-                // Show debug info while waiting
-                RenderDebugInfo(e.Graphics);
             }
+            // Show debug info while waiting
+            RenderDebugInfo(e.Graphics);
             
             // Draw border
-            using (var pen = new Pen(Color.Red, 2))
-            {
-                e.Graphics.DrawRectangle(pen, 1, 1, Width - 2, Height - 2);
-            }
+            // using (var pen = new Pen(Color.Red, 2)) { e.Graphics.DrawRectangle(pen, 1, 1, Width - 2, Height - 2); }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
