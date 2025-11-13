@@ -243,6 +243,34 @@ namespace WinOverlay
             Dispose(true);
         }
 
+        #region Mouse Events
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+        }
+        #endregion Mouse Events
+
+        #region Keyboard Events
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+        }
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            base.OnKeyUp(e);
+        }
+        #endregion Keyboard Events
+
         protected override void Dispose(bool disposing)
         {
             if (!isDisposed)
