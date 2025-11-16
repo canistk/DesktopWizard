@@ -18,7 +18,7 @@ namespace WinOverlay
         
         public BitmapConverter(string cameraPrefix, int subId)
         {
-            pixelsMmfName = $"{cameraPrefix}_{subId}_Pixels";
+            pixelsMmfName = $"scr_{cameraPrefix}_{subId}";
             InitializePixelMMF();
         }
         
@@ -34,12 +34,14 @@ namespace WinOverlay
                 Console.WriteLine($"[BitmapConverter] Failed to open pixel MMF '{pixelsMmfName}': {ex.Message}");
             }
         }
-        
-        /// <summary>
-        /// Converts shared memory pixel data to a Bitmap.
-        /// Handles Unity RGBA ? Windows BGRA conversion and y-axis flipping.
-        /// </summary>
-        public bool TryConvertToBitmap(ShareInfo shareInfo, out Bitmap bitmap)
+
+        byte[] m_Pixels = null;
+
+		/// <summary>
+		/// Converts shared memory pixel data to a Bitmap.
+		/// Handles Unity RGBA ? Windows BGRA conversion and y-axis flipping.
+		/// </summary>
+		public bool TryConvertToBitmap(ShareInfo shareInfo, out Bitmap bitmap)
         {
             bitmap = null;
             
@@ -56,9 +58,12 @@ namespace WinOverlay
                 }
                 
                 // Read pixel data from MMF
-                byte[] pixels = new byte[shareInfo.totalSize];
-                accessorPixels.ReadArray(0, pixels, 0, pixels.Length);
-                
+                if (m_Pixels == null || m_Pixels.Length < shareInfo.totalSize)
+                {
+                    m_Pixels = new byte[shareInfo.totalSize];
+				}
+                accessorPixels.ReadArray(0, m_Pixels, 0, shareInfo.totalSize);
+				
                 // Create bitmap
                 bitmap = new Bitmap(shareInfo.width, shareInfo.height, PixelFormat.Format32bppArgb);
                 
@@ -89,10 +94,10 @@ namespace WinOverlay
                             int dstIdx = y * stride + x * 4;
                             
                             // Convert RGBA ? BGRA
-                            ptr[dstIdx + 0] = pixels[srcIdx + 2]; // B ? B (Unity stores as RGBA but actually BGRA in memory)
-                            ptr[dstIdx + 1] = pixels[srcIdx + 1]; // G ? G
-                            ptr[dstIdx + 2] = pixels[srcIdx + 0]; // R ? R
-                            ptr[dstIdx + 3] = pixels[srcIdx + 3]; // A ? A
+                            ptr[dstIdx + 0] = m_Pixels[srcIdx + 2]; // B ? B (Unity stores as RGBA but actually BGRA in memory)
+                            ptr[dstIdx + 1] = m_Pixels[srcIdx + 1]; // G ? G
+                            ptr[dstIdx + 2] = m_Pixels[srcIdx + 0]; // R ? R
+                            ptr[dstIdx + 3] = m_Pixels[srcIdx + 3]; // A ? A
                         }
                     }
                 }
@@ -117,6 +122,7 @@ namespace WinOverlay
                 mmfPixels?.Dispose();
                 isDisposed = true;
             }
-        }
+            m_Pixels = null;
+		}
     }
 }
