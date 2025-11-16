@@ -1997,6 +1997,11 @@ namespace DesktopWizard
 				}
 			}
 		}
+
+		private struct ShareInfo
+		{
+			
+		}
 		private void ShareMemory_Init()
 		{
 		}
@@ -2017,6 +2022,16 @@ namespace DesktopWizard
 
 			if (!m_Registered)
 				RegistShareMemory();
+
+
+			// TODO: share ShareInfo
+			var o2m = DwCamera.s_QuickOSToMonitor;
+			var m2f = MatrixMonitorToForm();
+			var v2i = DwCore.GetOSCursorPos();
+			var v3f = new Vector3(v2i.x, v2i.y, 0f);
+			var monPos = o2m.MultiplyPoint3x4(v3f); // correct, Cyan (faster)
+			var formPos = (m2f * o2m).MultiplyPoint3x4(v3f); // correct, Yellow (faster)
+			
 		}
 		#endregion Share Memory - WinOverlayer
 	}

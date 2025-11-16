@@ -4,9 +4,25 @@ option csharp_namespace = "WinOverlay";
 
 package DesktopWizard.Events;
 
-message PointP3 {
+message Vec2 {
+    float x = 1;
+    float y = 2;
+}
+
+message Vec2Int {
     int32 x = 1;
     int32 y = 2;
+}
+
+message Vec3 {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+message Matrix44
+{
+    repeated float m = 1; // 16 float values for a 4x4 matrix
 }
 
 message MouseEventP3 {
@@ -15,7 +31,6 @@ message MouseEventP3 {
     int32 x = 3;
     int32 y = 4;
     int32 delta = 5;
-    PointP3 location = 6;
 }
 
 message KeyboardEventP3 {
