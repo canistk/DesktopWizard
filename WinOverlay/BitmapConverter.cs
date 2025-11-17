@@ -18,22 +18,9 @@ namespace WinOverlay
         
         public BitmapConverter(string cameraPrefix, int subId)
         {
-            pixelsMmfName = $"scr_{cameraPrefix}_{subId}";
-            InitializePixelMMF();
-        }
+            pixelsMmfName = $"{cameraPrefix}_{subId}_Pixels";
+		}
         
-        private void InitializePixelMMF()
-        {
-            try
-            {
-                mmfPixels = MemoryMappedFile.OpenExisting(pixelsMmfName, MemoryMappedFileRights.Read);
-                accessorPixels = mmfPixels.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[BitmapConverter] Failed to open pixel MMF '{pixelsMmfName}': {ex.Message}");
-            }
-        }
 
         byte[] m_Pixels = null;
 
@@ -45,10 +32,30 @@ namespace WinOverlay
         {
             bitmap = null;
             
-            if (accessorPixels == null || shareInfo.totalSize <= 0)
+            if (shareInfo.totalSize <= 0)
                 return false;
-            
-            try
+
+			try
+			{
+                var size = shareInfo.totalSize;
+                if (mmfPixels == null)
+                {
+				    mmfPixels = MemoryMappedFile.OpenExisting(pixelsMmfName, MemoryMappedFileRights.Read);
+                }
+
+                if (accessorPixels == null || accessorPixels.Capacity < size)
+                {
+                    accessorPixels?.Dispose();
+                    accessorPixels = null;
+                }
+				accessorPixels = mmfPixels.CreateViewAccessor(0, size, MemoryMappedFileAccess.Read);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[BitmapConverter] Failed to open pixel MMF '{pixelsMmfName}': {ex.Message}");
+			}
+
+			try
             {
                 // Verify MMF has enough capacity
                 if (accessorPixels.Capacity < shareInfo.totalSize)

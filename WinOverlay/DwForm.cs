@@ -169,10 +169,10 @@ namespace WinOverlay
                 oldBitmap?.Dispose();
                 Invalidate(); // Trigger repaint
 			}
-            else
-            {
-                u3d.SendError($"[Camera {cameraId}] Failed to convert texture to bitmap");
-            }
+            //else
+            //{
+            //    u3d.SendError($"[Camera {cameraId}] Failed to convert texture to bitmap");
+            //}
 		}
 
         // Remove OnPrint - it's not called by Invalidate()

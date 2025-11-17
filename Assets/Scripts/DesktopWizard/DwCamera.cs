@@ -3,7 +3,8 @@ using Kit2;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO.MemoryMappedFiles;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
@@ -1998,16 +1999,19 @@ namespace DesktopWizard
 			}
 		}
 
-		private struct ShareInfo
-		{
-			
-		}
 		private void ShareMemory_Init()
 		{
+			var shareName = $"{MMF_NAME}_{m_CameraId}";
+			// Create or open the memory-mapped file.
+			mmf = MemoryMappedFile.CreateOrOpen(shareName, Marshal.SizeOf(typeof(ShareInfo)), MemoryMappedFileAccess.Write);
+			accessor = mmf.CreateViewAccessor(0, Marshal.SizeOf(typeof(ShareInfo)), MemoryMappedFileAccess.Write);
 		}
 		private void ShareMemory_Dispose()
 		{
-
+			accessor?.Dispose();
+			mmf?.Dispose();
+			accessor = null;
+			mmf = null;
 		}
 
 		/// <summary>
@@ -2023,16 +2027,43 @@ namespace DesktopWizard
 			if (!m_Registered)
 				RegistShareMemory();
 
+			// Prepare data to write to the memory-mapped file.
+			var o2m		= DwCamera.s_QuickOSToMonitor;
+			var m2f		= MatrixMonitorToForm();
+			var v2i		= DwCore.GetOSCursorPos();
+			var v3f		= new Vector3(v2i.x, v2i.y, 0f);
+			var monPos	= o2m.MultiplyPoint3x4(v3f); // correct, Cyan (faster)
+			var formPos	= (m2f * o2m).MultiplyPoint3x4(v3f); // correct, Yellow (faster)
 
-			// TODO: share ShareInfo
-			var o2m = DwCamera.s_QuickOSToMonitor;
-			var m2f = MatrixMonitorToForm();
-			var v2i = DwCore.GetOSCursorPos();
-			var v3f = new Vector3(v2i.x, v2i.y, 0f);
-			var monPos = o2m.MultiplyPoint3x4(v3f); // correct, Cyan (faster)
-			var formPos = (m2f * o2m).MultiplyPoint3x4(v3f); // correct, Yellow (faster)
-			
+			if (accessor != null)
+			{
+				m_ShareInfo.o2m		= o2m;
+				m_ShareInfo.m2f		= m2f;
+				m_ShareInfo.v2i		= v2i;
+				m_ShareInfo.v3f		= v3f;
+				m_ShareInfo.monPos	= monPos;
+				m_ShareInfo.formPos	= formPos;
+
+				// Write the struct to the memory-mapped file.
+				accessor.Write(0, ref m_ShareInfo);
+			}
 		}
+
+		// [StructLayout(LayoutKind.Sequential, Pack = 1)]
+		private struct ShareInfo
+		{
+			public Share.Mat4x4 o2m;
+			public Share.Mat4x4 m2f;
+			public Share.Vec2Int v2i;
+			public Share.Vec3 v3f;
+			public Share.Vec3 monPos;
+			public Share.Vec3 formPos;
+		}
+
+		private ShareInfo m_ShareInfo;
+		// ShareInfo MMF
+		private MemoryMappedFile mmf = null;
+		private MemoryMappedViewAccessor accessor = null;
 		#endregion Share Memory - WinOverlayer
 	}
 }

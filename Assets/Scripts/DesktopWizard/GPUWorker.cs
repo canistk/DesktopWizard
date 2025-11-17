@@ -71,15 +71,14 @@ namespace DesktopWizard
 		
 		private void InitializeMemoryMappedFile()
 		{
-			var shareName = $"DwCamera_{dwc.id}_{SubId}";
-			var shareNamePixels = $"DwCamera_{dwc.id}_{SubId}_Pixels";
-			
 			// ShareInfo MMF
+			var shareName = $"DwCamera_{dwc.id}_{SubId}";
 			var size = Marshal.SizeOf<ShareInfo>();
 			mmf = MemoryMappedFile.CreateOrOpen(shareName, size);
 			accessor = mmf.CreateViewAccessor(0, size, MemoryMappedFileAccess.Write);
 			
 			// Pixels MMF (initial size: 10MB)
+			var shareNamePixels = $"DwCamera_{dwc.id}_{SubId}_Pixels";
 			const long initialPixelBufferSize = 1024 * 1024 * 10; // 10MB
 			mmfPixels = MemoryMappedFile.CreateOrOpen(shareNamePixels, initialPixelBufferSize);
 			accessorPixels = mmfPixels.CreateViewAccessor(0, initialPixelBufferSize, MemoryMappedFileAccess.Write);

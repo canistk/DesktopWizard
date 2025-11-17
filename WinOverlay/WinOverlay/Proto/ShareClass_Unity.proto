@@ -1,28 +1,23 @@
 syntax = "proto3";
-option csharp_namespace = "WinOverlay";
+option csharp_namespace = "Share";
 package DesktopWizard.Events;
-
 message Vec2 {
     float x = 1;
     float y = 2;
 }
-
 message Vec2Int {
     int32 x = 1;
     int32 y = 2;
 }
-
 message Vec3 {
     float x = 1;
     float y = 2;
     float z = 3;
 }
-
 message Mat4x4
 {
     repeated float m = 1; // 16 float values for a 4x4 matrix
 }
-
 message MouseEventP3 {
     int32 button = 1;
     int32 clicks = 2;
@@ -30,7 +25,6 @@ message MouseEventP3 {
     int32 y = 4;
     int32 delta = 5;
 }
-
 message KeyboardEventP3 {
     int32 keyData = 1;
     int32 keyCode = 2;
