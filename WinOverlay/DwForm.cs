@@ -11,7 +11,8 @@ namespace WinOverlay
 		private Unity3DConnector u3d => Unity3DConnector.Instance;
 		private int cameraId;
         private string prefix;
-        private GPUFunnel m_GPU01, m_GPU02;
+        private HSM_Gpu m_GPU01, m_GPU02;
+        private HSM_CameraMatrix m_CameraMatrix;
 		private Timer renderTimer;
         private Bitmap currentBitmap;
         private DateTime lastUpdateTime = DateTime.MinValue;
@@ -54,7 +55,8 @@ namespace WinOverlay
 		private void InitializeSharedMemory()
 		{
             m_SharedMemoryInitialized = false;
-
+			// var shareName = $"{MMF_NAME}_{m_CameraId}_Matrix";
+            
 			Task.Run(async () =>
             {
                 int retryCount = 0;
@@ -64,8 +66,9 @@ namespace WinOverlay
                 {
                     try
                     {
-                        m_GPU01 = new GPUFunnel($"{prefix}_1");
-                        m_GPU02 = new GPUFunnel($"{prefix}_2");
+                        m_GPU01 = new HSM_Gpu($"{prefix}_1");
+                        m_GPU02 = new HSM_Gpu($"{prefix}_2");
+                        m_CameraMatrix = new HSM_CameraMatrix($"{prefix}_Matrix");
                         m_SharedMemoryInitialized = true;
                         break;
                     }
@@ -127,7 +130,7 @@ namespace WinOverlay
             m_GPU02.TryRead(out var shareInfo2);
 
             // Select the latest buffer based on timestamp
-            ShareInfo latestShareInfo;
+            ShareGPUInfo latestShareInfo;
             BitmapConverter activeConverter;
             
             if (shareInfo1.timestamp > shareInfo2.timestamp)

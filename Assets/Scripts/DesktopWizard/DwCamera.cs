@@ -2001,10 +2001,10 @@ namespace DesktopWizard
 
 		private void ShareMemory_Init()
 		{
-			var shareName = $"{MMF_NAME}_{m_CameraId}";
+			var shareName = $"{MMF_NAME}_{m_CameraId}_Matrix";
 			// Create or open the memory-mapped file.
-			mmf = MemoryMappedFile.CreateOrOpen(shareName, Marshal.SizeOf(typeof(ShareInfo)), MemoryMappedFileAccess.Write);
-			accessor = mmf.CreateViewAccessor(0, Marshal.SizeOf(typeof(ShareInfo)), MemoryMappedFileAccess.Write);
+			mmf = MemoryMappedFile.CreateOrOpen(shareName, Marshal.SizeOf(typeof(CameraMatrixInfo)), MemoryMappedFileAccess.Write);
+			accessor = mmf.CreateViewAccessor(0, Marshal.SizeOf(typeof(CameraMatrixInfo)), MemoryMappedFileAccess.Write);
 		}
 		private void ShareMemory_Dispose()
 		{
@@ -2039,8 +2039,7 @@ namespace DesktopWizard
 			{
 				m_ShareInfo.o2m		= o2m;
 				m_ShareInfo.m2f		= m2f;
-				m_ShareInfo.v2i		= v2i;
-				m_ShareInfo.v3f		= v3f;
+				m_ShareInfo.osPos	= v2i;
 				m_ShareInfo.monPos	= monPos;
 				m_ShareInfo.formPos	= formPos;
 
@@ -2049,18 +2048,20 @@ namespace DesktopWizard
 			}
 		}
 
+		/// <summary>
+		/// Share the camera MVP matrix and Mouse position to WinOverlayer via Share Memory.
+		/// </summary>
 		// [StructLayout(LayoutKind.Sequential, Pack = 1)]
-		private struct ShareInfo
+		private struct CameraMatrixInfo
 		{
-			public Share.Mat4x4 o2m;
-			public Share.Mat4x4 m2f;
-			public Share.Vec2Int v2i;
-			public Share.Vec3 v3f;
-			public Share.Vec3 monPos;
-			public Share.Vec3 formPos;
+			public Share.Mat4x4 o2m;    // OS to Monitor Matrix
+			public Share.Mat4x4 m2f;    // Monitor to Form Matrix
+			public Share.Vec2Int osPos; // Mouse pos in OS space
+			public Share.Vec3 monPos;   // Transform mouse pos in Monitor space
+			public Share.Vec3 formPos;  // Transform mouse pos in Form space
 		}
 
-		private ShareInfo m_ShareInfo;
+		private CameraMatrixInfo m_ShareInfo;
 		// ShareInfo MMF
 		private MemoryMappedFile mmf = null;
 		private MemoryMappedViewAccessor accessor = null;

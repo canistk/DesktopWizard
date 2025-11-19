@@ -28,7 +28,7 @@ namespace WinOverlay
 		/// Converts shared memory pixel data to a Bitmap.
 		/// Handles Unity RGBA ? Windows BGRA conversion and y-axis flipping.
 		/// </summary>
-		public bool TryConvertToBitmap(ShareInfo shareInfo, out Bitmap bitmap)
+		public bool TryConvertToBitmap(ShareGPUInfo shareInfo, out Bitmap bitmap)
         {
             bitmap = null;
             
