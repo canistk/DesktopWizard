@@ -26,11 +26,10 @@ message MouseEventP3 {
     int32 delta = 5;
 }
 message KeyboardEventP3 {
-    int32 keyData = 1;
-    int32 keyCode = 2;
-    bool alt = 3;
-    bool control = 4;
-    bool shift = 5;
+    int32 keyCode = 1;
+    bool alt = 2;
+    bool control = 3;
+    bool shift = 4;
     bool handled = 6;
     bool suppressKeyPress = 7;
     bool isKeyUp = 8;

@@ -29,11 +29,11 @@ namespace Share {
             "SW50EgkKAXgYASABKAUSCQoBeRgCIAEoBSInCgRWZWMzEgkKAXgYASABKAIS",
             "CQoBeRgCIAEoAhIJCgF6GAMgASgCIhMKBk1hdDR4NBIJCgFtGAEgAygCIlMK",
             "DE1vdXNlRXZlbnRQMxIOCgZidXR0b24YASABKAUSDgoGY2xpY2tzGAIgASgF",
-            "EgkKAXgYAyABKAUSCQoBeRgEIAEoBRINCgVkZWx0YRgFIAEoBSKcAQoPS2V5",
-            "Ym9hcmRFdmVudFAzEg8KB2tleURhdGEYASABKAUSDwoHa2V5Q29kZRgCIAEo",
-            "BRILCgNhbHQYAyABKAgSDwoHY29udHJvbBgEIAEoCBINCgVzaGlmdBgFIAEo",
-            "CBIPCgdoYW5kbGVkGAYgASgIEhgKEHN1cHByZXNzS2V5UHJlc3MYByABKAgS",
-            "DwoHaXNLZXlVcBgIIAEoCEIIqgIFU2hhcmViBnByb3RvMw=="));
+            "EgkKAXgYAyABKAUSCQoBeRgEIAEoBRINCgVkZWx0YRgFIAEoBSKLAQoPS2V5",
+            "Ym9hcmRFdmVudFAzEg8KB2tleUNvZGUYASABKAUSCwoDYWx0GAIgASgIEg8K",
+            "B2NvbnRyb2wYAyABKAgSDQoFc2hpZnQYBCABKAgSDwoHaGFuZGxlZBgGIAEo",
+            "CBIYChBzdXBwcmVzc0tleVByZXNzGAcgASgIEg8KB2lzS2V5VXAYCCABKAhC",
+            "CKoCBVNoYXJlYgZwcm90bzM="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
@@ -42,7 +42,7 @@ namespace Share {
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.Vec3), global::Share.Vec3.Parser, new[]{ "X", "Y", "Z" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.Mat4x4), global::Share.Mat4x4.Parser, new[]{ "M" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.MouseEventP3), global::Share.MouseEventP3.Parser, new[]{ "Button", "Clicks", "X", "Y", "Delta" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Share.KeyboardEventP3), global::Share.KeyboardEventP3.Parser, new[]{ "KeyData", "KeyCode", "Alt", "Control", "Shift", "Handled", "SuppressKeyPress", "IsKeyUp" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::Share.KeyboardEventP3), global::Share.KeyboardEventP3.Parser, new[]{ "KeyCode", "Alt", "Control", "Shift", "Handled", "SuppressKeyPress", "IsKeyUp" }, null, null, null, null)
           }));
     }
     #endregion
@@ -1364,7 +1364,6 @@ namespace Share {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public KeyboardEventP3(KeyboardEventP3 other) : this() {
-      keyData_ = other.keyData_;
       keyCode_ = other.keyCode_;
       alt_ = other.alt_;
       control_ = other.control_;
@@ -1381,20 +1380,8 @@ namespace Share {
       return new KeyboardEventP3(this);
     }
 
-    /// <summary>Field number for the "keyData" field.</summary>
-    public const int KeyDataFieldNumber = 1;
-    private int keyData_;
-    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public int KeyData {
-      get { return keyData_; }
-      set {
-        keyData_ = value;
-      }
-    }
-
     /// <summary>Field number for the "keyCode" field.</summary>
-    public const int KeyCodeFieldNumber = 2;
+    public const int KeyCodeFieldNumber = 1;
     private int keyCode_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -1406,7 +1393,7 @@ namespace Share {
     }
 
     /// <summary>Field number for the "alt" field.</summary>
-    public const int AltFieldNumber = 3;
+    public const int AltFieldNumber = 2;
     private bool alt_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -1418,7 +1405,7 @@ namespace Share {
     }
 
     /// <summary>Field number for the "control" field.</summary>
-    public const int ControlFieldNumber = 4;
+    public const int ControlFieldNumber = 3;
     private bool control_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -1430,7 +1417,7 @@ namespace Share {
     }
 
     /// <summary>Field number for the "shift" field.</summary>
-    public const int ShiftFieldNumber = 5;
+    public const int ShiftFieldNumber = 4;
     private bool shift_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -1492,7 +1479,6 @@ namespace Share {
       if (ReferenceEquals(other, this)) {
         return true;
       }
-      if (KeyData != other.KeyData) return false;
       if (KeyCode != other.KeyCode) return false;
       if (Alt != other.Alt) return false;
       if (Control != other.Control) return false;
@@ -1507,7 +1493,6 @@ namespace Share {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override int GetHashCode() {
       int hash = 1;
-      if (KeyData != 0) hash ^= KeyData.GetHashCode();
       if (KeyCode != 0) hash ^= KeyCode.GetHashCode();
       if (Alt != false) hash ^= Alt.GetHashCode();
       if (Control != false) hash ^= Control.GetHashCode();
@@ -1533,24 +1518,20 @@ namespace Share {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      if (KeyData != 0) {
-        output.WriteRawTag(8);
-        output.WriteInt32(KeyData);
-      }
       if (KeyCode != 0) {
-        output.WriteRawTag(16);
+        output.WriteRawTag(8);
         output.WriteInt32(KeyCode);
       }
       if (Alt != false) {
-        output.WriteRawTag(24);
+        output.WriteRawTag(16);
         output.WriteBool(Alt);
       }
       if (Control != false) {
-        output.WriteRawTag(32);
+        output.WriteRawTag(24);
         output.WriteBool(Control);
       }
       if (Shift != false) {
-        output.WriteRawTag(40);
+        output.WriteRawTag(32);
         output.WriteBool(Shift);
       }
       if (Handled != false) {
@@ -1575,24 +1556,20 @@ namespace Share {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      if (KeyData != 0) {
-        output.WriteRawTag(8);
-        output.WriteInt32(KeyData);
-      }
       if (KeyCode != 0) {
-        output.WriteRawTag(16);
+        output.WriteRawTag(8);
         output.WriteInt32(KeyCode);
       }
       if (Alt != false) {
-        output.WriteRawTag(24);
+        output.WriteRawTag(16);
         output.WriteBool(Alt);
       }
       if (Control != false) {
-        output.WriteRawTag(32);
+        output.WriteRawTag(24);
         output.WriteBool(Control);
       }
       if (Shift != false) {
-        output.WriteRawTag(40);
+        output.WriteRawTag(32);
         output.WriteBool(Shift);
       }
       if (Handled != false) {
@@ -1617,9 +1594,6 @@ namespace Share {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int CalculateSize() {
       int size = 0;
-      if (KeyData != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(KeyData);
-      }
       if (KeyCode != 0) {
         size += 1 + pb::CodedOutputStream.ComputeInt32Size(KeyCode);
       }
@@ -1652,9 +1626,6 @@ namespace Share {
     public void MergeFrom(KeyboardEventP3 other) {
       if (other == null) {
         return;
-      }
-      if (other.KeyData != 0) {
-        KeyData = other.KeyData;
       }
       if (other.KeyCode != 0) {
         KeyCode = other.KeyCode;
@@ -1697,22 +1668,18 @@ namespace Share {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 8: {
-            KeyData = input.ReadInt32();
-            break;
-          }
-          case 16: {
             KeyCode = input.ReadInt32();
             break;
           }
-          case 24: {
+          case 16: {
             Alt = input.ReadBool();
             break;
           }
-          case 32: {
+          case 24: {
             Control = input.ReadBool();
             break;
           }
-          case 40: {
+          case 32: {
             Shift = input.ReadBool();
             break;
           }
@@ -1748,22 +1715,18 @@ namespace Share {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
           case 8: {
-            KeyData = input.ReadInt32();
-            break;
-          }
-          case 16: {
             KeyCode = input.ReadInt32();
             break;
           }
-          case 24: {
+          case 16: {
             Alt = input.ReadBool();
             break;
           }
-          case 32: {
+          case 24: {
             Control = input.ReadBool();
             break;
           }
-          case 40: {
+          case 32: {
             Shift = input.ReadBool();
             break;
           }
