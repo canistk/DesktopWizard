@@ -1,30 +1,20 @@
+using Google.Protobuf;
 using System;
 using System.Drawing;
 using System.IO.MemoryMappedFiles;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace WinOverlay
 {
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct InputEvent
-    {
-        public byte Type;        // 0=MouseMove, 1=MouseDown, 2=MouseUp, 3=KeyDown, 4=KeyUp
-        public byte CameraId;    
-        public short X, Y;       
-        public int Data;         // MouseButton or KeyCode
-        public long Timestamp;   
-    }
-    
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct FrameInfo
-    {
-        public int FrameId;
-        public float Fps;
-        public byte WriteFlag;   // 0=Idle, 1=Writing
-        public long Timestamp;
-    }
-
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+	/// <summary>
+	/// Handle shared memory for GPU texture information.
+	/// From KawaiOS to WinOverlay
+	/// </summary>
+	[StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ShareGPUInfo
     {
         public IntPtr rtHandler;        // Native texture handle (platform-specific)
@@ -46,10 +36,12 @@ namespace WinOverlay
             totalSize       = accessor.ReadInt32(32);
 		}
 	}
-
-	/// <summary>
-	/// Handle shared memory for GPU texture information.
-	/// </summary>
+    /// <summary>
+    /// Provides functionality to read GPU information from a memory-mapped file.
+    /// </summary>
+    /// <remarks>This class is designed to interact with a memory-mapped file that contains GPU-related data.
+    /// It allows reading the shared GPU information in a thread-safe manner and ensures proper resource management by
+    /// implementing <see cref="IDisposable"/>.</remarks>
 	public class HSM_Gpu
     {
         private MemoryMappedFile mmf;
@@ -93,7 +85,11 @@ namespace WinOverlay
 		}
 	}
 
-    public struct CameraMatrixInfo
+	/// <summary>
+	/// Handle shared memory for Camera MVP data.
+	/// From KawaiOS to WinOverlay
+	/// </summary>
+	public struct CameraMatrixInfo
     {
         public WinOverlay.Mat4x4 o2m;    // OS to Monitor Matrix
         public WinOverlay.Mat4x4 m2f;    // Monitor to Form Matrix
@@ -143,9 +139,12 @@ namespace WinOverlay
             formPos = new Vec3(formX, formY, formZ);
         }
     }
-	/// <summary>
-	/// Handle shared memory for Camera MVP data.
-	/// </summary>
+	
+    /// <summary>
+    /// Provides functionality to access and read camera matrix information from a memory-mapped file.
+    /// </summary>
+    /// <remarks>This class is designed to interact with a memory-mapped file that contains camera matrix
+    /// data. It allows reading the data in a thread-safe manner and ensures proper resource management.</remarks>
 	public class HSM_CameraMatrix
 	{
 		private MemoryMappedFile mmf;
@@ -182,11 +181,191 @@ namespace WinOverlay
 		}
 	}
 
+	/// <summary>Protobuf class for keyboard event data.
+    /// From WinOverlay to KawaiOS</summary>
+	public partial class KeyboardEventP3
+	{
+		public KeyboardEventP3(KeyEventArgs e, bool isKeyUp)
+		{
+			KeyCode = (int)e.KeyCode;
+			Alt = e.Alt;
+			Control = e.Control;
+			Shift = e.Shift;
+			Handled = e.Handled;
+			SuppressKeyPress = e.SuppressKeyPress;
+			IsKeyUp = isKeyUp;
+		}
+	}
 
+	/// <summary>Protobuf class for mouse event data.
+    /// From WinOverlay to KawaiOS</summary>
+	public partial class MouseEventP3
+	{
+		public MouseEventP3(MouseEventArgs e)
+		{
+			Button = (int)e.Button;
+			Clicks = e.Clicks;
+			X = e.X;
+			Y = e.Y;
+			Delta = e.Delta;
+		}
+	}
 
-	public struct OverlayConfig
-    {
-        public String CameraId;
-        public Rectangle Bounds;
-    }
+	public class HSM_KeyboardMouse : System.IDisposable
+	{
+		public bool isDisposed { get; private set; }
+        private NamedPipeServerStream m_Pipe;
+        private CancellationTokenSource m_CancelSrc;
+        public event Action OnClientConnected;
+        public event Action OnClientDisconnected;
+
+		public string name { get; private set; }
+        public HSM_KeyboardMouse(string pipName, CancellationTokenSource cancelSrc)
+        {
+            this.m_State = eState.Disconnected;
+            this.name = pipName;
+            this.m_Pipe = new NamedPipeServerStream(name, 
+                PipeDirection.Out,
+                1,
+                PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous);
+			this.m_CancelSrc = cancelSrc;
+            this.m_Semaphore = new SemaphoreSlim(1);
+		}
+
+        public void Start()
+        {
+            if (state != eState.Disconnected)
+                return;
+			Task.Run(() => WaitForConnection());
+		}
+
+		#region Handling Connection State
+		public enum eState
+		{
+			Disconnected = 0,
+			WaitingForConnection,
+			Connected,
+		}
+		private eState m_State = eState.Disconnected;
+		public eState state
+		{
+			get => m_State;
+			private set
+			{
+				if (m_Pipe == null)
+					Console.WriteLine($"[{name}] Pipe is null, when trying to set state = {m_State}->{value}.");
+				m_State = value;
+				switch (value)
+				{
+					case eState.Disconnected:
+					{
+						if (m_Pipe.IsConnected)
+						{
+							m_Pipe.Disconnect();
+							Console.WriteLine($"[{name}] Self Disconnected.");
+						}
+						OnClientDisconnected?.Invoke();
+					}
+					break;
+					case eState.WaitingForConnection:
+					{
+						Console.WriteLine($"[{name}] Waiting for connection...");
+					}
+					break;
+					case eState.Connected:
+					{
+						if (!m_Pipe.IsConnected)
+						{
+							Console.WriteLine($"[{name}] Pipe is not connected after connection attempt.");
+						}
+						Console.WriteLine($"[{name}] Connected.");
+						OnClientConnected?.Invoke();
+					}
+					break;
+				}
+			}
+		}
+
+		private async void WaitForConnection()
+        {
+            while (!m_CancelSrc.IsCancellationRequested)
+            {
+                state = eState.WaitingForConnection;
+			    await m_Pipe.WaitForConnectionAsync(m_CancelSrc.Token);
+				state = eState.Connected;
+                while (m_Pipe.IsConnected && !m_CancelSrc.IsCancellationRequested)
+                {
+                    await Task.Delay(100);
+			    }
+				state = eState.Disconnected;
+            }
+            Dispose();
+		}
+		#endregion Handling Connection State
+
+		#region Handling Keyboard/Mouse Events
+		private SemaphoreSlim m_Semaphore = new SemaphoreSlim(1);
+		public void Send(KeyEventArgs e, bool isKeyUp)
+		{
+			var data = new KeyboardEventP3(e, isKeyUp).ToByteArray();
+			Task.Run(() => SendByte(data));
+		}
+
+		public void Send(MouseEventArgs e)
+		{
+			var data = new MouseEventP3(e).ToByteArray();
+			Task.Run(() => SendByte(data));
+		}
+		private async Task SendByte(byte[] data)
+		{
+			try
+			{
+				await m_Semaphore.WaitAsync();
+				if (m_Pipe == null || !m_Pipe.IsConnected)
+				{
+					Console.WriteLine($"[{name}] Pipe is not connected when trying to send data.");
+					return;
+				}
+				await m_Pipe.WriteAsync(data, 0, data.Length);
+			}
+			finally
+			{
+				m_Semaphore.Release();
+			}
+		}
+
+		#endregion Handling Keyboard/Mouse Events
+
+		#region Dispose Pattern
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!isDisposed)
+			{
+				if (disposing)
+				{
+					// TODO: dispose managed state (managed objects)
+                    m_Pipe?.Dispose();
+					m_Semaphore?.Dispose();
+				}
+                m_Pipe = null;
+				m_Semaphore = null;
+				// TODO: free unmanaged resources (unmanaged objects) and override finalizer
+				// TODO: set large fields to null
+				isDisposed = true;
+			}
+		}
+
+        ~HSM_KeyboardMouse()
+        {
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+		{
+			Dispose(disposing: true);
+			System.GC.SuppressFinalize(this);
+		}
+		#endregion Dispose Pattern
+	}
 }

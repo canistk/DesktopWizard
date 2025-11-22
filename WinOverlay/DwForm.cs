@@ -23,7 +23,8 @@ namespace WinOverlay
         
         // Bitmap converters for dual-buffer system
         private BitmapConverter m_Converter01, m_Converter02;
-        private NamedPipeServerStream m_InputPipe;
+        //private NamedPipeServerStream m_InputPipe;
+		private HSM_KeyboardMouse m_InputPipe;
 
 		public DwForm(int cameraId)
         {
@@ -256,107 +257,45 @@ namespace WinOverlay
 
         private void InitializeInputPipe()
 		{
-			Task.Run(() => WaitForInputPipe());
-		}
-		private async Task WaitForInputPipe()
-		{
-			if (m_CancelSrc == null)
-			{
-				m_CancelSrc = new CancellationTokenSource();
-			}
-			else
-			{
-				m_CancelSrc.Cancel();
-				m_CancelSrc.Dispose();
-				m_CancelSrc = new CancellationTokenSource();
-			}
-
-			m_InputPipe?.Dispose();
-			var pipeName = $"{prefix}_InputPipe";
-			m_InputPipe = new NamedPipeServerStream(pipeName, PipeDirection.Out, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-            await m_InputPipe.WaitForConnectionAsync(m_CancelSrc.Token);
+			m_InputPipe = new HSM_KeyboardMouse($"{prefix}_InputPipe", m_CancelSrc);
+            m_InputPipe.Start();
 		}
 
-        private SemaphoreSlim _pipeSemaphore = new SemaphoreSlim(1);
-
-        private void SendMouseEvent(MouseEventArgs e)
-        {
-            Task.Run(() => _Task(new MouseEventP3(e)));
-
-            async void _Task(MouseEventP3 _evt)
-            {
-                await _pipeSemaphore.WaitAsync();
-                try
-                {
-                    if (m_InputPipe == null || !m_InputPipe.IsConnected)
-                        return;
-                    var bytes = _evt.ToByteArray();
-                    await m_InputPipe.WriteAsync(bytes, 0, bytes.Length);
-                }
-                finally
-                {
-                    _pipeSemaphore.Release();
-                }
-            }
-        }
 
 		protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
-            SendMouseEvent(e);
+            m_InputPipe.Send(e);
 		}
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-			SendMouseEvent(e);
+			m_InputPipe.Send(e);
 		}
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
-			SendMouseEvent(e);
+			m_InputPipe.Send(e);
 		}
 		#endregion Mouse Events
 
 		#region Keyboard Events
-		private void SendKeyboardEvent(KeyEventArgs e, bool isKeyUp)
-		{
-			Task.Run(() => _Task(e, isKeyUp));
-
-			async void _Task(KeyEventArgs _e, bool _isKeyUp)
-			{
-				await _pipeSemaphore.WaitAsync();
-				try
-				{
-					if (m_InputPipe == null || !m_InputPipe.IsConnected)
-						return;
-					var evt = new KeyboardEventP3(_e, _isKeyUp);
-					var bytes = evt.ToByteArray();
-					await m_InputPipe.WriteAsync(bytes, 0, bytes.Length);
-				}
-				finally
-				{
-					_pipeSemaphore.Release();
-				}
-			}
-		}
-
 		protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-			SendKeyboardEvent(e, false);
+			m_InputPipe.Send(e, false);
 
 		}
         protected override void OnKeyUp(KeyEventArgs e)
         {
             base.OnKeyUp(e);
-			SendKeyboardEvent(e, true);
-
+			m_InputPipe.Send(e, true);
 		}
-        #endregion Keyboard Events
+		#endregion Keyboard Events
 
-        protected override void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
         {
             if (!isDisposed)
             {
@@ -370,7 +309,6 @@ namespace WinOverlay
                     m_Converter01?.Dispose();
                     m_Converter02?.Dispose();
                     m_InputPipe?.Dispose();
-					_pipeSemaphore?.Dispose();
                 }
                 isDisposed = true;
                 m_SharedMemoryInitialized = false;
