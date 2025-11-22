@@ -20,17 +20,22 @@ namespace WinOverlay
         {
             pixelsMmfName = $"{cameraPrefix}_{subId}_Pixels";
 		}
-        
 
-        byte[] m_Pixels = null;
+        public BitmapConverter(string pixelsMmfName)
+        {
+            this.pixelsMmfName = pixelsMmfName;
+        }
+
+
+		byte[] m_Pixels = null;
 
 		/// <summary>
 		/// Converts shared memory pixel data to a Bitmap.
 		/// Handles Unity RGBA ? Windows BGRA conversion and y-axis flipping.
 		/// </summary>
-		public bool TryConvertToBitmap(ShareGPUInfo shareInfo, out Bitmap bitmap)
+		public bool TryConvertToBitmap(TextureInfo shareInfo, ref Bitmap bitmap)
         {
-            bitmap = null;
+            // bitmap = null;
             
             if (shareInfo.totalSize <= 0)
                 return false;
@@ -72,7 +77,13 @@ namespace WinOverlay
                 accessorPixels.ReadArray(0, m_Pixels, 0, shareInfo.totalSize);
 				
                 // Create bitmap
-                bitmap = new Bitmap(shareInfo.width, shareInfo.height, PixelFormat.Format32bppArgb);
+                if (bitmap == null ||
+                    bitmap.Width != shareInfo.width ||
+                    bitmap.Height != shareInfo.height ||
+                    bitmap.PixelFormat != PixelFormat.Format32bppArgb)
+                {
+                    bitmap = new Bitmap(shareInfo.width, shareInfo.height, PixelFormat.Format32bppArgb);
+                }
                 
                 BitmapData bmpData = bitmap.LockBits(
                     new Rectangle(0, 0, bitmap.Width, bitmap.Height),

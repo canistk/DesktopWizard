@@ -74,14 +74,14 @@ namespace WinOverlay
                     {
                         m_GPU01 = new HSM_Gpu($"{prefix}_1");
                         m_GPU02 = new HSM_Gpu($"{prefix}_2");
-                        m_CameraMatrix = new HSM_CameraMatrix($"{prefix}_Matrix");
+                        //m_CameraMatrix = new HSM_CameraMatrix($"{prefix}_Matrix");
                         m_SharedMemoryInitialized = true;
                         break;
                     }
-                    catch (FileNotFoundException)
+                    catch (FileNotFoundException ex)
                     {
                         ++retryCount;
-                        u3d.SendError($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})");
+                        u3d.SendError($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})\n{ex.Message}");
 						await Task.Delay(1000);
                     }
                     catch (Exception ex)
@@ -113,7 +113,7 @@ namespace WinOverlay
             renderTimer.Start();
         }
 
-        private int m_TargetFPS = 60;
+        private int m_TargetFPS = 120;
 		private void SetTargetFPS(int fps)
         {
             if (m_TargetFPS == fps)
@@ -126,6 +126,7 @@ namespace WinOverlay
             }
 		}
 
+        private DateTime m_LastRenderTime = default;
 		private void OnRenderTimer(object sender, EventArgs e)
         {
             if (isDisposed || !m_SharedMemoryInitialized)
@@ -135,53 +136,43 @@ namespace WinOverlay
             m_GPU01.TryRead(out var shareInfo1);
             m_GPU02.TryRead(out var shareInfo2);
 
-            // Select the latest buffer based on timestamp
-            ShareGPUInfo latestShareInfo;
-            BitmapConverter activeConverter;
-            
-            if (shareInfo1.timestamp > shareInfo2.timestamp)
+			// Found oldest non-display frame.
+			var g1 = shareInfo1.timestamp - m_LastRenderTime;
+            var g2 = shareInfo2.timestamp - m_LastRenderTime;
+            if (g1.Duration() < g2.Duration())
             {
-                latestShareInfo = shareInfo1;
-                activeConverter = m_Converter01;
-            }
+                m_LastRenderTime = shareInfo1.timestamp;
+				ReadBitmap(m_GPU01, shareInfo1);
+			}
             else
             {
-                latestShareInfo = shareInfo2;
-                activeConverter = m_Converter02;
-            }
-            
-            // Only update if we have new data
-            if (latestShareInfo.timestamp <= lastUpdateTime || latestShareInfo.totalSize <= 0)
-                return;
-                
-            lastUpdateTime = latestShareInfo.timestamp;
-            
-            // Update form size if texture size changed
-            if (Size.Width != latestShareInfo.width || Size.Height != latestShareInfo.height)
-            {
-                BeginInvoke(new Action(() =>
-                {
-                    Size = new Size(latestShareInfo.width, latestShareInfo.height);
-                    // Keep the form centered
-                    Location = new Point(
-                        (Screen.PrimaryScreen.Bounds.Width - latestShareInfo.width) / 2,
-                        (Screen.PrimaryScreen.Bounds.Height - latestShareInfo.height) / 2
-                    );
-                }));
-            }
-
-            // Convert shared memory pixel data to Bitmap
-            if (activeConverter.TryConvertToBitmap(latestShareInfo, out Bitmap bitmap))
-            {
-                var oldBitmap = currentBitmap;
-                currentBitmap = bitmap;
-                oldBitmap?.Dispose();
-                Invalidate(); // Trigger repaint
+                m_LastRenderTime = shareInfo2.timestamp;
+                ReadBitmap(m_GPU02, shareInfo2);
 			}
-            //else
-            //{
-            //    u3d.SendError($"[Camera {cameraId}] Failed to convert texture to bitmap");
-            //}
+            return;
+
+            void ReadBitmap(HSM_Gpu gpu, TextureInfo data)
+            {
+                if (gpu.TryReadBitmap(data, ref currentBitmap))
+                {
+                    Invalidate(); // Trigger repaint
+				}
+
+				// Set location and size of this form.
+				SetFormRect(data);
+            }
+            void SetFormRect(TextureInfo data)
+            {
+				BeginInvoke(new Action(() =>
+				{
+					Size = new Size(data.width, data.height);
+					// Keep the form centered
+					Location = new Point(
+						(Screen.PrimaryScreen.Bounds.Width - data.width) / 2,
+						(Screen.PrimaryScreen.Bounds.Height - data.height) / 2
+					);
+				}));
+			}
 		}
 
         // Remove OnPrint - it's not called by Invalidate()
@@ -257,8 +248,18 @@ namespace WinOverlay
 
         private void InitializeInputPipe()
 		{
-			m_InputPipe = new HSM_KeyboardMouse($"{prefix}_InputPipe", m_CancelSrc);
-            m_InputPipe.Start();
+            if (m_CancelSrc == null)
+            {
+                m_CancelSrc = new CancellationTokenSource();
+            }
+            else
+            {
+                m_CancelSrc.Cancel();
+                m_CancelSrc.Dispose();
+                m_CancelSrc = new CancellationTokenSource();
+			}
+            m_InputPipe = new HSM_KeyboardMouse($"{prefix}_InputPipe");
+            m_InputPipe.Start(m_CancelSrc.Token);
 		}
 
 
@@ -309,8 +310,18 @@ namespace WinOverlay
                     m_Converter01?.Dispose();
                     m_Converter02?.Dispose();
                     m_InputPipe?.Dispose();
-                }
-                isDisposed = true;
+                    m_CancelSrc?.Cancel();
+                    m_CancelSrc?.Dispose();
+				}
+                renderTimer = null;
+				currentBitmap = null;
+				m_GPU01 = null;
+                m_GPU02 = null;
+				m_Converter01 = null;
+				m_Converter02 = null;
+				m_InputPipe = null;
+				m_CancelSrc = null;
+				isDisposed = true;
                 m_SharedMemoryInitialized = false;
 
 			}

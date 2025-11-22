@@ -10,12 +10,13 @@ using System.Windows.Forms;
 
 namespace WinOverlay
 {
+	#region GPU(s)
 	/// <summary>
 	/// Handle shared memory for GPU texture information.
 	/// From KawaiOS to WinOverlay
 	/// </summary>
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct ShareGPUInfo
+    public struct TextureInfo
     {
         public IntPtr rtHandler;        // Native texture handle (platform-specific)
         public DateTime timestamp;      // UTC timestamp for synchronization
@@ -25,7 +26,7 @@ namespace WinOverlay
         public int bytesPerPixel;       // Bytes per pixel based on format
         public int totalSize;           // Total texture size in bytes
 
-        public ShareGPUInfo(MemoryMappedViewAccessor accessor)
+        public TextureInfo(MemoryMappedViewAccessor accessor)
         {
             rtHandler       = (IntPtr)accessor.ReadInt64(0);
             timestamp       = DateTime.FromBinary(accessor.ReadInt64(8));
@@ -44,31 +45,60 @@ namespace WinOverlay
     /// implementing <see cref="IDisposable"/>.</remarks>
 	public class HSM_Gpu
     {
+        private readonly string m_Name;
+		private BitmapConverter pixelReader;
+
+		// extra information from GPU.
         private MemoryMappedFile mmf;
         private MemoryMappedViewAccessor accessor;
-        private readonly string m_Name;
-        public HSM_Gpu(string mmfName)
+		private CancellationTokenSource cancel;
+		private bool IsInitialized => mmf != null && accessor != null;
+		public HSM_Gpu(string mmfName)
         {
             this.m_Name = mmfName;
-            Reinit();
-        }
-        private void Reinit()
-        {
-            accessor?.Dispose();
-            mmf?.Dispose();
-			mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.Read);
-            accessor = mmf.CreateViewAccessor(0, Marshal.SizeOf<ShareGPUInfo>(), MemoryMappedFileAccess.Read);
+			this.pixelReader = new BitmapConverter($"{mmfName}_Pixels");
+			this.cancel = new CancellationTokenSource();
+			Reinit();
+		}
+		private void Reinit()
+		{
+			Task.Run(() => WaitForInit(cancel.Token));
 		}
 
-		public bool TryRead(out ShareGPUInfo info)
+		private async void WaitForInit(CancellationToken token)
+        {
+            mmf?.Dispose();
+			accessor?.Dispose();
+			while (mmf == null &&
+				!token.IsCancellationRequested)
+			{
+				try
+				{
+					mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.Read);
+				}
+				catch (System.IO.FileNotFoundException)
+				{
+					continue;
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"[{m_Name}] Error opening memory-mapped file. {ex.Message}");
+					Reinit();
+					return;
+				}
+				await Task.Delay(100, token);
+			}
+
+            accessor = mmf.CreateViewAccessor(0, Marshal.SizeOf<TextureInfo>(), MemoryMappedFileAccess.Read);
+		}
+
+		public bool TryRead(out TextureInfo info)
         {
             try
             {
-                if (accessor == null)
-                {
-                    Reinit();
-                }
-                info = new ShareGPUInfo(accessor);
+				if (!IsInitialized)
+					throw new Exception();
+                info = new TextureInfo(accessor);
                 return true;
             }
             catch
@@ -78,12 +108,62 @@ namespace WinOverlay
 			}
 		}
 
-        public void Dispose()
-        {
-            accessor?.Dispose();
+		public bool TryReadBitmap(in TextureInfo info, ref Bitmap bitmap)
+		{
+			return pixelReader.TryConvertToBitmap(info, ref bitmap);
+		}
+
+
+		public void Dispose()
+		{
+			pixelReader?.Dispose();
+			pixelReader = null;
+			accessor?.Dispose();
+			accessor = null;
             mmf?.Dispose();
+			mmf = null;
 		}
 	}
+
+	// TODO: move ping-pong logic here
+	public class HSM_PingPongGPU : System.IDisposable
+	{
+		private HSM_Gpu m_GPU01, m_GPU02;
+
+		public HSM_PingPongGPU(string cameraPrefix)
+		{
+			m_GPU01 = new HSM_Gpu($"{cameraPrefix}_1");
+			m_GPU02 = new HSM_Gpu($"{cameraPrefix}_2");
+		}
+
+
+		#region Dispose Pattern
+		public bool IsDisposed { get; private set; }
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!IsDisposed)
+			{
+				if (disposing)
+				{
+					m_GPU01?.Dispose();
+					m_GPU02?.Dispose();
+				}
+
+				m_GPU01 = null;
+				m_GPU02 = null;
+				IsDisposed = true;
+			}
+		}
+		~HSM_PingPongGPU() => Dispose(disposing: false);
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
+		#endregion Dispose Pattern
+	}
+	#endregion GPU(s)
 
 	/// <summary>
 	/// Handle shared memory for Camera MVP data.
@@ -215,50 +295,51 @@ namespace WinOverlay
 	{
 		public bool isDisposed { get; private set; }
         private NamedPipeServerStream m_Pipe;
-        private CancellationTokenSource m_CancelSrc;
+        private CancellationToken m_CancelToken;
         public event Action OnClientConnected;
         public event Action OnClientDisconnected;
 
 		public string name { get; private set; }
-        public HSM_KeyboardMouse(string pipName, CancellationTokenSource cancelSrc)
+        public HSM_KeyboardMouse(string pipName)
         {
-            this.m_State = eState.Disconnected;
+            this.m_State = eHSMState.Disconnected;
             this.name = pipName;
             this.m_Pipe = new NamedPipeServerStream(name, 
                 PipeDirection.Out,
                 1,
                 PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous);
-			this.m_CancelSrc = cancelSrc;
             this.m_Semaphore = new SemaphoreSlim(1);
 		}
 
-        public void Start()
+        public void Start(CancellationToken token)
         {
-            if (state != eState.Disconnected)
+            if (state != eHSMState.Disconnected)
                 return;
-			Task.Run(() => WaitForConnection());
+			this.m_CancelToken = token;
+			Task.Run(() => WaitForConnection(), m_CancelToken);
 		}
 
 		#region Handling Connection State
-		public enum eState
-		{
-			Disconnected = 0,
-			WaitingForConnection,
-			Connected,
-		}
-		private eState m_State = eState.Disconnected;
-		public eState state
+		
+		private eHSMState m_State = eHSMState.Disconnected;
+		public eHSMState state
 		{
 			get => m_State;
 			private set
 			{
+				if (m_State == value)
+					return;
+
 				if (m_Pipe == null)
+				{
 					Console.WriteLine($"[{name}] Pipe is null, when trying to set state = {m_State}->{value}.");
+					return;
+				}
 				m_State = value;
 				switch (value)
 				{
-					case eState.Disconnected:
+					case eHSMState.Disconnected:
 					{
 						if (m_Pipe.IsConnected)
 						{
@@ -268,12 +349,12 @@ namespace WinOverlay
 						OnClientDisconnected?.Invoke();
 					}
 					break;
-					case eState.WaitingForConnection:
+					case eHSMState.WaitingForConnection:
 					{
 						Console.WriteLine($"[{name}] Waiting for connection...");
 					}
 					break;
-					case eState.Connected:
+					case eHSMState.Connected:
 					{
 						if (!m_Pipe.IsConnected)
 						{
@@ -288,19 +369,39 @@ namespace WinOverlay
 		}
 
 		private async void WaitForConnection()
-        {
-            while (!m_CancelSrc.IsCancellationRequested)
-            {
-                state = eState.WaitingForConnection;
-			    await m_Pipe.WaitForConnectionAsync(m_CancelSrc.Token);
-				state = eState.Connected;
-                while (m_Pipe.IsConnected && !m_CancelSrc.IsCancellationRequested)
-                {
-                    await Task.Delay(100);
-			    }
-				state = eState.Disconnected;
-            }
-            Dispose();
+		{
+			try
+			{
+				while (!m_CancelToken.IsCancellationRequested)
+				{
+					state = eHSMState.WaitingForConnection;
+					await m_Pipe.WaitForConnectionAsync(m_CancelToken);
+					state = eHSMState.Connected;
+					while (m_Pipe != null &&
+						m_Pipe.IsConnected &&
+						!m_CancelToken.IsCancellationRequested)
+					{
+						await Task.Delay(100);
+					}
+					state = eHSMState.Disconnected;
+				}
+			}
+			catch (Exception ex)
+			{
+				if (ex is OperationCanceledException)
+				{
+					Console.WriteLine($"[{name}] Connection attempt cancelled.");
+				}
+				else
+				{
+					Console.WriteLine($"[{name}] Error in WaitForConnection: {ex.Message}");
+				}
+			}
+			finally
+			{
+				state = eHSMState.Disconnected;
+				Dispose();
+			}
 		}
 		#endregion Handling Connection State
 
@@ -309,13 +410,13 @@ namespace WinOverlay
 		public void Send(KeyEventArgs e, bool isKeyUp)
 		{
 			var data = new KeyboardEventP3(e, isKeyUp).ToByteArray();
-			Task.Run(() => SendByte(data));
+			Task.Run(() => SendByte(data), m_CancelToken);
 		}
 
 		public void Send(MouseEventArgs e)
 		{
 			var data = new MouseEventP3(e).ToByteArray();
-			Task.Run(() => SendByte(data));
+			Task.Run(() => SendByte(data), m_CancelToken);
 		}
 		private async Task SendByte(byte[] data)
 		{
@@ -331,7 +432,7 @@ namespace WinOverlay
 			}
 			finally
 			{
-				m_Semaphore.Release();
+				m_Semaphore?.Release();
 			}
 		}
 
@@ -344,14 +445,11 @@ namespace WinOverlay
 			{
 				if (disposing)
 				{
-					// TODO: dispose managed state (managed objects)
                     m_Pipe?.Dispose();
 					m_Semaphore?.Dispose();
 				}
                 m_Pipe = null;
 				m_Semaphore = null;
-				// TODO: free unmanaged resources (unmanaged objects) and override finalizer
-				// TODO: set large fields to null
 				isDisposed = true;
 			}
 		}
@@ -367,5 +465,12 @@ namespace WinOverlay
 			System.GC.SuppressFinalize(this);
 		}
 		#endregion Dispose Pattern
+	}
+
+	public enum eHSMState
+	{
+		Disconnected = 0,
+		WaitingForConnection,
+		Connected,
 	}
 }
