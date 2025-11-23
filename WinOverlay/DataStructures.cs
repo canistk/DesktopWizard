@@ -175,26 +175,49 @@ namespace WinOverlay
 		private MemoryMappedFile mmf;
 		private MemoryMappedViewAccessor accessor;
 		private readonly string m_Name;
-		public HSM_CameraMatrix(string mmfName)
+		private bool IsInitialized => mmf != null && accessor != null;
+		public HSM_CameraMatrix(string mmfName, CancellationToken token)
 		{
 			this.m_Name = mmfName;
-			Reinit();
+			Task.Run(() => WaitForInit(token));
 		}
-		private void Reinit()
+		private async void WaitForInit(CancellationToken token)
 		{
-			accessor?.Dispose();
 			mmf?.Dispose();
-			mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.Read);
-			accessor = mmf.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+			accessor?.Dispose();
+			while (mmf == null &&
+				!token.IsCancellationRequested)
+			{
+				try
+				{
+					mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.Read);
+				}
+				catch (System.IO.FileNotFoundException)
+				{
+					await Task.Delay(100, token);
+					continue;
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"[{m_Name}] Error opening memory-mapped file. {ex.Message}");
+					return;
+				}
+			}
+
+			if (mmf != null)
+			{
+				accessor = mmf.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+			}
 		}
         public bool TryRead(out CameraInfo info)
         {
+            if (!IsInitialized)
+            {
+                info = default;
+                return false;
+            }
             try
             {
-                if (accessor == null)
-                {
-                    Reinit();
-                }
                 byte[] bytes = new byte[accessor.Capacity];
                 accessor.ReadArray(0, bytes, 0, bytes.Length);
                 info = CameraInfo.Parser.ParseFrom(bytes);

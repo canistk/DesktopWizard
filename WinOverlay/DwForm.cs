@@ -53,6 +53,7 @@ namespace WinOverlay
             
             InitializeSharedMemory();
             InitializeInputPipe();
+            InitializeCameraInfo();
 			StartRenderTimer();
             u3d.SendInfo($"DwForm for camera {cameraId} created.");
 		}
@@ -100,6 +101,12 @@ namespace WinOverlay
 				u3d.SendWarning($"Connected to shared memory for camera {cameraId}.");
             });
         }
+
+        private async void InitializeCameraInfo()
+        {
+            m_CameraMatrix = new HSM_CameraMatrix($"{prefix}_Info", m_CancelSrc.Token);
+            Console.WriteLine($"Camera info for camera {cameraId} initialized.");
+		}
 
         private async void StartRenderTimer()
         {
@@ -162,15 +169,21 @@ namespace WinOverlay
 				SetFormRect(data);
             }
             void SetFormRect(TextureInfo data)
-            {
+			{
+                Point location = new Point(
+                    (Screen.PrimaryScreen.Bounds.Width - data.width) / 2,
+					(Screen.PrimaryScreen.Bounds.Height - data.height) / 2
+				);
+
+				if (m_CameraMatrix != null && m_CameraMatrix.TryRead(out var camInfo))
+                {
+                    var p = camInfo.FormOSPos;
+                    location = new Point(p.X + 20, p.Y);
+                }
 				BeginInvoke(new Action(() =>
 				{
 					Size = new Size(data.width, data.height);
-					// Keep the form centered
-					Location = new Point(
-						(Screen.PrimaryScreen.Bounds.Width - data.width) / 2,
-						(Screen.PrimaryScreen.Bounds.Height - data.height) / 2
-					);
+                    Location = location;
 				}));
 			}
 		}

@@ -1,5 +1,6 @@
 #define TRY_CATCH
 using Kit2;
+using Share;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,6 +9,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
+using Google.Protobuf;
 
 namespace DesktopWizard
 {
@@ -389,7 +391,6 @@ namespace DesktopWizard
 		#region Mono
 		private void OnValidate()
 		{
-			OnToggleShareMemory();
 			/**
 			if (UnityEngine.Application.isPlaying || Time.timeSinceLevelLoad < 3f)
 				return;
@@ -402,7 +403,7 @@ namespace DesktopWizard
                     Debug.LogError("Unable to adjust texture size, because it's not readable.");
 				}
                 else
-                {
+				{
 				    var size = setting.Size;
                     tex.width = size.x;
                     tex.height = size.y;
@@ -709,7 +710,7 @@ namespace DesktopWizard
 				// Capture current render into renderTexture.
 				gpu.Execute(m_Renderer, linkCamera, setting.Size.x, setting.Size.y);
 
-				ShareMemory_Update(gpu);
+				ShareMemory_CameraMatrix_Update(gpu);
 			}
 
 			WinForm_PostUpdate();
@@ -1220,6 +1221,7 @@ namespace DesktopWizard
 				dwForm.Show();
 
 			}
+			ShareMemory_Init();
 		}
 
 		private int m_DelayFrame = 0;
@@ -1258,6 +1260,7 @@ namespace DesktopWizard
 				Debug.LogException(ex, this);
 			}
 
+			ShareMemory_Dispose();
 
 			if (dwForm != null)
             {
@@ -1403,7 +1406,7 @@ namespace DesktopWizard
 		public Vector2 GetMousePosInMonitorSpace()
 		{
 			//// U3D's y-axis is flipped, upward = y++, downward = y--
-			//// Window's y-axis is, upward = y--, downward = y++
+			//// Window's y-axis is, upward = y--, downward = y++"
 			var v2i = DwCore.GetOSCursorPos();
 			var osV3f = new Vector3(v2i.x, v2i.y, 0f);
 			var world = MatrixOSToMonitor().MultiplyPoint3x4(osV3f);
@@ -1973,38 +1976,18 @@ namespace DesktopWizard
 		#region Share Memory - WinOverlayer
 		[SerializeField] private int m_CameraId = 0;
 		public int id => m_CameraId;
-		private enum eUpdateMethod : int
-		{
-			WinForm,
-			ShareMemory,
-		}
-		[SerializeField] private eUpdateMethod m_UpdateMethod = eUpdateMethod.WinForm;
-		private eUpdateMethod m_LastUpdateMethod = eUpdateMethod.WinForm;
 
 		private const string MMF_NAME = "DwCamera";
 
-		private void OnToggleShareMemory()
-		{
-			if (m_LastUpdateMethod != m_UpdateMethod)
-			{
-				m_LastUpdateMethod = m_UpdateMethod;
-				if (m_UpdateMethod == eUpdateMethod.ShareMemory)
-				{
-					ShareMemory_Init();
-				}
-				else
-				{
-					ShareMemory_Dispose();
-				}
-			}
-		}
-
 		private void ShareMemory_Init()
 		{
-			var shareName = $"{MMF_NAME}_{m_CameraId}_Matrix";
+			var shareName = $"{MMF_NAME}_{m_CameraId}_Info";
 			// Create or open the memory-mapped file.
-			mmf = MemoryMappedFile.CreateOrOpen(shareName, Marshal.SizeOf(typeof(CameraMatrixInfo)), MemoryMappedFileAccess.Write);
-			accessor = mmf.CreateViewAccessor(0, Marshal.SizeOf(typeof(CameraMatrixInfo)), MemoryMappedFileAccess.Write);
+            // Note: Protobuf messages are variable-length, so we use a fixed buffer size.
+            // Adjust this size based on expected serialized size of CameraInfo.
+            const int bufferSize = 1024; // Example size, ensure it's large enough
+			mmf = MemoryMappedFile.CreateOrOpen(shareName, bufferSize, MemoryMappedFileAccess.Write);
+			accessor = mmf.CreateViewAccessor(0, bufferSize, MemoryMappedFileAccess.Write);
 		}
 		private void ShareMemory_Dispose()
 		{
@@ -2018,7 +2001,7 @@ namespace DesktopWizard
 		/// assume camera.Render() has been called.
 		/// </summary>
 		/// <param name="gpu"></param>
-		private void ShareMemory_Update(GPUWorker gpu)
+		private void ShareMemory_CameraMatrix_Update(GPUWorker gpu)
 		{
 			if (gpu == null || gpu.renderTexture == null)
 				return;
@@ -2034,34 +2017,21 @@ namespace DesktopWizard
 			var v3f		= new Vector3(v2i.x, v2i.y, 0f);
 			var monPos	= o2m.MultiplyPoint3x4(v3f); // correct, Cyan (faster)
 			var formPos	= (m2f * o2m).MultiplyPoint3x4(v3f); // correct, Yellow (faster)
+			var formOSPos = new Share.Vec2Int
+			{
+				X = Left,
+				Y = Top,
+			};
 
 			if (accessor != null)
 			{
-				m_ShareInfo.o2m		= o2m;
-				m_ShareInfo.m2f		= m2f;
-				m_ShareInfo.osPos	= v2i;
-				m_ShareInfo.monPos	= monPos;
-				m_ShareInfo.formPos	= formPos;
-
-				// Write the struct to the memory-mapped file.
-				accessor.Write(0, ref m_ShareInfo);
+				var info = new Share.CameraInfo(o2m, m2f, v2i, formOSPos, monPos, formPos);
+				// Serialize the Protobuf message to bytes and write to the memory-mapped file.
+                var bytes = info.ToByteArray();
+                accessor.WriteArray(0, bytes, 0, bytes.Length);
 			}
 		}
 
-		/// <summary>
-		/// Share the camera MVP matrix and Mouse position to WinOverlayer via Share Memory.
-		/// </summary>
-		// [StructLayout(LayoutKind.Sequential, Pack = 1)]
-		private struct CameraMatrixInfo
-		{
-			public Share.Mat4x4 o2m;    // OS to Monitor Matrix
-			public Share.Mat4x4 m2f;    // Monitor to Form Matrix
-			public Share.Vec2Int osPos; // Mouse pos in OS space
-			public Share.Vec3 monPos;   // Transform mouse pos in Monitor space
-			public Share.Vec3 formPos;  // Transform mouse pos in Form space
-		}
-
-		private CameraMatrixInfo m_ShareInfo;
 		// ShareInfo MMF
 		private MemoryMappedFile mmf = null;
 		private MemoryMappedViewAccessor accessor = null;
