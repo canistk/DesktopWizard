@@ -11,14 +11,6 @@ namespace WinOverlay
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            
-            //if (args.Length == 0)
-            //{
-            //    Application.Run(new NoSignalForm());
-            //}
-            //else
-            //{
-            //}
             Application.Run(new OverlayManager());
         }
     }

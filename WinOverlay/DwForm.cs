@@ -113,7 +113,7 @@ namespace WinOverlay
             renderTimer.Start();
         }
 
-        private int m_TargetFPS = 120;
+        private int m_TargetFPS = 10;
 		private void SetTargetFPS(int fps)
         {
             if (m_TargetFPS == fps)
@@ -174,9 +174,6 @@ namespace WinOverlay
 				}));
 			}
 		}
-
-        // Remove OnPrint - it's not called by Invalidate()
-        // OnPrint is for printing, not screen rendering
 
         private void RenderDebugInfo(Graphics g)
         {
@@ -299,8 +296,9 @@ namespace WinOverlay
 		protected override void Dispose(bool disposing)
         {
             if (!isDisposed)
-            {
-                if (disposing)
+			{
+				isDisposed = true;
+				if (disposing)
                 {
                     renderTimer?.Stop();
                     renderTimer?.Dispose();
@@ -310,7 +308,6 @@ namespace WinOverlay
                     m_Converter01?.Dispose();
                     m_Converter02?.Dispose();
                     m_InputPipe?.Dispose();
-                    m_CancelSrc?.Cancel();
                     m_CancelSrc?.Dispose();
 				}
                 renderTimer = null;
@@ -321,7 +318,6 @@ namespace WinOverlay
 				m_Converter02 = null;
 				m_InputPipe = null;
 				m_CancelSrc = null;
-				isDisposed = true;
                 m_SharedMemoryInitialized = false;
 
 			}

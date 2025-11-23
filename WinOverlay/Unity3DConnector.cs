@@ -11,24 +11,24 @@ namespace WinOverlay
 {
     public class Unity3DConnector : IDisposable
     {
-        private static Unity3DConnector _instance;
+        private static Unity3DConnector s_Instance;
         private static readonly object _lock = new object();
 
         public static Unity3DConnector Instance
         {
             get
             {
-                if (_instance == null)
+                if (s_Instance == null)
                 {
                     lock (_lock)
                     {
-                        if (_instance == null)
+                        if (s_Instance == null)
                         {
-                            _instance = new Unity3DConnector();
+                            s_Instance = new Unity3DConnector();
                         }
                     }
                 }
-                return _instance;
+                return s_Instance;
             }
         }
 
@@ -50,10 +50,13 @@ namespace WinOverlay
 
         private bool HandShaked => pipeClient?.IsConnected == true && pipeServer?.IsConnected == true;
 
-        private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
         private CancellationTokenSource m_CancelSrc = null;
-		
-        public async Task ConnectAsync()
+
+        public void Connect()
+        {
+            Task.Run(ConnectAsync);
+		}
+		private async Task ConnectAsync()
         {
             try
             {
@@ -103,12 +106,12 @@ namespace WinOverlay
                 SendWarning("WinOverlay started.");
 
                 _syncContext.Post(_ => ConnectionEstablished?.Invoke(), null);
+                Console.WriteLine("[Unity3DConnector] connection established.");
             }
             catch
             {
-                OnConnectionLosted();
-            }
-            Console.WriteLine("[Unity3DConnector] ConnectAsync finished.");
+                OnConnectionLosted(); // fail before connection established
+			}
 		}
 
         private async void ListenForMessages()
@@ -117,9 +120,9 @@ namespace WinOverlay
             
             while (pipeServer?.IsConnected == true)
             {
-                try
+				try
                 {
-                    int bytesRead = await pipeServer.ReadAsync(buffer, 0, buffer.Length);
+					int bytesRead = await pipeServer.ReadAsync(buffer, 0, buffer.Length);
 
                     if (bytesRead > 0)
                     {
@@ -134,12 +137,14 @@ namespace WinOverlay
                 }
             }
 
-            OnConnectionLosted();
-        }
+            OnConnectionLosted(); // server disconnected
+		}
 
         private void OnMessageReceived(string message)
         {
-            if (message == null || message.Length == 0)
+			if (IsDisposed ||
+                message == null ||
+                message.Length == 0)
                 return;
 
             _syncContext.Post(_ => MessageReceived?.Invoke(message), null);
@@ -147,17 +152,20 @@ namespace WinOverlay
 
         private void OnConnectionLosted()
         {
-            Debug.Error("[Unity3DConnector] Connection losted !!!!");
+            Debug.Error("[Unity3DConnector] Connection losted !!!!, self disposing...");
             m_CancelSrc?.Cancel();
             m_CancelSrc?.Dispose();
 			_syncContext.Post(_ => ConnectionLosted?.Invoke(), null);
         }
 
-        public void SendMessage(MyAction action)
+		#region Send Message
+		public void SendMessage(MyAction action)
             => SendMessage(action.ToJson());
 
         public void SendMessage(string message)
         {
+            if (IsDisposed)
+                return;
             if (!(pipeClient?.IsConnected == true))
             {
                 lock (s_CacheLock)
@@ -172,8 +180,10 @@ namespace WinOverlay
         }
 
         public void SendError(string message)
-        {
-            using (var err = new MyAction(OverlayManager.CMD.SlaveError))
+		{
+			if (IsDisposed)
+				return;
+			using (var err = new MyAction(OverlayManager.CMD.SlaveError))
             {
                 err.Add("message", message);
                 SendMessage(err);
@@ -181,8 +191,10 @@ namespace WinOverlay
         }
         
         public void SendWarning(string message)
-        {
-            using (var warn = new MyAction(OverlayManager.CMD.SlaveWarning))
+		{
+			if (IsDisposed)
+				return;
+			using (var warn = new MyAction(OverlayManager.CMD.SlaveWarning))
             {
                 warn.Add("message", message);
                 SendMessage(warn);
@@ -190,8 +202,10 @@ namespace WinOverlay
         }
 
         public void SendInfo(string message)
-        {
-            using (var info = new MyAction(OverlayManager.CMD.SlaveInfo))
+		{
+			if (IsDisposed)
+				return;
+			using (var info = new MyAction(OverlayManager.CMD.SlaveInfo))
             {
                 info.Add("message", message);
                 SendMessage(info);
@@ -235,8 +249,10 @@ namespace WinOverlay
         private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
         
         private async Task InternalSentAsync(string message)
-        {
-            if (pipeClient == null || !pipeClient.IsConnected)
+		{
+			if (IsDisposed)
+				return;
+			if (pipeClient == null || !pipeClient.IsConnected)
                 return;
 			
 			await _sendSemaphore.WaitAsync();
@@ -255,41 +271,54 @@ namespace WinOverlay
                 _sendSemaphore.Release();
             }
         }
+		#endregion Send Message
+
+		#region Dispose Pattern
+		public bool IsDisposed { get; private set; } = false;
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!IsDisposed)
+			{
+				IsDisposed = true;
+				if (disposing)
+				{
+					lock (s_CacheLock)
+					{
+						if (s_MessageCache.Count > 0)
+						{
+							Debug.Log($"[Unity3DConnector] Disposing with {s_MessageCache.Count} unsent cached messages.");
+							s_MessageCache.Clear();
+						}
+					}
+					lock (_lock)
+					{
+						m_CancelSrc?.Dispose();
+						pipeServer?.Dispose();
+						pipeClient?.Dispose();
+					}
+                    s_Instance?.Dispose();
+				}
+			}
+            m_CancelSrc = null;
+			pipeServer = null;
+			pipeClient = null;
+			s_Instance = null;
+		}
+        ~Unity3DConnector()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
 
         public void Dispose()
-        {
-            lock (_lock)
-            {
-                m_CancelSrc?.Cancel();
-                m_CancelSrc?.Dispose();
-                pipeServer?.Dispose();
-				pipeClient?.Dispose();
-                pipeServer = null;
-                pipeClient = null;
+		{
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
+		#endregion Dispose Pattern
+	}
 
-				lock (s_CacheLock)
-                {
-                    if (s_MessageCache.Count > 0)
-                    {
-                        Debug.Log($"[Unity3DConnector] Disposing with {s_MessageCache.Count} unsent cached messages.");
-                        s_MessageCache.Clear();
-                    }
-                }
-                
-                _instance = null;
-            }
-        }
-
-        public static void DisposeInstance()
-        {
-            lock (_lock)
-            {
-                _instance?.Dispose();
-            }
-        }
-    }
-
-    public class MyAction : Dictionary<string, object>, System.IDisposable
+	public class MyAction : Dictionary<string, object>, System.IDisposable
     {
         public MyAction(string value)
         {

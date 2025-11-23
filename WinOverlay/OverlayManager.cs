@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace WinOverlay
 {
@@ -32,14 +30,10 @@ namespace WinOverlay
         {
             if (disposing)
             {
-                // Dispose all active cameras
-                foreach (var kvp in m_ActiveCameras)
-                {
-                    // kvp.Value?.Dispose();
-                }
-                m_ActiveCameras.Clear();
-                
-                Unity3DConnector.DisposeInstance();
+                ClearUpOverlay();
+                u3d.MessageReceived -= OnMessageReceived;
+                u3d.ConnectionLosted -= OnConnectionLost;
+                u3d.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -50,8 +44,7 @@ namespace WinOverlay
             u3d.ConnectionLosted -= OnConnectionLost;
 			u3d.MessageReceived += OnMessageReceived;
             u3d.ConnectionLosted += OnConnectionLost;
-
-            _ = Task.Run(async () => await u3d.ConnectAsync());
+            u3d.Connect();
         }
 
         private void OnMessageReceived(string message)
@@ -85,14 +78,28 @@ namespace WinOverlay
 		private void OnConnectionLost()
         {
             // Exit application when connection is lost
-            Error("Connection lost. Exiting OverlayManager.");
-            InitializeConnector();
-			//Dispose();
-			//ExitThread();
+            Error("Connection lost. OverlayManager shutting down.");
+            if (System.Diagnostics.Debugger.IsAttached)
+            {
+                Warn("Debugger is attached. Not exiting application.");
+                // Clean up existing state
+                u3d.MessageReceived -= OnMessageReceived;
+                u3d.ConnectionLosted -= OnConnectionLost;
+                u3d.Dispose();
+
+                // Re-initialize connector for debugging
+                InitializeConnector();
+            }
+            else
+            {
+				// close application
+				ExitThread();
+            }
 		}
 
         public void SendError(string message)
         {
+            
             using (var err = new MyAction(CMD.SlaveError))
             {
                 err.Add("message", message);
@@ -194,5 +201,15 @@ namespace WinOverlay
                 SendWarning($"Camera {cameraId} was not registered");
             }
         }
+
+        private void ClearUpOverlay()
+        {
+			// Dispose all active cameras
+			foreach (var kvp in m_ActiveCameras)
+			{
+				kvp.Value?.Dispose();
+			}
+			m_ActiveCameras.Clear();
+		}
     }
 }
