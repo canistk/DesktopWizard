@@ -32,8 +32,14 @@ namespace Share {
             "EgkKAXgYAyABKAUSCQoBeRgEIAEoBRINCgVkZWx0YRgFIAEoBSKLAQoPS2V5",
             "Ym9hcmRFdmVudFAzEg8KB2tleUNvZGUYASABKAUSCwoDYWx0GAIgASgIEg8K",
             "B2NvbnRyb2wYAyABKAgSDQoFc2hpZnQYBCABKAgSDwoHaGFuZGxlZBgGIAEo",
-            "CBIYChBzdXBwcmVzc0tleVByZXNzGAcgASgIEg8KB2lzS2V5VXAYCCABKAhC",
-            "CKoCBVNoYXJlYgZwcm90bzM="));
+            "CBIYChBzdXBwcmVzc0tleVByZXNzGAcgASgIEg8KB2lzS2V5VXAYCCABKAgi",
+            "mwIKCkNhbWVyYUluZm8SKQoDbzJtGAEgASgLMhwuRGVza3RvcFdpemFyZC5F",
+            "dmVudHMuTWF0NHg0EikKA20yZhgCIAEoCzIcLkRlc2t0b3BXaXphcmQuRXZl",
+            "bnRzLk1hdDR4NBIwCglmb3JtT1NQb3MYAyABKAsyHS5EZXNrdG9wV2l6YXJk",
+            "LkV2ZW50cy5WZWMySW50EiwKBW9zUG9zGAQgASgLMh0uRGVza3RvcFdpemFy",
+            "ZC5FdmVudHMuVmVjMkludBIqCgZtb25Qb3MYBSABKAsyGi5EZXNrdG9wV2l6",
+            "YXJkLkV2ZW50cy5WZWMzEisKB2Zvcm1Qb3MYBiABKAsyGi5EZXNrdG9wV2l6",
+            "YXJkLkV2ZW50cy5WZWMzQgiqAgVTaGFyZWIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
@@ -42,7 +48,8 @@ namespace Share {
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.Vec3), global::Share.Vec3.Parser, new[]{ "X", "Y", "Z" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.Mat4x4), global::Share.Mat4x4.Parser, new[]{ "M" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.MouseEventP3), global::Share.MouseEventP3.Parser, new[]{ "Button", "Clicks", "X", "Y", "Delta" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Share.KeyboardEventP3), global::Share.KeyboardEventP3.Parser, new[]{ "KeyCode", "Alt", "Control", "Shift", "Handled", "SuppressKeyPress", "IsKeyUp" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::Share.KeyboardEventP3), global::Share.KeyboardEventP3.Parser, new[]{ "KeyCode", "Alt", "Control", "Shift", "Handled", "SuppressKeyPress", "IsKeyUp" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Share.CameraInfo), global::Share.CameraInfo.Parser, new[]{ "O2M", "M2F", "FormOSPos", "OsPos", "MonPos", "FormPos" }, null, null, null, null)
           }));
     }
     #endregion
@@ -1740,6 +1747,443 @@ namespace Share {
           }
           case 64: {
             IsKeyUp = input.ReadBool();
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+  }
+
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class CameraInfo : pb::IMessage<CameraInfo>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<CameraInfo> _parser = new pb::MessageParser<CameraInfo>(() => new CameraInfo());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<CameraInfo> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Share.ShareClassUnityReflection.Descriptor.MessageTypes[6]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public CameraInfo() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public CameraInfo(CameraInfo other) : this() {
+      o2M_ = other.o2M_ != null ? other.o2M_.Clone() : null;
+      m2F_ = other.m2F_ != null ? other.m2F_.Clone() : null;
+      formOSPos_ = other.formOSPos_ != null ? other.formOSPos_.Clone() : null;
+      osPos_ = other.osPos_ != null ? other.osPos_.Clone() : null;
+      monPos_ = other.monPos_ != null ? other.monPos_.Clone() : null;
+      formPos_ = other.formPos_ != null ? other.formPos_.Clone() : null;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public CameraInfo Clone() {
+      return new CameraInfo(this);
+    }
+
+    /// <summary>Field number for the "o2m" field.</summary>
+    public const int O2MFieldNumber = 1;
+    private global::Share.Mat4x4 o2M_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Share.Mat4x4 O2M {
+      get { return o2M_; }
+      set {
+        o2M_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "m2f" field.</summary>
+    public const int M2FFieldNumber = 2;
+    private global::Share.Mat4x4 m2F_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Share.Mat4x4 M2F {
+      get { return m2F_; }
+      set {
+        m2F_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "formOSPos" field.</summary>
+    public const int FormOSPosFieldNumber = 3;
+    private global::Share.Vec2Int formOSPos_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Share.Vec2Int FormOSPos {
+      get { return formOSPos_; }
+      set {
+        formOSPos_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "osPos" field.</summary>
+    public const int OsPosFieldNumber = 4;
+    private global::Share.Vec2Int osPos_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Share.Vec2Int OsPos {
+      get { return osPos_; }
+      set {
+        osPos_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "monPos" field.</summary>
+    public const int MonPosFieldNumber = 5;
+    private global::Share.Vec3 monPos_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Share.Vec3 MonPos {
+      get { return monPos_; }
+      set {
+        monPos_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "formPos" field.</summary>
+    public const int FormPosFieldNumber = 6;
+    private global::Share.Vec3 formPos_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Share.Vec3 FormPos {
+      get { return formPos_; }
+      set {
+        formPos_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as CameraInfo);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(CameraInfo other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (!object.Equals(O2M, other.O2M)) return false;
+      if (!object.Equals(M2F, other.M2F)) return false;
+      if (!object.Equals(FormOSPos, other.FormOSPos)) return false;
+      if (!object.Equals(OsPos, other.OsPos)) return false;
+      if (!object.Equals(MonPos, other.MonPos)) return false;
+      if (!object.Equals(FormPos, other.FormPos)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (o2M_ != null) hash ^= O2M.GetHashCode();
+      if (m2F_ != null) hash ^= M2F.GetHashCode();
+      if (formOSPos_ != null) hash ^= FormOSPos.GetHashCode();
+      if (osPos_ != null) hash ^= OsPos.GetHashCode();
+      if (monPos_ != null) hash ^= MonPos.GetHashCode();
+      if (formPos_ != null) hash ^= FormPos.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (o2M_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(O2M);
+      }
+      if (m2F_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(M2F);
+      }
+      if (formOSPos_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(FormOSPos);
+      }
+      if (osPos_ != null) {
+        output.WriteRawTag(34);
+        output.WriteMessage(OsPos);
+      }
+      if (monPos_ != null) {
+        output.WriteRawTag(42);
+        output.WriteMessage(MonPos);
+      }
+      if (formPos_ != null) {
+        output.WriteRawTag(50);
+        output.WriteMessage(FormPos);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (o2M_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(O2M);
+      }
+      if (m2F_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(M2F);
+      }
+      if (formOSPos_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(FormOSPos);
+      }
+      if (osPos_ != null) {
+        output.WriteRawTag(34);
+        output.WriteMessage(OsPos);
+      }
+      if (monPos_ != null) {
+        output.WriteRawTag(42);
+        output.WriteMessage(MonPos);
+      }
+      if (formPos_ != null) {
+        output.WriteRawTag(50);
+        output.WriteMessage(FormPos);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (o2M_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(O2M);
+      }
+      if (m2F_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(M2F);
+      }
+      if (formOSPos_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(FormOSPos);
+      }
+      if (osPos_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(OsPos);
+      }
+      if (monPos_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(MonPos);
+      }
+      if (formPos_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(FormPos);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(CameraInfo other) {
+      if (other == null) {
+        return;
+      }
+      if (other.o2M_ != null) {
+        if (o2M_ == null) {
+          O2M = new global::Share.Mat4x4();
+        }
+        O2M.MergeFrom(other.O2M);
+      }
+      if (other.m2F_ != null) {
+        if (m2F_ == null) {
+          M2F = new global::Share.Mat4x4();
+        }
+        M2F.MergeFrom(other.M2F);
+      }
+      if (other.formOSPos_ != null) {
+        if (formOSPos_ == null) {
+          FormOSPos = new global::Share.Vec2Int();
+        }
+        FormOSPos.MergeFrom(other.FormOSPos);
+      }
+      if (other.osPos_ != null) {
+        if (osPos_ == null) {
+          OsPos = new global::Share.Vec2Int();
+        }
+        OsPos.MergeFrom(other.OsPos);
+      }
+      if (other.monPos_ != null) {
+        if (monPos_ == null) {
+          MonPos = new global::Share.Vec3();
+        }
+        MonPos.MergeFrom(other.MonPos);
+      }
+      if (other.formPos_ != null) {
+        if (formPos_ == null) {
+          FormPos = new global::Share.Vec3();
+        }
+        FormPos.MergeFrom(other.FormPos);
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            if (o2M_ == null) {
+              O2M = new global::Share.Mat4x4();
+            }
+            input.ReadMessage(O2M);
+            break;
+          }
+          case 18: {
+            if (m2F_ == null) {
+              M2F = new global::Share.Mat4x4();
+            }
+            input.ReadMessage(M2F);
+            break;
+          }
+          case 26: {
+            if (formOSPos_ == null) {
+              FormOSPos = new global::Share.Vec2Int();
+            }
+            input.ReadMessage(FormOSPos);
+            break;
+          }
+          case 34: {
+            if (osPos_ == null) {
+              OsPos = new global::Share.Vec2Int();
+            }
+            input.ReadMessage(OsPos);
+            break;
+          }
+          case 42: {
+            if (monPos_ == null) {
+              MonPos = new global::Share.Vec3();
+            }
+            input.ReadMessage(MonPos);
+            break;
+          }
+          case 50: {
+            if (formPos_ == null) {
+              FormPos = new global::Share.Vec3();
+            }
+            input.ReadMessage(FormPos);
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            if (o2M_ == null) {
+              O2M = new global::Share.Mat4x4();
+            }
+            input.ReadMessage(O2M);
+            break;
+          }
+          case 18: {
+            if (m2F_ == null) {
+              M2F = new global::Share.Mat4x4();
+            }
+            input.ReadMessage(M2F);
+            break;
+          }
+          case 26: {
+            if (formOSPos_ == null) {
+              FormOSPos = new global::Share.Vec2Int();
+            }
+            input.ReadMessage(FormOSPos);
+            break;
+          }
+          case 34: {
+            if (osPos_ == null) {
+              OsPos = new global::Share.Vec2Int();
+            }
+            input.ReadMessage(OsPos);
+            break;
+          }
+          case 42: {
+            if (monPos_ == null) {
+              MonPos = new global::Share.Vec3();
+            }
+            input.ReadMessage(MonPos);
+            break;
+          }
+          case 50: {
+            if (formPos_ == null) {
+              FormPos = new global::Share.Vec3();
+            }
+            input.ReadMessage(FormPos);
             break;
           }
         }

@@ -77,4 +77,17 @@ namespace Share
 			};
 		}
 	}
+
+	public partial class CameraInfo
+	{
+		public CameraInfo(Mat4x4 o2m, Mat4x4 m2f, Vec2Int osPos, Vec2Int formOSPos, Vec3 monPos, Vec3 formPos)
+		{
+			this.O2M = o2m;
+			this.M2F = m2f;
+			this.OsPos = osPos;
+			this.FormOSPos = formOSPos;
+			this.MonPos = monPos;
+			this.FormPos = formPos;
+		}
+	}
 }

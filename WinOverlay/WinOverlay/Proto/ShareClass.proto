@@ -40,3 +40,12 @@ message KeyboardEventP3 {
     bool suppressKeyPress = 7;
     bool isKeyUp = 8;
 }
+
+message CameraInfo {
+    Mat4x4 o2m = 1;
+    Mat4x4 m2f = 2;
+    Vec2Int formOSPos = 3;
+    Vec2Int osPos = 4;
+    Vec3 monPos = 5;
+    Vec3 formPos = 6;
+}
