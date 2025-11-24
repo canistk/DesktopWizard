@@ -55,6 +55,7 @@ namespace WinOverlay
 
 		public static Mat4x4 CreateTranslation(Vec3 position)
 		{
+			if (position is null) return Mat4x4.Zero;
 			return new Mat4x4(System.Numerics.Matrix4x4.CreateTranslation(position.X, position.Y, position.Z));
 		}
 
@@ -65,6 +66,7 @@ namespace WinOverlay
 
 		public static Mat4x4 CreateScale(Vec3 scale)
 		{
+			if (scale is null) return Mat4x4.Zero;
 			return new Mat4x4(System.Numerics.Matrix4x4.CreateScale(scale.X, scale.Y, scale.Z));
 		}
 
@@ -100,6 +102,7 @@ namespace WinOverlay
 
 		public static Mat4x4 CreateLookAt(Vec3 cameraPosition, Vec3 cameraTarget, Vec3 cameraUpVector)
 		{
+			if (cameraPosition is null || cameraTarget is null || cameraUpVector is null) return Mat4x4.Identity;
 			return new Mat4x4(System.Numerics.Matrix4x4.CreateLookAt(
 				new System.Numerics.Vector3(cameraPosition.X, cameraPosition.Y, cameraPosition.Z),
 				new System.Numerics.Vector3(cameraTarget.X, cameraTarget.Y, cameraTarget.Z),
@@ -118,6 +121,7 @@ namespace WinOverlay
 
 		public static Mat4x4 CreateTRS(Vec3 position, Vec3 rotation, Vec3 scale)
 		{
+			if (position is null || rotation is null || scale is null) return Mat4x4.Identity;
 			var translation = CreateTranslation(position);
 			var rotationMatrix = CreateFromYawPitchRoll(rotation.Y, rotation.X, rotation.Z);
 			var scaleMatrix = CreateScale(scale);
@@ -127,6 +131,7 @@ namespace WinOverlay
 		// Matrix operations
 		public Mat4x4 Multiply(Mat4x4 other)
 		{
+			if (other is null) return Mat4x4.Zero;
 			var m1 = ToNumericsMatrix();
 			var m2 = other.ToNumericsMatrix();
 			return new Mat4x4(System.Numerics.Matrix4x4.Multiply(m1, m2));
@@ -156,6 +161,7 @@ namespace WinOverlay
 		// Transform point with full 4x4 transformation (including translation)
 		public Vec3 MultiplyPoint(Vec3 point)
 		{
+			if (point is null) return Vec3.Zero;
 			float x = point.X;
 			float y = point.Y;
 			float z = point.Z;
@@ -168,6 +174,7 @@ namespace WinOverlay
 		// Transform point with 3x4 matrix (no perspective division)
 		public Vec3 MultiplyPoint3x4(Vec3 point)
 		{
+			if (point is null) return Vec3.Zero;
   			float x = point.X;
 			float y = point.Y;
 			float z = point.Z;
@@ -180,6 +187,7 @@ namespace WinOverlay
 		// Transform direction (ignore translation)
 		public Vec3 MultiplyVector(Vec3 vector)
 		{
+			if (vector is null) return Vec3.Zero;
 			float x = vector.X;
 			float y = vector.Y;
 			float z = vector.Z;

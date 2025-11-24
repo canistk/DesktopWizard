@@ -18,44 +18,54 @@ namespace WinOverlay
 
 		public static Vec3 operator +(Vec3 a, Vec3 b)
 		{
+			if (a is null || b is null) return Vec3.Zero;
 			return new Vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
 		}
 
 		public static Vec3 operator -(Vec3 a, Vec3 b)
 		{
+			if (a is null || b is null) return Vec3.Zero;
 			return new Vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
 		}
 		public static Vec3 operator *(Vec3 a, float b)
 		{
+			if (a is null) return Vec3.Zero;
 			return new Vec3(a.X * b, a.Y * b, a.Z * b);
 		}
 		public static Vec3 operator /(Vec3 a, float b)
 		{
+			if (a is null) return Vec3.Zero;
 			return new Vec3(a.X / b, a.Y / b, a.Z / b);
 		}
 		public static Vec3 operator *(float a, Vec3 b)
 		{
+			if (b is null) return Vec3.Zero;
 			return new Vec3(a * b.X, a * b.Y, a * b.Z);
 		}
 		public static Vec3 operator /(float a, Vec3 b)
 		{
+			if (b is null) return Vec3.Zero;
 			return new Vec3(a / b.X, a / b.Y, a / b.Z);
 		}
 		public static Vec3 operator -(Vec3 a)
 		{
+			if (a is null) return Vec3.Zero;
 			return new Vec3(-a.X, -a.Y, -a.Z);
 		}
 		public static bool operator ==(Vec3 a, Vec3 b)
 		{
+			if (a is null || b is null) return false;
 			return a.X == b.X && a.Y == b.Y && a.Z == b.Z;
 		}
 		public static bool operator !=(Vec3 a, Vec3 b)
 		{
+			if (a is null || b is null) return true;
 			return !(a == b);
 		}
 		
 		public Vec3 Dot(Vec3 other)
 		{
+			if (other is null) return Vec3.Zero;
 			return new Vec3(X * other.X, Y * other.Y, Z * other.Z);
 		}
 
@@ -72,13 +82,18 @@ namespace WinOverlay
 		}
 		public Vec3 Cross(Vec3 other)
 		{
+			if (other is null) return Vec3.Zero;
 			return new Vec3(
 				Y * other.Z - Z * other.Y,
 				Z * other.X - X * other.Z,
 				X * other.Y - Y * other.X
 			);
 		}
-		public float Distance(Vec3 other) => (this - other).Magnitude();
+		public float Distance(Vec3 other)
+		{
+			if (other is null) return 0f;
+			return (this - other).Magnitude();
+		}
 
 	}
 }
