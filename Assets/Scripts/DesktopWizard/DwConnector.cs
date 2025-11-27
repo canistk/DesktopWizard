@@ -256,7 +256,9 @@ namespace DesktopWizard
 
         private async void ListenForMessages()
         {
-            while (pipeClient?.IsConnected == true)
+            while (pipeClient?.IsConnected == true &&
+                m_CancelSrc != null &&
+                m_CancelSrc?.IsCancellationRequested == false)
             {
                 if (s_AppQuit)
                     return;
@@ -281,7 +283,10 @@ namespace DesktopWizard
             }
 
             // Reconnection logic + restart WinOverlay
-            if (this.isActiveAndEnabled && !s_AppQuit)
+            if (m_CancelSrc != null &&
+                !m_CancelSrc.IsCancellationRequested &&
+                this.isActiveAndEnabled &&
+                !s_AppQuit)
             {
                 tLogWarning("Lost connection to WinOverlay.");
                 RestartServer();

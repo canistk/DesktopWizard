@@ -2023,13 +2023,28 @@ namespace DesktopWizard
 				Y = Top,
 			};
 
+			var info = new Share.CameraInfo(o2m, m2f, v2i, formOSPos, monPos, formPos);
+			// Serialize the Protobuf message to bytes and write to the memory-mapped file.
+			var bytes = info.ToByteArray();
+
+			// Local test for CameraInfo
+			try
+			{
+				var tmp = Share.CameraInfo.Parser.ParseFrom(bytes);
+				Debug.Log("Success to parse CameraInfo from bytes.", this);
+			}
+			catch (Exception ex)
+			{
+				Debug.LogError("Fail to parse CameraInfo from bytes.", this);
+            }
+
 			if (accessor != null)
 			{
-				var info = new Share.CameraInfo(o2m, m2f, v2i, formOSPos, monPos, formPos);
-				// Serialize the Protobuf message to bytes and write to the memory-mapped file.
-                var bytes = info.ToByteArray();
-                accessor.WriteArray(0, bytes, 0, bytes.Length);
-			}
+
+
+				// don't sent, test first.
+                // accessor.WriteArray(0, bytes, 0, bytes.Length);
+            }
 		}
 
 		// ShareInfo MMF
