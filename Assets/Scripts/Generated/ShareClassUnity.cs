@@ -33,13 +33,12 @@ namespace Share {
             "Ym9hcmRFdmVudFAzEg8KB2tleUNvZGUYASABKAUSCwoDYWx0GAIgASgIEg8K",
             "B2NvbnRyb2wYAyABKAgSDQoFc2hpZnQYBCABKAgSDwoHaGFuZGxlZBgGIAEo",
             "CBIYChBzdXBwcmVzc0tleVByZXNzGAcgASgIEg8KB2lzS2V5VXAYCCABKAgi",
-            "mwIKCkNhbWVyYUluZm8SKQoDbzJtGAEgASgLMhwuRGVza3RvcFdpemFyZC5F",
+            "8AEKCkNhbWVyYUluZm8SKQoDbzJtGAEgASgLMhwuRGVza3RvcFdpemFyZC5F",
             "dmVudHMuTWF0NHg0EikKA20yZhgCIAEoCzIcLkRlc2t0b3BXaXphcmQuRXZl",
-            "bnRzLk1hdDR4NBIwCglmb3JtT1NQb3MYAyABKAsyHS5EZXNrdG9wV2l6YXJk",
-            "LkV2ZW50cy5WZWMySW50EiwKBW9zUG9zGAQgASgLMh0uRGVza3RvcFdpemFy",
-            "ZC5FdmVudHMuVmVjMkludBIqCgZtb25Qb3MYBSABKAsyGi5EZXNrdG9wV2l6",
-            "YXJkLkV2ZW50cy5WZWMzEisKB2Zvcm1Qb3MYBiABKAsyGi5EZXNrdG9wV2l6",
-            "YXJkLkV2ZW50cy5WZWMzQgiqAgVTaGFyZWIGcHJvdG8z"));
+            "bnRzLk1hdDR4NBISCgpmb3JtT1NQb3NYGAMgASgFEhIKCmZvcm1PU1Bvc1kY",
+            "BCABKAUSDgoGb3NQb3NYGAUgASgFEg4KBm9zUG9zWRgGIAEoBRIPCgdtb25Q",
+            "b3NYGAcgASgCEg8KB21vblBvc1kYCCABKAISEAoIZm9ybVBvc1gYCSABKAIS",
+            "EAoIZm9ybVBvc1kYCiABKAJCCKoCBVNoYXJlYgZwcm90bzM="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
@@ -49,7 +48,7 @@ namespace Share {
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.Mat4x4), global::Share.Mat4x4.Parser, new[]{ "M" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.MouseEventP3), global::Share.MouseEventP3.Parser, new[]{ "Button", "Clicks", "X", "Y", "Delta" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Share.KeyboardEventP3), global::Share.KeyboardEventP3.Parser, new[]{ "KeyCode", "Alt", "Control", "Shift", "Handled", "SuppressKeyPress", "IsKeyUp" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Share.CameraInfo), global::Share.CameraInfo.Parser, new[]{ "O2M", "M2F", "FormOSPos", "OsPos", "MonPos", "FormPos" }, null, null, null, null)
+            new pbr::GeneratedClrTypeInfo(typeof(global::Share.CameraInfo), global::Share.CameraInfo.Parser, new[]{ "O2M", "M2F", "FormOSPosX", "FormOSPosY", "OsPosX", "OsPosY", "MonPosX", "MonPosY", "FormPosX", "FormPosY" }, null, null, null, null)
           }));
     }
     #endregion
@@ -1793,10 +1792,14 @@ namespace Share {
     public CameraInfo(CameraInfo other) : this() {
       o2M_ = other.o2M_ != null ? other.o2M_.Clone() : null;
       m2F_ = other.m2F_ != null ? other.m2F_.Clone() : null;
-      formOSPos_ = other.formOSPos_ != null ? other.formOSPos_.Clone() : null;
-      osPos_ = other.osPos_ != null ? other.osPos_.Clone() : null;
-      monPos_ = other.monPos_ != null ? other.monPos_.Clone() : null;
-      formPos_ = other.formPos_ != null ? other.formPos_.Clone() : null;
+      formOSPosX_ = other.formOSPosX_;
+      formOSPosY_ = other.formOSPosY_;
+      osPosX_ = other.osPosX_;
+      osPosY_ = other.osPosY_;
+      monPosX_ = other.monPosX_;
+      monPosY_ = other.monPosY_;
+      formPosX_ = other.formPosX_;
+      formPosY_ = other.formPosY_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -1830,51 +1833,102 @@ namespace Share {
       }
     }
 
-    /// <summary>Field number for the "formOSPos" field.</summary>
-    public const int FormOSPosFieldNumber = 3;
-    private global::Share.Vec2Int formOSPos_;
+    /// <summary>Field number for the "formOSPosX" field.</summary>
+    public const int FormOSPosXFieldNumber = 3;
+    private int formOSPosX_;
+    /// <summary>
+    /// Avoid use nested structure due to protobuf bug in .net
+    /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::Share.Vec2Int FormOSPos {
-      get { return formOSPos_; }
+    public int FormOSPosX {
+      get { return formOSPosX_; }
       set {
-        formOSPos_ = value;
+        formOSPosX_ = value;
       }
     }
 
-    /// <summary>Field number for the "osPos" field.</summary>
-    public const int OsPosFieldNumber = 4;
-    private global::Share.Vec2Int osPos_;
+    /// <summary>Field number for the "formOSPosY" field.</summary>
+    public const int FormOSPosYFieldNumber = 4;
+    private int formOSPosY_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::Share.Vec2Int OsPos {
-      get { return osPos_; }
+    public int FormOSPosY {
+      get { return formOSPosY_; }
       set {
-        osPos_ = value;
+        formOSPosY_ = value;
       }
     }
 
-    /// <summary>Field number for the "monPos" field.</summary>
-    public const int MonPosFieldNumber = 5;
-    private global::Share.Vec3 monPos_;
+    /// <summary>Field number for the "osPosX" field.</summary>
+    public const int OsPosXFieldNumber = 5;
+    private int osPosX_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::Share.Vec3 MonPos {
-      get { return monPos_; }
+    public int OsPosX {
+      get { return osPosX_; }
       set {
-        monPos_ = value;
+        osPosX_ = value;
       }
     }
 
-    /// <summary>Field number for the "formPos" field.</summary>
-    public const int FormPosFieldNumber = 6;
-    private global::Share.Vec3 formPos_;
+    /// <summary>Field number for the "osPosY" field.</summary>
+    public const int OsPosYFieldNumber = 6;
+    private int osPosY_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public global::Share.Vec3 FormPos {
-      get { return formPos_; }
+    public int OsPosY {
+      get { return osPosY_; }
       set {
-        formPos_ = value;
+        osPosY_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "monPosX" field.</summary>
+    public const int MonPosXFieldNumber = 7;
+    private float monPosX_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public float MonPosX {
+      get { return monPosX_; }
+      set {
+        monPosX_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "monPosY" field.</summary>
+    public const int MonPosYFieldNumber = 8;
+    private float monPosY_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public float MonPosY {
+      get { return monPosY_; }
+      set {
+        monPosY_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "formPosX" field.</summary>
+    public const int FormPosXFieldNumber = 9;
+    private float formPosX_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public float FormPosX {
+      get { return formPosX_; }
+      set {
+        formPosX_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "formPosY" field.</summary>
+    public const int FormPosYFieldNumber = 10;
+    private float formPosY_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public float FormPosY {
+      get { return formPosY_; }
+      set {
+        formPosY_ = value;
       }
     }
 
@@ -1895,10 +1949,14 @@ namespace Share {
       }
       if (!object.Equals(O2M, other.O2M)) return false;
       if (!object.Equals(M2F, other.M2F)) return false;
-      if (!object.Equals(FormOSPos, other.FormOSPos)) return false;
-      if (!object.Equals(OsPos, other.OsPos)) return false;
-      if (!object.Equals(MonPos, other.MonPos)) return false;
-      if (!object.Equals(FormPos, other.FormPos)) return false;
+      if (FormOSPosX != other.FormOSPosX) return false;
+      if (FormOSPosY != other.FormOSPosY) return false;
+      if (OsPosX != other.OsPosX) return false;
+      if (OsPosY != other.OsPosY) return false;
+      if (!pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.Equals(MonPosX, other.MonPosX)) return false;
+      if (!pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.Equals(MonPosY, other.MonPosY)) return false;
+      if (!pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.Equals(FormPosX, other.FormPosX)) return false;
+      if (!pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.Equals(FormPosY, other.FormPosY)) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -1908,10 +1966,14 @@ namespace Share {
       int hash = 1;
       if (o2M_ != null) hash ^= O2M.GetHashCode();
       if (m2F_ != null) hash ^= M2F.GetHashCode();
-      if (formOSPos_ != null) hash ^= FormOSPos.GetHashCode();
-      if (osPos_ != null) hash ^= OsPos.GetHashCode();
-      if (monPos_ != null) hash ^= MonPos.GetHashCode();
-      if (formPos_ != null) hash ^= FormPos.GetHashCode();
+      if (FormOSPosX != 0) hash ^= FormOSPosX.GetHashCode();
+      if (FormOSPosY != 0) hash ^= FormOSPosY.GetHashCode();
+      if (OsPosX != 0) hash ^= OsPosX.GetHashCode();
+      if (OsPosY != 0) hash ^= OsPosY.GetHashCode();
+      if (MonPosX != 0F) hash ^= pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.GetHashCode(MonPosX);
+      if (MonPosY != 0F) hash ^= pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.GetHashCode(MonPosY);
+      if (FormPosX != 0F) hash ^= pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.GetHashCode(FormPosX);
+      if (FormPosY != 0F) hash ^= pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.GetHashCode(FormPosY);
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -1938,21 +2000,37 @@ namespace Share {
         output.WriteRawTag(18);
         output.WriteMessage(M2F);
       }
-      if (formOSPos_ != null) {
-        output.WriteRawTag(26);
-        output.WriteMessage(FormOSPos);
+      if (FormOSPosX != 0) {
+        output.WriteRawTag(24);
+        output.WriteInt32(FormOSPosX);
       }
-      if (osPos_ != null) {
-        output.WriteRawTag(34);
-        output.WriteMessage(OsPos);
+      if (FormOSPosY != 0) {
+        output.WriteRawTag(32);
+        output.WriteInt32(FormOSPosY);
       }
-      if (monPos_ != null) {
-        output.WriteRawTag(42);
-        output.WriteMessage(MonPos);
+      if (OsPosX != 0) {
+        output.WriteRawTag(40);
+        output.WriteInt32(OsPosX);
       }
-      if (formPos_ != null) {
-        output.WriteRawTag(50);
-        output.WriteMessage(FormPos);
+      if (OsPosY != 0) {
+        output.WriteRawTag(48);
+        output.WriteInt32(OsPosY);
+      }
+      if (MonPosX != 0F) {
+        output.WriteRawTag(61);
+        output.WriteFloat(MonPosX);
+      }
+      if (MonPosY != 0F) {
+        output.WriteRawTag(69);
+        output.WriteFloat(MonPosY);
+      }
+      if (FormPosX != 0F) {
+        output.WriteRawTag(77);
+        output.WriteFloat(FormPosX);
+      }
+      if (FormPosY != 0F) {
+        output.WriteRawTag(85);
+        output.WriteFloat(FormPosY);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -1972,21 +2050,37 @@ namespace Share {
         output.WriteRawTag(18);
         output.WriteMessage(M2F);
       }
-      if (formOSPos_ != null) {
-        output.WriteRawTag(26);
-        output.WriteMessage(FormOSPos);
+      if (FormOSPosX != 0) {
+        output.WriteRawTag(24);
+        output.WriteInt32(FormOSPosX);
       }
-      if (osPos_ != null) {
-        output.WriteRawTag(34);
-        output.WriteMessage(OsPos);
+      if (FormOSPosY != 0) {
+        output.WriteRawTag(32);
+        output.WriteInt32(FormOSPosY);
       }
-      if (monPos_ != null) {
-        output.WriteRawTag(42);
-        output.WriteMessage(MonPos);
+      if (OsPosX != 0) {
+        output.WriteRawTag(40);
+        output.WriteInt32(OsPosX);
       }
-      if (formPos_ != null) {
-        output.WriteRawTag(50);
-        output.WriteMessage(FormPos);
+      if (OsPosY != 0) {
+        output.WriteRawTag(48);
+        output.WriteInt32(OsPosY);
+      }
+      if (MonPosX != 0F) {
+        output.WriteRawTag(61);
+        output.WriteFloat(MonPosX);
+      }
+      if (MonPosY != 0F) {
+        output.WriteRawTag(69);
+        output.WriteFloat(MonPosY);
+      }
+      if (FormPosX != 0F) {
+        output.WriteRawTag(77);
+        output.WriteFloat(FormPosX);
+      }
+      if (FormPosY != 0F) {
+        output.WriteRawTag(85);
+        output.WriteFloat(FormPosY);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -2004,17 +2098,29 @@ namespace Share {
       if (m2F_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(M2F);
       }
-      if (formOSPos_ != null) {
-        size += 1 + pb::CodedOutputStream.ComputeMessageSize(FormOSPos);
+      if (FormOSPosX != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(FormOSPosX);
       }
-      if (osPos_ != null) {
-        size += 1 + pb::CodedOutputStream.ComputeMessageSize(OsPos);
+      if (FormOSPosY != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(FormOSPosY);
       }
-      if (monPos_ != null) {
-        size += 1 + pb::CodedOutputStream.ComputeMessageSize(MonPos);
+      if (OsPosX != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(OsPosX);
       }
-      if (formPos_ != null) {
-        size += 1 + pb::CodedOutputStream.ComputeMessageSize(FormPos);
+      if (OsPosY != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(OsPosY);
+      }
+      if (MonPosX != 0F) {
+        size += 1 + 4;
+      }
+      if (MonPosY != 0F) {
+        size += 1 + 4;
+      }
+      if (FormPosX != 0F) {
+        size += 1 + 4;
+      }
+      if (FormPosY != 0F) {
+        size += 1 + 4;
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -2040,29 +2146,29 @@ namespace Share {
         }
         M2F.MergeFrom(other.M2F);
       }
-      if (other.formOSPos_ != null) {
-        if (formOSPos_ == null) {
-          FormOSPos = new global::Share.Vec2Int();
-        }
-        FormOSPos.MergeFrom(other.FormOSPos);
+      if (other.FormOSPosX != 0) {
+        FormOSPosX = other.FormOSPosX;
       }
-      if (other.osPos_ != null) {
-        if (osPos_ == null) {
-          OsPos = new global::Share.Vec2Int();
-        }
-        OsPos.MergeFrom(other.OsPos);
+      if (other.FormOSPosY != 0) {
+        FormOSPosY = other.FormOSPosY;
       }
-      if (other.monPos_ != null) {
-        if (monPos_ == null) {
-          MonPos = new global::Share.Vec3();
-        }
-        MonPos.MergeFrom(other.MonPos);
+      if (other.OsPosX != 0) {
+        OsPosX = other.OsPosX;
       }
-      if (other.formPos_ != null) {
-        if (formPos_ == null) {
-          FormPos = new global::Share.Vec3();
-        }
-        FormPos.MergeFrom(other.FormPos);
+      if (other.OsPosY != 0) {
+        OsPosY = other.OsPosY;
+      }
+      if (other.MonPosX != 0F) {
+        MonPosX = other.MonPosX;
+      }
+      if (other.MonPosY != 0F) {
+        MonPosY = other.MonPosY;
+      }
+      if (other.FormPosX != 0F) {
+        FormPosX = other.FormPosX;
+      }
+      if (other.FormPosY != 0F) {
+        FormPosY = other.FormPosY;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -2097,32 +2203,36 @@ namespace Share {
             input.ReadMessage(M2F);
             break;
           }
-          case 26: {
-            if (formOSPos_ == null) {
-              FormOSPos = new global::Share.Vec2Int();
-            }
-            input.ReadMessage(FormOSPos);
+          case 24: {
+            FormOSPosX = input.ReadInt32();
             break;
           }
-          case 34: {
-            if (osPos_ == null) {
-              OsPos = new global::Share.Vec2Int();
-            }
-            input.ReadMessage(OsPos);
+          case 32: {
+            FormOSPosY = input.ReadInt32();
             break;
           }
-          case 42: {
-            if (monPos_ == null) {
-              MonPos = new global::Share.Vec3();
-            }
-            input.ReadMessage(MonPos);
+          case 40: {
+            OsPosX = input.ReadInt32();
             break;
           }
-          case 50: {
-            if (formPos_ == null) {
-              FormPos = new global::Share.Vec3();
-            }
-            input.ReadMessage(FormPos);
+          case 48: {
+            OsPosY = input.ReadInt32();
+            break;
+          }
+          case 61: {
+            MonPosX = input.ReadFloat();
+            break;
+          }
+          case 69: {
+            MonPosY = input.ReadFloat();
+            break;
+          }
+          case 77: {
+            FormPosX = input.ReadFloat();
+            break;
+          }
+          case 85: {
+            FormPosY = input.ReadFloat();
             break;
           }
         }
@@ -2158,32 +2268,36 @@ namespace Share {
             input.ReadMessage(M2F);
             break;
           }
-          case 26: {
-            if (formOSPos_ == null) {
-              FormOSPos = new global::Share.Vec2Int();
-            }
-            input.ReadMessage(FormOSPos);
+          case 24: {
+            FormOSPosX = input.ReadInt32();
             break;
           }
-          case 34: {
-            if (osPos_ == null) {
-              OsPos = new global::Share.Vec2Int();
-            }
-            input.ReadMessage(OsPos);
+          case 32: {
+            FormOSPosY = input.ReadInt32();
             break;
           }
-          case 42: {
-            if (monPos_ == null) {
-              MonPos = new global::Share.Vec3();
-            }
-            input.ReadMessage(MonPos);
+          case 40: {
+            OsPosX = input.ReadInt32();
             break;
           }
-          case 50: {
-            if (formPos_ == null) {
-              FormPos = new global::Share.Vec3();
-            }
-            input.ReadMessage(FormPos);
+          case 48: {
+            OsPosY = input.ReadInt32();
+            break;
+          }
+          case 61: {
+            MonPosX = input.ReadFloat();
+            break;
+          }
+          case 69: {
+            MonPosY = input.ReadFloat();
+            break;
+          }
+          case 77: {
+            FormPosX = input.ReadFloat();
+            break;
+          }
+          case 85: {
+            FormPosY = input.ReadFloat();
             break;
           }
         }

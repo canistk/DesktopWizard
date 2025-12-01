@@ -190,7 +190,7 @@ namespace WinOverlay
 			{
 				try
 				{
-					mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.Read);
+					mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.ReadWrite);
 				}
 				catch (System.IO.FileNotFoundException)
 				{
@@ -209,30 +209,84 @@ namespace WinOverlay
 				accessor = mmf.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
 			}
 		}
-        public bool TryRead(out CameraInfo info)
+		
+		const int MaxLength = 1024 * 1024; // 1 MB limit for safety
+		byte[] m_Buffer = new byte[MaxLength];
+
+		public bool TryRead(out CameraInfo info)
         {
             if (!IsInitialized)
             {
                 info = default;
                 return false;
             }
-            try
+			int length = -1;
+
+			try
             {
-                byte[] bytes = new byte[accessor.Capacity];
-                accessor.ReadArray(0, bytes, 0, bytes.Length);
-                info = CameraInfo.Parser.ParseFrom(bytes);
-                return true;
+				// check if 4 bytes are available for length prefix
+				if (accessor.Capacity < 4)
+				{
+					info = default;
+					return false;
+				}
+
+				// Read the actual data
+				
+
+				// Read length prefix
+				length = accessor.ReadInt32(0);
+				//accessor.ReadArray(0, m_Buffer, 0, 4);
+				//int length = BitConverter.ToInt32(m_Buffer, 0);
+
+				if (length <= 0)
+				{
+					info = default;
+					return false;
+				}
+				else if (length > MaxLength)
+				{
+					// TODO: try to restart service.
+					Console.WriteLine($"[{m_Name}] CameraInfo length {length} exceeds maximum allowed size.");
+					info = default;
+					return false;
+				}
+
+				if (accessor.Capacity < 4 + length)
+				{
+					// Wait for more data to be written
+					info = default;
+					return false;
+				}
+
+				accessor.ReadArray(4, m_Buffer, 0, length);
             }
             catch
             {
                 info = default;
                 return false;
             }
+
+			try
+			{
+				ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(m_Buffer, 0, length);
+				// Deserialize CameraInfo from bytes
+				info = CameraInfo.Parser.ParseFrom(span);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				// Console print Hex dump of m_Buffer
+				var hex = BitConverter.ToString(m_Buffer, 0, Math.Min(64, m_Buffer.Length)).Replace("-", " ");
+				Console.WriteLine($"[{m_Name}] Error parsing CameraInfo: {ex.Message}\nHex Dump: {hex}");
+				info = default;
+				return false;
+			}
 		}
 	}
 
 	/// <summary>Protobuf class for keyboard event data.
-    /// From WinOverlay to KawaiOS</summary>
+	/// From WinOverlay to KawaiOS</summary>
 	public partial class KeyboardEventP3
 	{
 		public KeyboardEventP3(KeyEventArgs e, bool isKeyUp)

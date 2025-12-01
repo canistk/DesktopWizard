@@ -44,8 +44,16 @@ message KeyboardEventP3 {
 message CameraInfo {
     Mat4x4 o2m = 1;
     Mat4x4 m2f = 2;
-    Vec2Int formOSPos = 3;
-    Vec2Int osPos = 4;
-    Vec3 monPos = 5;
-    Vec3 formPos = 6;
+
+    // Avoid use nested structure due to protobuf bug in .net
+    int32 formOSPosX = 3;
+    int32 formOSPosY = 4;
+    int32 osPosX = 5;
+    int32 osPosY = 6;
+
+    float monPosX = 7;
+    float monPosY = 8;
+
+    float formPosX = 9;
+    float formPosY = 10;
 }

@@ -1977,16 +1977,14 @@ namespace DesktopWizard
 		[SerializeField] private int m_CameraId = 0;
 		public int id => m_CameraId;
 
-		private const string MMF_NAME = "DwCamera";
-
 		private void ShareMemory_Init()
 		{
-			var shareName = $"{MMF_NAME}_{m_CameraId}_Info";
+			var shareName = $"DwCamera_{m_CameraId}_Info";
 			// Create or open the memory-mapped file.
             // Note: Protobuf messages are variable-length, so we use a fixed buffer size.
             // Adjust this size based on expected serialized size of CameraInfo.
-            const int bufferSize = 1024; // Example size, ensure it's large enough
-			mmf = MemoryMappedFile.CreateOrOpen(shareName, bufferSize, MemoryMappedFileAccess.Write);
+            const int bufferSize = 1024 * 1024; // Example size, ensure it's large enough
+			mmf = MemoryMappedFile.CreateOrOpen(shareName, bufferSize, MemoryMappedFileAccess.ReadWrite);
 			accessor = mmf.CreateViewAccessor(0, bufferSize, MemoryMappedFileAccess.Write);
 		}
 		private void ShareMemory_Dispose()
@@ -2025,26 +2023,38 @@ namespace DesktopWizard
 
 			var info = new Share.CameraInfo(o2m, m2f, v2i, formOSPos, monPos, formPos);
 			// Serialize the Protobuf message to bytes and write to the memory-mapped file.
-			var bytes = info.ToByteArray();
-
+			var bytes = ConvertToDynamicBytes(info);
+			
+			#if false
 			// Local test for CameraInfo
 			try
 			{
-				var tmp = Share.CameraInfo.Parser.ParseFrom(bytes);
+				var prefixLength = BitConverter.ToInt32(bytes, 0);
+				var tmp = Share.CameraInfo.Parser.ParseFrom(bytes, 4, prefixLength);
 				Debug.Log("Success to parse CameraInfo from bytes.", this);
 			}
 			catch (Exception ex)
 			{
 				Debug.LogError("Fail to parse CameraInfo from bytes.", this);
             }
+			#endif
 
 			if (accessor != null)
 			{
-
-
-				// don't sent, test first.
-                // accessor.WriteArray(0, bytes, 0, bytes.Length);
+				accessor.WriteArray(0, bytes, 0, bytes.Length);
             }
+		}
+
+		private byte[] ConvertToDynamicBytes(CameraInfo cameraInfo)
+		{
+					// Convert CameraInfo to dynamic byte array
+			var bytes = cameraInfo.ToByteArray();
+			// prepare the bytes, with first 4 bytes as length prefix
+			var lengthPrefix = BitConverter.GetBytes(bytes.Length);
+			var allBytes = new byte[lengthPrefix.Length + bytes.Length];
+			Buffer.BlockCopy(lengthPrefix, 0, allBytes, 0, lengthPrefix.Length);
+			Buffer.BlockCopy(bytes, 0, allBytes, lengthPrefix.Length, bytes.Length);
+			return allBytes;
 		}
 
 		// ShareInfo MMF

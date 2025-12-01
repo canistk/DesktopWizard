@@ -177,8 +177,7 @@ namespace WinOverlay
 
 				if (m_CameraMatrix != null && m_CameraMatrix.TryRead(out var camInfo))
                 {
-                    var p = camInfo.FormOSPos;
-                    location = new Point(p.X + 20, p.Y);
+                    location = new Point(camInfo.FormOSPosX + 20, camInfo.FormOSPosY);
                 }
 				BeginInvoke(new Action(() =>
 				{

@@ -84,10 +84,14 @@ namespace Share
 		{
 			this.O2M = o2m;
 			this.M2F = m2f;
-			this.OsPos = osPos;
-			this.FormOSPos = formOSPos;
-			this.MonPos = monPos;
-			this.FormPos = formPos;
+			this.OsPosX = osPos.X;
+			this.OsPosY = osPos.Y;
+			this.FormOSPosX = formOSPos.X;
+			this.FormOSPosY = formOSPos.Y;
+			this.MonPosX = monPos.X;
+			this.MonPosY = monPos.Y;
+			this.FormPosX = formPos.X;
+			this.FormPosY = formPos.Y;
 		}
 	}
 }
