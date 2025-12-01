@@ -115,12 +115,15 @@ namespace WinOverlay
                 await Task.Delay(100);
             }
             renderTimer = new System.Windows.Forms.Timer();
-            renderTimer.Interval = m_TargetFPS; // ~60 FPS
-            renderTimer.Tick += OnRenderTimer;
-            renderTimer.Start();
+            //renderTimer.Interval = m_TargetFPS; // ~60 FPS
+            //renderTimer.Tick += OnRenderTimer;
+            
+            renderTimer.Interval = 1; // ASAP
+			renderTimer.Tick += ASAPRender;
+			renderTimer.Start();
         }
 
-        private int m_TargetFPS = 10;
+        private int m_TargetFPS = 60;
 		private void SetTargetFPS(int fps)
         {
             if (m_TargetFPS == fps)
@@ -133,14 +136,29 @@ namespace WinOverlay
             }
 		}
 
-        private DateTime m_LastRenderTime = default;
+        private void ASAPRender(object sender, EventArgs e)
+		{
+            if (isDisposed || !m_SharedMemoryInitialized)
+                return;
+            var t1 = m_GPU01.GetTimestamp();
+            var t2 = m_GPU02.GetTimestamp();
+			if (m_LastRenderTime < t1 || m_LastRenderTime < t2)
+            {
+                OnRenderTimer(this, EventArgs.Empty);
+			}
+		}
+
+        private bool m_Rendering = false;
+		private DateTime m_LastRenderTime = default;
 		private void OnRenderTimer(object sender, EventArgs e)
         {
             if (isDisposed || !m_SharedMemoryInitialized)
                 return;
-            
-            // Read ShareInfo from both memory-mapped files
-            m_GPU01.TryRead(out var shareInfo1);
+            if (m_Rendering)
+                return;
+			m_Rendering = true;
+			// Read ShareInfo from both memory-mapped files
+			m_GPU01.TryRead(out var shareInfo1);
             m_GPU02.TryRead(out var shareInfo2);
 
 			// Found oldest non-display frame.
@@ -156,7 +174,8 @@ namespace WinOverlay
                 m_LastRenderTime = shareInfo2.timestamp;
                 ReadBitmap(m_GPU02, shareInfo2);
 			}
-            return;
+            m_Rendering = false;
+			return;
 
             void ReadBitmap(HSM_Gpu gpu, TextureInfo data)
             {
@@ -177,7 +196,8 @@ namespace WinOverlay
 
 				if (m_CameraMatrix != null && m_CameraMatrix.TryRead(out var camInfo))
                 {
-                    location = new Point(camInfo.FormOSPosX + 20, camInfo.FormOSPosY);
+					// Test: offset by form OS position
+					location = new Point(camInfo.FormOSPosX + 300, camInfo.FormOSPosY);
                 }
 				BeginInvoke(new Action(() =>
 				{

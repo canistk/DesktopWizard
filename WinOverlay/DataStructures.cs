@@ -36,6 +36,11 @@ namespace WinOverlay
             bytesPerPixel   = accessor.ReadInt32(28);
             totalSize       = accessor.ReadInt32(32);
 		}
+
+		public static DateTime FetchDatetime(MemoryMappedViewAccessor accessor)
+		{
+			return DateTime.FromBinary(accessor.ReadInt64(8));
+		}
 	}
     /// <summary>
     /// Provides functionality to read GPU information from a memory-mapped file.
@@ -90,6 +95,13 @@ namespace WinOverlay
 			}
 
             accessor = mmf.CreateViewAccessor(0, Marshal.SizeOf<TextureInfo>(), MemoryMappedFileAccess.Read);
+		}
+
+		public DateTime GetTimestamp()
+		{
+			if (!IsInitialized)
+				return DateTime.MinValue;
+			return TextureInfo.FetchDatetime(accessor);
 		}
 
 		public bool TryRead(out TextureInfo info)
