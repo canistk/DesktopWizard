@@ -89,13 +89,25 @@ namespace WinOverlay
                     new Rectangle(0, 0, bitmap.Width, bitmap.Height),
                     ImageLockMode.WriteOnly,
                     bitmap.PixelFormat);
-                
-                unsafe
-                {
+
+				unsafe
+				{
+                    shareInfo.GetChromeKeyColor(out var r, out var g, out var b, out var chromeRange);
+					bool _IsChromeColor(ref byte[] data, int index)
+                    {
+                        return data[index + 0] >= b - chromeRange &&
+                               data[index + 0] <= b + chromeRange &&
+                               data[index + 1] >= g - chromeRange &&
+                               data[index + 1] <= g + chromeRange &&
+                               data[index + 2] >= r - chromeRange &&
+                               data[index + 2] <= r + chromeRange;
+				    }
+
                     byte* ptr = (byte*)bmpData.Scan0;
                     int stride = bmpData.Stride;
                     int width = shareInfo.width;
                     int height = shareInfo.height;
+                    bool useChromeKey = shareInfo.useChromeKey;
                     
                     for (int y = 0; y < height; y++)
                     {
@@ -110,12 +122,25 @@ namespace WinOverlay
                             
                             // Windows BGRA format: [B][G][R][A]
                             int dstIdx = y * stride + x * 4;
-                            
-                            // Convert RGBA ? BGRA
-                            ptr[dstIdx + 0] = m_Pixels[srcIdx + 2]; // B ? B (Unity stores as RGBA but actually BGRA in memory)
-                            ptr[dstIdx + 1] = m_Pixels[srcIdx + 1]; // G ? G
-                            ptr[dstIdx + 2] = m_Pixels[srcIdx + 0]; // R ? R
-                            ptr[dstIdx + 3] = m_Pixels[srcIdx + 3]; // A ? A
+
+                            // Handle transparent background Chrome color by range.
+                            if (useChromeKey && _IsChromeColor(ref m_Pixels, srcIdx))
+                            {
+                                // Set alpha to 0 for chroma key color
+                                ptr[dstIdx + 0] = 0; // B
+                                ptr[dstIdx + 1] = 0; // G
+                                ptr[dstIdx + 2] = 0; // R
+                                ptr[dstIdx + 3] = 0; // A
+                                continue;
+                            }
+                            else
+                            {
+                                // Convert RGBA ? BGRA
+                                ptr[dstIdx + 0] = m_Pixels[srcIdx + 2]; // B ? B (Unity stores as RGBA but actually BGRA in memory)
+                                ptr[dstIdx + 1] = m_Pixels[srcIdx + 1]; // G ? G
+                                ptr[dstIdx + 2] = m_Pixels[srcIdx + 0]; // R ? R
+                                ptr[dstIdx + 3] = m_Pixels[srcIdx + 3]; // A ? A
+                            }
                         }
                     }
                 }

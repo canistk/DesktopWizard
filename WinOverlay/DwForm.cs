@@ -18,7 +18,6 @@ namespace WinOverlay
         private HSM_CameraMatrix m_CameraMatrix;
 		private System.Windows.Forms.Timer renderTimer;
         private Bitmap currentBitmap;
-        private DateTime lastUpdateTime = DateTime.MinValue;
         private bool isDisposed = false;
         
         // Bitmap converters for dual-buffer system
@@ -149,7 +148,8 @@ namespace WinOverlay
 		}
 
         private bool m_Rendering = false;
-		private DateTime m_LastRenderTime = default;
+        private bool m_DrawFlag = false;
+		private DateTime m_LastRenderTime = DateTime.MinValue;
 		private void OnRenderTimer(object sender, EventArgs e)
         {
             if (isDisposed || !m_SharedMemoryInitialized)
@@ -167,12 +167,14 @@ namespace WinOverlay
             if (g1.Duration() < g2.Duration())
             {
                 m_LastRenderTime = shareInfo1.timestamp;
+                m_DrawFlag = false;
 				ReadBitmap(m_GPU01, shareInfo1);
 			}
             else
             {
                 m_LastRenderTime = shareInfo2.timestamp;
-                ReadBitmap(m_GPU02, shareInfo2);
+                m_DrawFlag = true;
+				ReadBitmap(m_GPU02, shareInfo2);
 			}
             m_Rendering = false;
 			return;
@@ -224,30 +226,30 @@ namespace WinOverlay
 			{
 				var info =
 						  $"Size: {Width} x {Height}\n" +
-						  $"Last Update: {lastUpdateTime:HH:mm:ss.fff}";
+						  $"Last Update: {m_LastRenderTime:HH:mm:ss.fff}";
 				g.DrawString(info, infoFont, infoBrush, 20, 120);
 			}
 		}
 
         // Remove old UpdateFrame method - moved to OnRenderTimer
-
-		protected override void OnPaint(PaintEventArgs e)
+        static readonly Point s_LeftTop = new Point(0, 0);
+        protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            
+
             // Draw current bitmap if available
             if (currentBitmap != null)
             {
-                e.Graphics.DrawImage(currentBitmap, 0, 0, Width, Height);
+                e.Graphics.DrawImage(currentBitmap, s_LeftTop);
             }
             else
             {
                 // Fallback: draw debug info when no bitmap is available
-                using (var brush = new SolidBrush(Color.LightBlue))
-                {
-                    e.Graphics.FillRectangle(brush, ClientRectangle);
-                }
-                
+                //using (var brush = new SolidBrush(Color.LightBlue))
+                //{
+                //    e.Graphics.FillRectangle(brush, ClientRectangle);
+                //}
+
                 using (var font = new Font("Arial", 16, FontStyle.Bold))
                 using (var textBrush = new SolidBrush(Color.Black))
                 {
@@ -257,10 +259,15 @@ namespace WinOverlay
                     var y = (Height - textSize.Height) / 2;
                     e.Graphics.DrawString(text, font, textBrush, x, y);
                 }
-                
             }
-            // Show debug info while waiting
-            RenderDebugInfo(e.Graphics);
+
+            using (var pen = new Pen(m_DrawFlag ? Color.Red : Color.Blue, 4))
+            {
+                e.Graphics.DrawArc(pen, 10, 10, 30, 30, 0, 360);
+            }
+
+			// Show debug info while waiting
+			RenderDebugInfo(e.Graphics);
             
             // Draw border
             // using (var pen = new Pen(Color.Red, 2)) { e.Graphics.DrawRectangle(pen, 1, 1, Width - 2, Height - 2); }

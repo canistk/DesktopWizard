@@ -25,8 +25,13 @@ namespace WinOverlay
         public int rowPitch;            // Row pitch in bytes (width * bytesPerPixel)
         public int bytesPerPixel;       // Bytes per pixel based on format
         public int totalSize;           // Total texture size in bytes
+		public float chromeKeyR;
+		public float chromeKeyG;
+		public float chromeKeyB;
+		public float chromeRange;
+		public bool useChromeKey;      // Whether to use chroma keying
 
-        public TextureInfo(MemoryMappedViewAccessor accessor)
+		public TextureInfo(MemoryMappedViewAccessor accessor)
         {
             rtHandler       = (IntPtr)accessor.ReadInt64(0);
             timestamp       = DateTime.FromBinary(accessor.ReadInt64(8));
@@ -35,6 +40,21 @@ namespace WinOverlay
             rowPitch        = accessor.ReadInt32(24);
             bytesPerPixel   = accessor.ReadInt32(28);
             totalSize       = accessor.ReadInt32(32);
+			chromeKeyR		= accessor.ReadSingle(36);
+			chromeKeyG		= accessor.ReadSingle(40);
+			chromeKeyB		= accessor.ReadSingle(44);
+			chromeRange		= accessor.ReadSingle(48);
+			useChromeKey	= accessor.ReadBoolean(52);
+		}
+
+		public void GetChromeKeyColor(out Int32 r, out Int32 g, out Int32 b, out float range01)
+		{
+			r = (Int32)(chromeKeyR * 255);
+			g = (Int32)(chromeKeyG * 255);
+			b = (Int32)(chromeKeyB * 255);
+			range01 = chromeRange * 255;
+			if (range01 < 0) range01 = 0;
+			if (range01 > 255) range01 = 255;
 		}
 
 		public static DateTime FetchDatetime(MemoryMappedViewAccessor accessor)

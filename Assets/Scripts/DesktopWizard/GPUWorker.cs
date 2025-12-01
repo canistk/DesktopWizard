@@ -55,6 +55,11 @@ namespace DesktopWizard
 			public int rowPitch;
 			public int bytesPerPixel;
 			public int totalSize;
+			public float chromeKeyR;
+			public float chromeKeyG;
+			public float chromeKeyB;
+			public float chromeRange;
+			public bool useChromaKey;
 		}
 		private ShareInfo m_ShareInfo;
 		
@@ -177,6 +182,11 @@ namespace DesktopWizard
 			m_ShareInfo.rowPitch = renderTexture.width * 4;
 			m_ShareInfo.totalSize = pixels?.Length ?? 0;
 			m_ShareInfo.timestamp = DateTime.UtcNow;
+			m_ShareInfo.chromeKeyR = dwc.ChromaKeyColor.r;
+			m_ShareInfo.chromeKeyG = dwc.ChromaKeyColor.g;
+			m_ShareInfo.chromeKeyB = dwc.ChromaKeyColor.b;
+			m_ShareInfo.chromeRange = dwc.ChromaKeyRange;
+			m_ShareInfo.useChromaKey = dwc.ChromaKeyCompositing;
 
 			// Write ShareInfo to memory-mapped file
 			accessor.Write(0, ref m_ShareInfo);
