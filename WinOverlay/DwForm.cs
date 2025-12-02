@@ -105,7 +105,7 @@ namespace WinOverlay
             });
         }
 
-        private async void InitializeCameraInfo()
+        private void InitializeCameraInfo()
         {
             m_CameraMatrix = new HSM_CameraMatrix($"{prefix}_Info", m_CancelSrc.Token);
             Console.WriteLine($"Camera info for camera {cameraId} initialized.");
@@ -118,15 +118,18 @@ namespace WinOverlay
                 await Task.Delay(100);
             }
             renderTimer = new System.Windows.Forms.Timer();
-            //renderTimer.Interval = m_TargetFPS; // ~60 FPS
-            //renderTimer.Tick += OnRenderTimer;
-            
+#if true
+			renderTimer.Tick += OnRenderTimer;
+            SetTargetFPS(DEFAULT_FPS);
+#else
             renderTimer.Interval = 1; // ASAP
 			renderTimer.Tick += ASAPRender;
-			renderTimer.Start();
+            renderTimer.Start();
+#endif
         }
 
-        private int m_TargetFPS = 60;
+        private const int DEFAULT_FPS = 30;
+		private int m_TargetFPS = 1;
 		private void SetTargetFPS(int fps)
         {
             if (m_TargetFPS == fps)
@@ -134,8 +137,10 @@ namespace WinOverlay
 			if (renderTimer != null && fps > 0)
             {
                 var val = 1000.0f / fps;
-                if (val < 0f) val = 0f; else if (val > 1000) val = 1000;
-                renderTimer.Interval = Convert.ToInt32(val);
+                if (val < 0f) val = 1f; else if (val > 1000) val = 1000;
+                renderTimer.Stop();
+				renderTimer.Interval = Convert.ToInt32(val);
+                renderTimer.Start();
             }
 		}
 
@@ -155,17 +160,11 @@ namespace WinOverlay
 			}
 		}
 
-        private bool m_Rendering = false;
-        private bool m_DrawFlag = false;
 		private DateTime m_LastRenderTime = DateTime.MinValue;
 		private void OnRenderTimer(object sender, EventArgs e)
         {
             if (isDisposed || !m_SharedMemoryInitialized)
                 return;
-            if (m_Rendering)
-                return;
-
-			m_Rendering = true;
 
 			KeyValuePair<int, TextureInfo> anchor = new KeyValuePair<int, TextureInfo>(-1, default);
             for (int i = 0; i < MAX_GPU_WORKER; ++i)
@@ -183,9 +182,7 @@ namespace WinOverlay
                 return; // No new frame
 
             m_LastRenderTime = anchor.Value.timestamp;
-            m_DrawFlag = false;
 			ReadBitmap(m_GPU[anchor.Key], anchor.Value);
-            m_Rendering = false;
 			return;
 
             void ReadBitmap(HSM_Gpu gpu, TextureInfo data)
@@ -270,9 +267,12 @@ namespace WinOverlay
                 }
             }
 
-            using (var pen = new Pen(m_DrawFlag ? Color.Red : Color.Blue, 4))
+            using (var pen = new Pen(Color.Red, 4))
             {
-                e.Graphics.DrawArc(pen, 10, 10, 30, 30, 0, 360);
+                // convert seconds to angle: 360 degrees in 60 seconds
+                var sec = m_LastRenderTime.Second;
+                var angle = (sec / 60.0f) * 360.0f;
+				e.Graphics.DrawArc(pen, 10, 10, 30, 30, 0, (int)angle);
             }
 
 			// Show debug info while waiting
