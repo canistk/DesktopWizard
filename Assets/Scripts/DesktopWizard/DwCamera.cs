@@ -568,8 +568,9 @@ namespace DesktopWizard
 			[Range(0, 1)] public float softThreshold = 0.5f;
 		}
 
-        private GPUWorker m_GPU01, m_GPU02; // GPU01/02 Ping-Pong buffer
-        private bool m_IsOdd = false; // gpu ping-pong flag, 01 or 02
+        private GPUWorker[] m_GPU; // simple circular buffer
+		private const int MAX_GPU_WORKER = 4; // Note: same as WinOverlay.DwForm.MAX_GPU_WORKER
+		private int m_WorkerIndex = 0;
 
 		private Bitmap m_Bitmap = null;
 		private int m_LastOutputShaderInstanceID = -1;
@@ -580,10 +581,13 @@ namespace DesktopWizard
 			if (isRaw)
 			{
 				if (m_LastOutputShaderInstanceID != -1 || // switched from compute shader to raw
-					m_GPU01 == null || m_GPU02 == null) // first init
+					m_GPU == null) // first init
 				{
-					m_GPU01?.Dispose();	m_GPU01 = new GPU_RawWorker(this, 1);
-					m_GPU02?.Dispose();	m_GPU02 = new GPU_RawWorker(this, 2);
+					m_GPU = new GPUWorker[MAX_GPU_WORKER];
+					for (int i = 0; i < MAX_GPU_WORKER; ++i)
+					{
+						m_GPU[i]?.Dispose(); m_GPU[i] = new GPU_RawWorker(this, i);
+					}
 					m_LastOutputShaderInstanceID = -1;
 				}
 			}
@@ -594,14 +598,19 @@ namespace DesktopWizard
 				{
 					// Allow hot plug output shader, init this frame.
 					m_LastOutputShaderInstanceID = id;
-					m_GPU01?.Dispose();	m_GPU01 = new GPU_ComputeShaderWorker(this, 1, m_OutputShader);
-					m_GPU02?.Dispose();	m_GPU02 = new GPU_ComputeShaderWorker(this, 2, m_OutputShader);
+					m_GPU = new GPUWorker[MAX_GPU_WORKER];
+					for (int i = 0; i < MAX_GPU_WORKER; ++i)
+					{
+						m_GPU[i]?.Dispose(); m_GPU[i] = new GPU_ComputeShaderWorker(this, i, m_OutputShader);
+					}
 				}
 			}
 
-			gpu		= m_IsOdd ? m_GPU01 : m_GPU02;
-			prevSrc	= m_IsOdd ? m_GPU02 : m_GPU01;
-			m_IsOdd = !m_IsOdd;
+			gpu		= m_GPU[m_WorkerIndex];
+			var last = m_WorkerIndex - 1;
+			if (last < 0) last = MAX_GPU_WORKER - 1;
+			prevSrc	= m_GPU[last];
+			m_WorkerIndex = (m_WorkerIndex + 1) % MAX_GPU_WORKER;
 			// Debug.Assert(gpu != null, "GPU worker is null.", this);
 		}
         private void DeinitGPU()
@@ -609,13 +618,15 @@ namespace DesktopWizard
 			// prepare to release render textures and GPU workers.
 			linkCamera.targetTexture = null;
 
-			if (m_GPU01 != null)
-                m_GPU01.Dispose();
-            m_GPU01 = null;
-
-			if (m_GPU02 != null)
-				m_GPU02.Dispose();
-			m_GPU02 = null;
+			if (m_GPU != null)
+			{
+				var i = m_GPU.Length;
+				while (i-- > 0)
+				{
+					m_GPU[i]?.Dispose();
+				}
+				m_GPU = null;
+			}
 
 			if (m_Bitmap != null)
 				m_Bitmap.Dispose();
@@ -2021,43 +2032,16 @@ namespace DesktopWizard
 				Y = Top,
 			};
 
+			// Serialize the message to bytes and write to the memory-mapped file.
 			var info = new Share.CameraInfo(o2m, m2f, v2i, monPos, formOSPos, formPos);
-			// Serialize the Protobuf message to bytes and write to the memory-mapped file.
-			//var bytes = ConvertToDynamicBytes(info);
 			var bytes = info.ToByteArray();
 			
-			#if false
-			// Local test for CameraInfo
-			try
-			{
-				var prefixLength = BitConverter.ToInt32(bytes, 0);
-				var tmp = Share.CameraInfo.Parser.ParseFrom(bytes, 4, prefixLength);
-				Debug.Log("Success to parse CameraInfo from bytes.", this);
-			}
-			catch (Exception ex)
-			{
-				Debug.LogError("Fail to parse CameraInfo from bytes.", this);
-            }
-			#endif
-
 			if (accessor != null)
 			{
 				accessor.WriteArray(0, bytes, 0, bytes.Length);
 				accessor.Flush();
 			}
 		}
-
-		//private byte[] ConvertToDynamicBytes(CameraInfo cameraInfo)
-		//{
-		//			// Convert CameraInfo to dynamic byte array
-		//	var bytes = cameraInfo.ToByteArray();
-		//	// prepare the bytes, with first 4 bytes as length prefix
-		//	var lengthPrefix = BitConverter.GetBytes(bytes.Length);
-		//	var allBytes = new byte[lengthPrefix.Length + bytes.Length];
-		//	Buffer.BlockCopy(lengthPrefix, 0, allBytes, 0, lengthPrefix.Length);
-		//	Buffer.BlockCopy(bytes, 0, allBytes, lengthPrefix.Length, bytes.Length);
-		//	return allBytes;
-		//}
 
 		// ShareInfo MMF
 		private MemoryMappedFile mmf = null;

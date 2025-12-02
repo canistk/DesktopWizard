@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.IO.Pipes;
@@ -14,7 +15,8 @@ namespace WinOverlay
 		private Unity3DConnector u3d => Unity3DConnector.Instance;
 		private int cameraId;
         private string prefix;
-        private HSM_Gpu m_GPU01, m_GPU02;
+		private const int MAX_GPU_WORKER = 4; // Note: same as U3D DwCamera.MAX_GPU_WORKER
+		private HSM_Gpu[] m_GPU;
         private HSM_CameraMatrix m_CameraMatrix;
 		private System.Windows.Forms.Timer renderTimer;
         private Bitmap currentBitmap;
@@ -72,9 +74,11 @@ namespace WinOverlay
                 {
                     try
                     {
-                        m_GPU01 = new HSM_Gpu($"{prefix}_1");
-                        m_GPU02 = new HSM_Gpu($"{prefix}_2");
-                        //m_CameraMatrix = new HSM_CameraMatrix($"{prefix}_Matrix");
+                        m_GPU = new HSM_Gpu[MAX_GPU_WORKER];
+						for (int i = 0; i < MAX_GPU_WORKER; ++i)
+                        {
+                            m_GPU[i] = new HSM_Gpu($"{prefix}_{i}");
+                        }
                         m_SharedMemoryInitialized = true;
                         break;
                     }
@@ -139,11 +143,15 @@ namespace WinOverlay
 		{
             if (isDisposed || !m_SharedMemoryInitialized)
                 return;
-            var t1 = m_GPU01.GetTimestamp();
-            var t2 = m_GPU02.GetTimestamp();
-			if (m_LastRenderTime < t1 || m_LastRenderTime < t2)
+            for (int i = 0; i < MAX_GPU_WORKER; ++i)
             {
-                OnRenderTimer(this, EventArgs.Empty);
+				// Any new frame available?
+				var t = m_GPU[i].GetTimestamp();
+                if (m_LastRenderTime < t)
+                {
+                    OnRenderTimer(this, EventArgs.Empty);
+                    break;
+				}
 			}
 		}
 
@@ -156,31 +164,27 @@ namespace WinOverlay
                 return;
             if (m_Rendering)
                 return;
-			m_Rendering = true;
-			// Read ShareInfo from both memory-mapped files
-			m_GPU01.TryRead(out var shareInfo1);
-            m_GPU02.TryRead(out var shareInfo2);
 
-			// Found oldest non-display frame.
-			var g1 = shareInfo1.timestamp <= m_LastRenderTime ? TimeSpan.Zero : shareInfo1.timestamp - m_LastRenderTime;
-            var g2 = shareInfo2.timestamp <= m_LastRenderTime ? TimeSpan.Zero : shareInfo2.timestamp - m_LastRenderTime;
-            if (g1 == TimeSpan.Zero && g2 == TimeSpan.Zero)
-                return; // No new frame
-            
-			if (g1 < g2)
+			m_Rendering = true;
+
+			KeyValuePair<int, TextureInfo> anchor = new KeyValuePair<int, TextureInfo>(-1, default);
+            for (int i = 0; i < MAX_GPU_WORKER; ++i)
             {
-				// g1 is older
-				m_LastRenderTime = shareInfo1.timestamp;
-                m_DrawFlag = false;
-				ReadBitmap(m_GPU01, shareInfo1);
+                if (!m_GPU[i].TryRead(out var info))
+                    continue;
+                if (info.timestamp > m_LastRenderTime)
+                {
+					// Found a new frame
+					// Search for the oldest frame non-display frame
+					anchor = new KeyValuePair<int, TextureInfo>(i, info);
+				}
 			}
-            else
-			{
-				// g2 is older
-				m_LastRenderTime = shareInfo2.timestamp;
-                m_DrawFlag = true;
-				ReadBitmap(m_GPU02, shareInfo2);
-			}
+            if (anchor.Key == -1)
+                return; // No new frame
+
+            m_LastRenderTime = anchor.Value.timestamp;
+            m_DrawFlag = false;
+			ReadBitmap(m_GPU[anchor.Key], anchor.Value);
             m_Rendering = false;
 			return;
 
@@ -347,8 +351,11 @@ namespace WinOverlay
                     renderTimer?.Stop();
                     renderTimer?.Dispose();
                     currentBitmap?.Dispose();
-                    m_GPU01?.Dispose();
-                    m_GPU02?.Dispose();
+                    for (int i = 0; i < MAX_GPU_WORKER; ++i)
+                    {
+                        m_GPU[i]?.Dispose();
+                        m_GPU[i] = null;
+					}
                     m_Converter01?.Dispose();
                     m_Converter02?.Dispose();
                     m_InputPipe?.Dispose();
@@ -356,8 +363,7 @@ namespace WinOverlay
 				}
                 renderTimer = null;
 				currentBitmap = null;
-				m_GPU01 = null;
-                m_GPU02 = null;
+				m_GPU = null;
 				m_Converter01 = null;
 				m_Converter02 = null;
 				m_InputPipe = null;
