@@ -162,17 +162,22 @@ namespace WinOverlay
             m_GPU02.TryRead(out var shareInfo2);
 
 			// Found oldest non-display frame.
-			var g1 = shareInfo1.timestamp - m_LastRenderTime;
-            var g2 = shareInfo2.timestamp - m_LastRenderTime;
-            if (g1.Duration() < g2.Duration())
+			var g1 = shareInfo1.timestamp <= m_LastRenderTime ? TimeSpan.Zero : shareInfo1.timestamp - m_LastRenderTime;
+            var g2 = shareInfo2.timestamp <= m_LastRenderTime ? TimeSpan.Zero : shareInfo2.timestamp - m_LastRenderTime;
+            if (g1 == TimeSpan.Zero && g2 == TimeSpan.Zero)
+                return; // No new frame
+            
+			if (g1 < g2)
             {
-                m_LastRenderTime = shareInfo1.timestamp;
+				// g1 is older
+				m_LastRenderTime = shareInfo1.timestamp;
                 m_DrawFlag = false;
 				ReadBitmap(m_GPU01, shareInfo1);
 			}
             else
-            {
-                m_LastRenderTime = shareInfo2.timestamp;
+			{
+				// g2 is older
+				m_LastRenderTime = shareInfo2.timestamp;
                 m_DrawFlag = true;
 				ReadBitmap(m_GPU02, shareInfo2);
 			}

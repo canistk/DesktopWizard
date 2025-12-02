@@ -160,9 +160,7 @@ namespace DesktopWizard
 
 			// 4. Update TextureInfo
 			m_ShareInfo = new Share.TextureInfo(renderTexture, pixels?.Length ?? 0, dwc.ChromaKeyColor, dwc.ChromaKeyRange, dwc.ChromaKeyCompositing);
-
-			// Write ShareInfo to memory-mapped file
-			accessor.Write(0, ref m_ShareInfo);
+			m_ShareInfo.WriteToAccessor(accessor);
 			accessor.Flush();
 		}
 

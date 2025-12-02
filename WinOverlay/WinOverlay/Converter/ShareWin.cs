@@ -241,7 +241,6 @@ namespace WinOverlay
 	public struct TextureInfo
 	{
 		public IntPtr rtHandler;
-		public DateTime timestamp;
 		public int width;
 		public int height;
 		public int rowPitch;
@@ -252,37 +251,63 @@ namespace WinOverlay
 		public float chromeKeyB;
 		public float chromeRange;
 		public bool useChromeKey;
+		public DateTime timestamp;
 
-		//public TextureInfo(RenderTexture renderTexture, int totalSize, Color chromeKey, float chromeRange, bool useChromaKey)
-		//{
-		//	this.rtHandler = renderTexture.GetNativeTexturePtr();
-		//	this.timestamp = DateTime.UtcNow;
-		//	this.width = renderTexture.width;
-		//	this.height = renderTexture.height;
-		//	this.bytesPerPixel = 4; // RGBA32
-		//	this.rowPitch = renderTexture.width * 4;
-		//	this.totalSize = totalSize;
-		//	this.chromeKeyR = chromeKey.r;
-		//	this.chromeKeyG = chromeKey.g;
-		//	this.chromeKeyB = chromeKey.b;
-		//	this.chromeRange = chromeRange;
-		//	this.useChromeKey = useChromaKey;
-		//}
+#if UNITY_EDITOR || UNITY_STANDALONE
+		public TextureInfo(RenderTexture renderTexture, int totalSize, Color chromeKey, float chromeRange, bool useChromaKey)
+		{
+			this.rtHandler = renderTexture.GetNativeTexturePtr();
+			this.width = renderTexture.width;
+			this.height = renderTexture.height;
+			this.bytesPerPixel = 4; // RGBA32
+			this.rowPitch = renderTexture.width * 4;
+			this.totalSize = totalSize;
+			this.chromeKeyR = chromeKey.r;
+			this.chromeKeyG = chromeKey.g;
+			this.chromeKeyB = chromeKey.b;
+			this.chromeRange = chromeRange;
+			this.useChromeKey = useChromaKey;
+			this.timestamp = DateTime.UtcNow;
+		}
+#endif
 
 		public TextureInfo(MemoryMappedViewAccessor accessor)
 		{
-			rtHandler = (IntPtr)accessor.ReadInt64(0);
-			timestamp = DateTime.FromBinary(accessor.ReadInt64(8));
-			width = accessor.ReadInt32(16);
-			height = accessor.ReadInt32(20);
-			rowPitch = accessor.ReadInt32(24);
-			bytesPerPixel = accessor.ReadInt32(28);
-			totalSize = accessor.ReadInt32(32);
-			chromeKeyR = accessor.ReadSingle(36);
-			chromeKeyG = accessor.ReadSingle(40);
-			chromeKeyB = accessor.ReadSingle(44);
-			chromeRange = accessor.ReadSingle(48);
-			useChromeKey = accessor.ReadBoolean(52);
+			var i = 0;
+			rtHandler = (IntPtr)accessor.ReadInt64(0); i += 8;
+			width = accessor.ReadInt32(i); i += 4;
+			height = accessor.ReadInt32(i); i += 4;
+			rowPitch = accessor.ReadInt32(i); i += 4;
+			bytesPerPixel = accessor.ReadInt32(i); i += 4;
+			totalSize = accessor.ReadInt32(i); i += 4;
+			chromeKeyR = accessor.ReadSingle(i); i += 4;
+			chromeKeyG = accessor.ReadSingle(i); i += 4;
+			chromeKeyB = accessor.ReadSingle(i); i += 4;
+			chromeRange = accessor.ReadSingle(i); i += 4;
+			useChromeKey = accessor.ReadBoolean(i); i += 1;
+			timestamp = DateTime.FromBinary(accessor.ReadInt64(i)); i += 8;
+		}
+
+		public void WriteToAccessor(MemoryMappedViewAccessor accessor)
+		{
+			var i = 0;
+			accessor.Write(i, (long)rtHandler); i += 8;
+			accessor.Write(i, width); i += 4;
+			accessor.Write(i, height); i += 4;
+			accessor.Write(i, rowPitch); i += 4;
+			accessor.Write(i, bytesPerPixel); i += 4;
+			accessor.Write(i, totalSize); i += 4;
+			accessor.Write(i, chromeKeyR); i += 4;
+			accessor.Write(i, chromeKeyG); i += 4;
+			accessor.Write(i, chromeKeyB); i += 4;
+			accessor.Write(i, chromeRange); i += 4;
+			accessor.Write(i, useChromeKey); i += 1;
+			accessor.Write(i, timestamp.ToBinary()); i += 8;
+		}
+		public static DateTime FetchDatetime(MemoryMappedViewAccessor accessor)
+		{
+			// Ensure last 8 bytes are writen into timestamp
+			return DateTime.FromBinary(accessor.ReadInt64(45));
 		}
 
 		public void GetChromeKeyColor(out Int32 r, out Int32 g, out Int32 b, out float range01)
@@ -295,9 +320,5 @@ namespace WinOverlay
 			if (range01 > 255) range01 = 255;
 		}
 
-		public static DateTime FetchDatetime(MemoryMappedViewAccessor accessor)
-		{
-			return DateTime.FromBinary(accessor.ReadInt64(8));
-		}
 	}
 }
