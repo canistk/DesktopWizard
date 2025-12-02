@@ -4,8 +4,10 @@ using System.Collections.Generic;
 
 namespace WinOverlay
 {
-	public partial class Vec3
+	public struct Vec3
 	{
+		public float X, Y, Z;
+
 		public Vec3(float x, float y, float z)
 		{
 			X = x;
@@ -16,56 +18,63 @@ namespace WinOverlay
 		public static readonly Vec3 Zero = new Vec3(0f, 0f, 0f);
 		public static readonly Vec3 One = new Vec3(1f, 1f, 1f);
 
+		private static void Fix(ref Vec3 v)
+		{
+			v.X = float.IsInfinity(v.X) || float.IsNaN(v.X) ? 0f : v.X;
+			v.Y = float.IsInfinity(v.Y) || float.IsNaN(v.Y) ? 0f : v.Y;
+			v.Z = float.IsInfinity(v.Z) || float.IsNaN(v.Z) ? 0f : v.Z;
+		}
+
 		public static Vec3 operator +(Vec3 a, Vec3 b)
 		{
-			if (a is null || b is null) return Vec3.Zero;
+			Fix(ref a); Fix(ref b);
 			return new Vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
 		}
 
 		public static Vec3 operator -(Vec3 a, Vec3 b)
 		{
-			if (a is null || b is null) return Vec3.Zero;
+			Fix(ref a); Fix(ref b);
 			return new Vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
 		}
 		public static Vec3 operator *(Vec3 a, float b)
 		{
-			if (a is null) return Vec3.Zero;
+			Fix(ref a);
 			return new Vec3(a.X * b, a.Y * b, a.Z * b);
 		}
 		public static Vec3 operator /(Vec3 a, float b)
 		{
-			if (a is null) return Vec3.Zero;
+			Fix(ref a);
 			return new Vec3(a.X / b, a.Y / b, a.Z / b);
 		}
 		public static Vec3 operator *(float a, Vec3 b)
 		{
-			if (b is null) return Vec3.Zero;
+			Fix(ref b);
 			return new Vec3(a * b.X, a * b.Y, a * b.Z);
 		}
 		public static Vec3 operator /(float a, Vec3 b)
 		{
-			if (b is null) return Vec3.Zero;
+			Fix(ref b);
 			return new Vec3(a / b.X, a / b.Y, a / b.Z);
 		}
 		public static Vec3 operator -(Vec3 a)
 		{
-			if (a is null) return Vec3.Zero;
+			Fix(ref a);
 			return new Vec3(-a.X, -a.Y, -a.Z);
 		}
 		public static bool operator ==(Vec3 a, Vec3 b)
 		{
-			if (a is null || b is null) return false;
+			Fix(ref a); Fix(ref b);
 			return a.X == b.X && a.Y == b.Y && a.Z == b.Z;
 		}
 		public static bool operator !=(Vec3 a, Vec3 b)
 		{
-			if (a is null || b is null) return true;
+			Fix(ref a); Fix(ref b);
 			return !(a == b);
 		}
 		
 		public Vec3 Dot(Vec3 other)
 		{
-			if (other is null) return Vec3.Zero;
+			Fix(ref other);
 			return new Vec3(X * other.X, Y * other.Y, Z * other.Z);
 		}
 
@@ -76,13 +85,13 @@ namespace WinOverlay
 			float mag = Magnitude();
 			if (mag == 0f)
 			{
-				return new Vec3(0f, 0f, 0f);
+				return Vec3.Zero;
 			}
 			return new Vec3(X / mag, Y / mag, Z / mag);
 		}
 		public Vec3 Cross(Vec3 other)
 		{
-			if (other is null) return Vec3.Zero;
+			Fix(ref other);
 			return new Vec3(
 				Y * other.Z - Z * other.Y,
 				Z * other.X - X * other.Z,
@@ -91,9 +100,25 @@ namespace WinOverlay
 		}
 		public float Distance(Vec3 other)
 		{
-			if (other is null) return 0f;
+			Fix(ref other);
 			return (this - other).Magnitude();
 		}
 
+		public override bool Equals(object obj)
+		{
+			return obj is Vec3 vec &&
+				   X == vec.X &&
+				   Y == vec.Y &&
+				   Z == vec.Z;
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = -307843816;
+			hashCode = hashCode * -1521134295 + X.GetHashCode();
+			hashCode = hashCode * -1521134295 + Y.GetHashCode();
+			hashCode = hashCode * -1521134295 + Z.GetHashCode();
+			return hashCode;
+		}
 	}
 }

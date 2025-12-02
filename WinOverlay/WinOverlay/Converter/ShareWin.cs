@@ -1,12 +1,14 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
+using System.Text;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using UnityEngine;
-namespace Share
+using System.IO;
+
+namespace WinOverlay
 {
 
 	/// <summary>Protobuf class for keyboard event data.
@@ -131,7 +133,7 @@ namespace Share
 	{
 		public const string LABEL = "CAM_";
 		public static readonly byte[] labelBytes = System.Text.Encoding.UTF8.GetBytes(LABEL);
-		public static readonly int ByteArraySize =
+		public static readonly int ByteArraySize = 
 			4 + // label
 			16 * 4 + // O2M
 			16 * 4 + // M2F
@@ -139,6 +141,7 @@ namespace Share
 			3 * 4 + // MonPos
 			2 * 4 + // FormOSPos
 			3 * 4; // FormPos
+
 		public Mat4x4 O2M;
 		public Mat4x4 M2F;
 		public Vec2Int OsPos;
@@ -150,9 +153,8 @@ namespace Share
 			this.O2M = o2m;
 			this.M2F = m2f;
 			this.OsPos = osPos;
-			this.MonPos = monPos;
-
 			this.FormOSPos = formOSPos;
+			this.MonPos = monPos;
 			this.FormPos = formPos;
 		}
 
@@ -251,21 +253,21 @@ namespace Share
 		public float chromeRange;
 		public bool useChromeKey;
 
-		public TextureInfo(RenderTexture renderTexture, int totalSize, Color chromeKey, float chromeRange, bool useChromaKey)
-		{
-			this.rtHandler = renderTexture.GetNativeTexturePtr();
-			this.timestamp = DateTime.UtcNow;
-			this.width = renderTexture.width;
-			this.height = renderTexture.height;
-			this.bytesPerPixel = 4; // RGBA32
-			this.rowPitch = renderTexture.width * 4;
-			this.totalSize = totalSize;
-			this.chromeKeyR = chromeKey.r;
-			this.chromeKeyG = chromeKey.g;
-			this.chromeKeyB = chromeKey.b;
-			this.chromeRange = chromeRange;
-			this.useChromeKey = useChromaKey;
-		}
+		//public TextureInfo(RenderTexture renderTexture, int totalSize, Color chromeKey, float chromeRange, bool useChromaKey)
+		//{
+		//	this.rtHandler = renderTexture.GetNativeTexturePtr();
+		//	this.timestamp = DateTime.UtcNow;
+		//	this.width = renderTexture.width;
+		//	this.height = renderTexture.height;
+		//	this.bytesPerPixel = 4; // RGBA32
+		//	this.rowPitch = renderTexture.width * 4;
+		//	this.totalSize = totalSize;
+		//	this.chromeKeyR = chromeKey.r;
+		//	this.chromeKeyG = chromeKey.g;
+		//	this.chromeKeyB = chromeKey.b;
+		//	this.chromeRange = chromeRange;
+		//	this.useChromeKey = useChromaKey;
+		//}
 
 		public TextureInfo(MemoryMappedViewAccessor accessor)
 		{
@@ -298,104 +300,4 @@ namespace Share
 			return DateTime.FromBinary(accessor.ReadInt64(8));
 		}
 	}
-
-	[StructLayout(LayoutKind.Sequential, Pack = 4)]
-	public struct Mat4x4
-	{
-		public float[] M; // 16 elements
-		public Mat4x4(float[] elements)
-		{
-			if (elements.Length != 16)
-				throw new ArgumentException("Mat4x4 requires exactly 16 elements.");
-			M = elements;
-		}
-		public Matrix4x4 ToMatrix4x4()
-		{
-			return new Matrix4x4(
-				new Vector4(M[ 0], M[ 1], M[ 2], M[ 3]),
-				new Vector4(M[ 4], M[ 5], M[ 6], M[ 7]),
-				new Vector4(M[ 8], M[ 9], M[10], M[11]),
-				new Vector4(M[12], M[13], M[14], M[15])
-			);
-		}
-
-		public static implicit operator Matrix4x4(Mat4x4 mat) => mat.ToMatrix4x4();
-		public static implicit operator Mat4x4(Matrix4x4 mat)
-		{
-			return new Mat4x4(
-				new float[]
-				{
-					mat.m00, mat.m01, mat.m02, mat.m03,
-					mat.m10, mat.m11, mat.m12, mat.m13,
-					mat.m20, mat.m21, mat.m22, mat.m23,
-					mat.m30, mat.m31, mat.m32, mat.m33
-				});
-		}
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct Vec3
-	{
-		public float X,Y,Z;
-		public Vec3(float x, float y, float z)
-		{
-			X = x;
-			Y = y;
-			Z = z;
-		}
-		public Vector3 ToVector3() => new Vector3(X, Y, Z);
-		public static implicit operator Vector3(Vec3 vec) => vec.ToVector3();
-		public static implicit operator Vec3(Vector3 vec)
-		{
-			return new Vec3
-			{
-				X = vec.x,
-				Y = vec.y,
-				Z = vec.z
-			};
-		}
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct Vec2
-	{
-		public float X,Y;
-		public Vec2(float x, float y)
-		{
-			X = x;
-			Y = y;
-		}
-		public Vector2 ToVector2() => new Vector2(X, Y);
-		public static implicit operator Vector2(Vec2 vec) => vec.ToVector2();
-		public static implicit operator Vec2(Vector2 vec)
-		{
-			return new Vec2
-			{
-				X = vec.x,
-				Y = vec.y
-			};
-		}
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	public struct Vec2Int
-	{
-		public int X,Y;
-		public Vec2Int(int x, int y)
-		{
-			X = x;
-			Y = y;
-		}
-		public Vector2Int ToVector2Int() => new Vector2Int(X, Y);
-		public static implicit operator Vector2Int(Vec2Int vec) => vec.ToVector2Int();
-		public static implicit operator Vec2Int(Vector2Int vec)
-		{
-			return new Vec2Int
-			{
-				X = vec.x,
-				Y = vec.y
-			};
-		}
-	}
-
 }

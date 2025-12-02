@@ -1,7 +1,7 @@
 syntax = "proto3";
 option csharp_namespace = "WinOverlay";
 package DesktopWizard.Events;
-
+/*
 message Vec2 {
     float x = 1;
     float y = 2;
@@ -22,6 +22,7 @@ message Mat4x4
 {
     repeated float m = 1; // 16 float values for a 4x4 matrix
 }
+*/
 
 message MouseEventP3 {
     int32 button = 1;
@@ -41,6 +42,7 @@ message KeyboardEventP3 {
     bool isKeyUp = 8;
 }
 
+/*
 message CameraInfo {
     Mat4x4 o2m = 1;
     Mat4x4 m2f = 2;
@@ -57,3 +59,4 @@ message CameraInfo {
     float formPosX = 9;
     float formPosY = 10;
 }
+*/

@@ -45,23 +45,7 @@ namespace DesktopWizard
 
 		#region Share Memory
 
-		[StructLayout(LayoutKind.Sequential, Pack = 1)]
-		public struct ShareInfo
-		{
-			public IntPtr rtHandler;
-			public DateTime timestamp;
-			public int width;
-			public int height;
-			public int rowPitch;
-			public int bytesPerPixel;
-			public int totalSize;
-			public float chromeKeyR;
-			public float chromeKeyG;
-			public float chromeKeyB;
-			public float chromeRange;
-			public bool useChromaKey;
-		}
-		private ShareInfo m_ShareInfo;
+		private Share.TextureInfo m_ShareInfo;
 		
 		// ShareInfo MMF
 		private MemoryMappedFile mmf = null;
@@ -78,7 +62,7 @@ namespace DesktopWizard
 		{
 			// ShareInfo MMF
 			var shareName = $"DwCamera_{dwc.id}_{SubId}";
-			var size = Marshal.SizeOf<ShareInfo>();
+			var size = Marshal.SizeOf<Share.TextureInfo>();
 			mmf = MemoryMappedFile.CreateOrOpen(shareName, size);
 			accessor = mmf.CreateViewAccessor(0, size, MemoryMappedFileAccess.Write);
 			
@@ -173,24 +157,15 @@ namespace DesktopWizard
 				// Write pixel data to MMF
 				accessorPixels.WriteArray(0, pixels, 0, pixels.Length);
 			}
-			
-			// 4. Update ShareInfo
-			m_ShareInfo.rtHandler = renderTexture.GetNativeTexturePtr();
-			m_ShareInfo.width = renderTexture.width;
-			m_ShareInfo.height = renderTexture.height;
-			m_ShareInfo.bytesPerPixel = 4; // RGBA32
-			m_ShareInfo.rowPitch = renderTexture.width * 4;
-			m_ShareInfo.totalSize = pixels?.Length ?? 0;
-			m_ShareInfo.timestamp = DateTime.UtcNow;
-			m_ShareInfo.chromeKeyR = dwc.ChromaKeyColor.r;
-			m_ShareInfo.chromeKeyG = dwc.ChromaKeyColor.g;
-			m_ShareInfo.chromeKeyB = dwc.ChromaKeyColor.b;
-			m_ShareInfo.chromeRange = dwc.ChromaKeyRange;
-			m_ShareInfo.useChromaKey = dwc.ChromaKeyCompositing;
+
+			// 4. Update TextureInfo
+			m_ShareInfo = new Share.TextureInfo(renderTexture, pixels?.Length ?? 0, dwc.ChromaKeyColor, dwc.ChromaKeyRange, dwc.ChromaKeyCompositing);
 
 			// Write ShareInfo to memory-mapped file
 			accessor.Write(0, ref m_ShareInfo);
+			accessor.Flush();
 		}
+
 
 		private int AlignToPowerOfTwo(int value, int alignment)
 		{

@@ -2021,9 +2021,10 @@ namespace DesktopWizard
 				Y = Top,
 			};
 
-			var info = new Share.CameraInfo(o2m, m2f, v2i, formOSPos, monPos, formPos);
+			var info = new Share.CameraInfo(o2m, m2f, v2i, monPos, formOSPos, formPos);
 			// Serialize the Protobuf message to bytes and write to the memory-mapped file.
-			var bytes = ConvertToDynamicBytes(info);
+			//var bytes = ConvertToDynamicBytes(info);
+			var bytes = info.ToByteArray();
 			
 			#if false
 			// Local test for CameraInfo
@@ -2042,20 +2043,21 @@ namespace DesktopWizard
 			if (accessor != null)
 			{
 				accessor.WriteArray(0, bytes, 0, bytes.Length);
-            }
+				accessor.Flush();
+			}
 		}
 
-		private byte[] ConvertToDynamicBytes(CameraInfo cameraInfo)
-		{
-					// Convert CameraInfo to dynamic byte array
-			var bytes = cameraInfo.ToByteArray();
-			// prepare the bytes, with first 4 bytes as length prefix
-			var lengthPrefix = BitConverter.GetBytes(bytes.Length);
-			var allBytes = new byte[lengthPrefix.Length + bytes.Length];
-			Buffer.BlockCopy(lengthPrefix, 0, allBytes, 0, lengthPrefix.Length);
-			Buffer.BlockCopy(bytes, 0, allBytes, lengthPrefix.Length, bytes.Length);
-			return allBytes;
-		}
+		//private byte[] ConvertToDynamicBytes(CameraInfo cameraInfo)
+		//{
+		//			// Convert CameraInfo to dynamic byte array
+		//	var bytes = cameraInfo.ToByteArray();
+		//	// prepare the bytes, with first 4 bytes as length prefix
+		//	var lengthPrefix = BitConverter.GetBytes(bytes.Length);
+		//	var allBytes = new byte[lengthPrefix.Length + bytes.Length];
+		//	Buffer.BlockCopy(lengthPrefix, 0, allBytes, 0, lengthPrefix.Length);
+		//	Buffer.BlockCopy(bytes, 0, allBytes, lengthPrefix.Length, bytes.Length);
+		//	return allBytes;
+		//}
 
 		// ShareInfo MMF
 		private MemoryMappedFile mmf = null;

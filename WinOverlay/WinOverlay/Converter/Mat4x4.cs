@@ -9,53 +9,39 @@ namespace WinOverlay
 	// partial class from Protobuf generated code
 	// 16 float values for a 4x4 matrix
 	// reference: message Matrix44 { repeated float m = 1; }
-	public partial class Mat4x4
+	public struct Mat4x4
 	{
+		public float[] M;
 		// Matrix element accessors (column-major order to match Unity)
 		// m_ array layout: [col0, col1, col2, col3]
 		// Each column has 4 elements: [row0, row1, row2, row3]
-		public float m00 => m_.Count > 0 ? m_[0] : 0f;   // column 0, row 0
-		public float m10 => m_.Count > 1 ? m_[1] : 0f;   // column 0, row 1
-		public float m20 => m_.Count > 2 ? m_[2] : 0f;   // column 0, row 2
-		public float m30 => m_.Count > 3 ? m_[3] : 0f;   // column 0, row 3
+		public float m00 => M.Length > 0 ? M[0] : 0f;   // column 0, row 0
+		public float m10 => M.Length > 1 ? M[1] : 0f;   // column 0, row 1
+		public float m20 => M.Length > 2 ? M[2] : 0f;   // column 0, row 2
+		public float m30 => M.Length > 3 ? M[3] : 0f;   // column 0, row 3
 		
-		public float m01 => m_.Count > 4 ? m_[4] : 0f;   // column 1, row 0
-		public float m11 => m_.Count > 5 ? m_[5] : 0f;   // column 1, row 1
-		public float m21 => m_.Count > 6 ? m_[6] : 0f;   // column 1, row 2
-		public float m31 => m_.Count > 7 ? m_[7] : 0f;   // column 1, row 3
+		public float m01 => M.Length > 4 ? M[4] : 0f;   // column 1, row 0
+		public float m11 => M.Length > 5 ? M[5] : 0f;   // column 1, row 1
+		public float m21 => M.Length > 6 ? M[6] : 0f;   // column 1, row 2
+		public float m31 => M.Length > 7 ? M[7] : 0f;   // column 1, row 3
 		
-		public float m02 => m_.Count > 8 ? m_[8] : 0f;   // column 2, row 0
-		public float m12 => m_.Count > 9 ? m_[9] : 0f;   // column 2, row 1
-		public float m22 => m_.Count > 10 ? m_[10] : 0f; // column 2, row 2
-		public float m32 => m_.Count > 11 ? m_[11] : 0f; // column 2, row 3
+		public float m02 => M.Length > 8 ? M[8] : 0f;   // column 2, row 0
+		public float m12 => M.Length > 9 ? M[9] : 0f;   // column 2, row 1
+		public float m22 => M.Length > 10 ? M[10] : 0f; // column 2, row 2
+		public float m32 => M.Length > 11 ? M[11] : 0f; // column 2, row 3
 		
-		public float m03 => m_.Count > 12 ? m_[12] : 0f; // column 3, row 0 (translation X)
-		public float m13 => m_.Count > 13 ? m_[13] : 0f; // column 3, row 1 (translation Y)
-		public float m23 => m_.Count > 14 ? m_[14] : 0f; // column 3, row 2 (translation Z)
-		public float m33 => m_.Count > 15 ? m_[15] : 0f; // column 3, row 3
+		public float m03 => M.Length > 12 ? M[12] : 0f; // column 3, row 0 (translation X)
+		public float m13 => M.Length > 13 ? M[13] : 0f; // column 3, row 1 (translation Y)
+		public float m23 => M.Length > 14 ? M[14] : 0f; // column 3, row 2 (translation Z)
+		public float m33 => M.Length > 15 ? M[15] : 0f; // column 3, row 3
 
 		// Static factory methods
-		public static Mat4x4 Identity
-		{
-			get
-			{
-				return new Mat4x4(System.Numerics.Matrix4x4.Identity);
-			}
-		}
-
-		public static Mat4x4 Zero
-		{
-			get
-			{
-				var mat = new Mat4x4();
-				mat.M.AddRange(new float[16]);
-				return mat;
-			}
-		}
+		public static readonly Mat4x4 Identity = new Mat4x4(System.Numerics.Matrix4x4.Identity);
+		
+		public static readonly Mat4x4 Zero = default;
 
 		public static Mat4x4 CreateTranslation(Vec3 position)
 		{
-			if (position is null) return Mat4x4.Zero;
 			return new Mat4x4(System.Numerics.Matrix4x4.CreateTranslation(position.X, position.Y, position.Z));
 		}
 
@@ -66,7 +52,6 @@ namespace WinOverlay
 
 		public static Mat4x4 CreateScale(Vec3 scale)
 		{
-			if (scale is null) return Mat4x4.Zero;
 			return new Mat4x4(System.Numerics.Matrix4x4.CreateScale(scale.X, scale.Y, scale.Z));
 		}
 
@@ -102,7 +87,6 @@ namespace WinOverlay
 
 		public static Mat4x4 CreateLookAt(Vec3 cameraPosition, Vec3 cameraTarget, Vec3 cameraUpVector)
 		{
-			if (cameraPosition is null || cameraTarget is null || cameraUpVector is null) return Mat4x4.Identity;
 			return new Mat4x4(System.Numerics.Matrix4x4.CreateLookAt(
 				new System.Numerics.Vector3(cameraPosition.X, cameraPosition.Y, cameraPosition.Z),
 				new System.Numerics.Vector3(cameraTarget.X, cameraTarget.Y, cameraTarget.Z),
@@ -121,7 +105,6 @@ namespace WinOverlay
 
 		public static Mat4x4 CreateTRS(Vec3 position, Vec3 rotation, Vec3 scale)
 		{
-			if (position is null || rotation is null || scale is null) return Mat4x4.Identity;
 			var translation = CreateTranslation(position);
 			var rotationMatrix = CreateFromYawPitchRoll(rotation.Y, rotation.X, rotation.Z);
 			var scaleMatrix = CreateScale(scale);
@@ -131,7 +114,6 @@ namespace WinOverlay
 		// Matrix operations
 		public Mat4x4 Multiply(Mat4x4 other)
 		{
-			if (other is null) return Mat4x4.Zero;
 			var m1 = ToNumericsMatrix();
 			var m2 = other.ToNumericsMatrix();
 			return new Mat4x4(System.Numerics.Matrix4x4.Multiply(m1, m2));
@@ -150,7 +132,7 @@ namespace WinOverlay
 			{
 				return new Mat4x4(inverted);
 			}
-			return null; // Matrix is not invertible
+			return Mat4x4.Zero; // Matrix is not invertible
 		}
 
 		public float GetDeterminant()
@@ -161,7 +143,6 @@ namespace WinOverlay
 		// Transform point with full 4x4 transformation (including translation)
 		public Vec3 MultiplyPoint(Vec3 point)
 		{
-			if (point is null) return Vec3.Zero;
 			float x = point.X;
 			float y = point.Y;
 			float z = point.Z;
@@ -174,7 +155,6 @@ namespace WinOverlay
 		// Transform point with 3x4 matrix (no perspective division)
 		public Vec3 MultiplyPoint3x4(Vec3 point)
 		{
-			if (point is null) return Vec3.Zero;
   			float x = point.X;
 			float y = point.Y;
 			float z = point.Z;
@@ -187,7 +167,6 @@ namespace WinOverlay
 		// Transform direction (ignore translation)
 		public Vec3 MultiplyVector(Vec3 vector)
 		{
-			if (vector is null) return Vec3.Zero;
 			float x = vector.X;
 			float y = vector.Y;
 			float z = vector.Z;
@@ -264,7 +243,7 @@ namespace WinOverlay
 			// Convert from System.Numerics.Matrix4x4 (row-major) to column-major
 			// System.Numerics: MRowColumn
 			// Our storage: column-major [col0, col1, col2, col3]
-			this.M.AddRange(new float[]
+			this.M = new float[16]
 			{
 				// Column 0 (X axis + first component of each row)
 				m.M11, m.M21, m.M31, m.M41,
@@ -274,7 +253,13 @@ namespace WinOverlay
 				m.M13, m.M23, m.M33, m.M43,
 				// Column 3 (Translation + fourth component of each row)
 				m.M14, m.M24, m.M34, m.M44
-			});
+			};
+		}
+		public Mat4x4(float[] elements)
+		{
+			if (elements.Length != 16)
+				throw new ArgumentException("Mat4x4 requires exactly 16 elements.");
+			this.M = elements;
 		}
 	}
 }

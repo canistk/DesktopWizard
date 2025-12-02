@@ -199,7 +199,7 @@ namespace WinOverlay
 				if (m_CameraMatrix != null && m_CameraMatrix.TryRead(out var camInfo))
                 {
 					// Test: offset by form OS position
-					location = new Point(camInfo.FormOSPosX + 300, camInfo.FormOSPosY);
+					location = new Point(camInfo.FormOSPos.X + 300, camInfo.FormOSPos.Y);
                 }
 				BeginInvoke(new Action(() =>
 				{

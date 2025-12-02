@@ -3,17 +3,22 @@ using System.Drawing;
 
 namespace WinOverlay
 {
-	public partial class Vec2
+	public struct Vec2
 	{
+		public float X, Y;
 		public Vec2(float x, float y)
 		{
 			X = x;
 			Y = y;
 		}
+		private static void Fix(ref Vec2 v)
+		{
+			v.X = float.IsInfinity(v.X) || float.IsNaN(v.X) ? 0f : v.X;
+			v.Y = float.IsInfinity(v.Y) || float.IsNaN(v.Y) ? 0f : v.Y;
+		}
 
 		public static explicit operator Point(Vec2 p)
 		{
-			if (p is null) return Point.Empty;
 			return new Point((int)p.X, (int)p.Y);
 		}
 
@@ -27,53 +32,53 @@ namespace WinOverlay
 
 		public static Vec2 operator +(Vec2 a, Vec2 b)
 		{
-			if (a is null || b is null) return Vec2.Zero;
+			Fix(ref a); Fix(ref b);
 			return new Vec2(a.X + b.X, a.Y + b.Y);
 		}
 		public static Vec2 operator -(Vec2 a, Vec2 b)
 		{
-			if (a is null || b is null) return Vec2.Zero;
+			Fix(ref a); Fix(ref b);
 			return new Vec2(a.X - b.X, a.Y - b.Y);
 		}
 		public static Vec2 operator *(Vec2 a, float b)
 		{
-			if (a is null) return Vec2.Zero;
+			Fix(ref a);
 			return new Vec2(a.X * b, a.Y * b);
 		}
 		public static Vec2 operator /(Vec2 a, float b)
 		{
-			if (a is null) return Vec2.Zero;
+			Fix(ref a);
 			return new Vec2(a.X / b, a.Y / b);
 		}
 		public static Vec2 operator *(float a, Vec2 b)
 		{
-			if (b is null) return Vec2.Zero;
+			Fix(ref b);
 			return new Vec2(a * b.X, a * b.Y);
 		}
 		public static Vec2 operator /(float a, Vec2 b)
 		{
-			if (b is null) return Vec2.Zero;
+			Fix(ref b);
 			return new Vec2(a / b.X, a / b.Y);
 		}
 		public static Vec2 operator -(Vec2 a)
 		{
-			if (a is null) return Vec2.Zero;
+			Fix(ref a);
 			return new Vec2(-a.X, -a.Y);
 		}
 		public static bool operator ==(Vec2 a, Vec2 b)
 		{
-			if (a is null || b is null) return false;
+			Fix(ref a); Fix(ref b);
 			return a.X == b.X && a.Y == b.Y;
 		}
 		public static bool operator !=(Vec2 a, Vec2 b)
 		{
-			if (a is null || b is null) return true;
+			Fix(ref a); Fix(ref b);
 			return !(a == b);
 		}
 
 		public float Dot(Vec2 v)
 		{
-			if (v is null) return 0f;
+			Fix(ref v);
 			return X * v.X + Y * v.Y;
 		}
 		public float Length()
@@ -91,12 +96,12 @@ namespace WinOverlay
 		}
 		public Vec2 Lerp(Vec2 v, float t)
 		{
-			if (v is null) return Vec2.Zero;
+			Fix(ref v);
 			return this * (1f - t) + v * t;
 		}
 		public Vec2 Clamp(Vec2 min, Vec2 max)
 		{
-			if (min is null || max is null) return Vec2.Zero;
+			Fix(ref min); Fix(ref max);
 			return new Vec2(
 				Math.Max(min.X, Math.Min(max.X, X)),
 				Math.Max(min.Y, Math.Min(max.Y, Y))
@@ -112,7 +117,7 @@ namespace WinOverlay
 		}
 		public Vec2 Reflect(Vec2 normal)
 		{
-			if (normal is null) return Vec2.Zero;
+			Fix(ref normal);
 			return this - 2f * this.Dot(normal) * normal;
 		}
 	}

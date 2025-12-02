@@ -11,57 +11,7 @@ using System.Windows.Forms;
 namespace WinOverlay
 {
 	#region GPU(s)
-	/// <summary>
-	/// Handle shared memory for GPU texture information.
-	/// From KawaiOS to WinOverlay
-	/// </summary>
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct TextureInfo
-    {
-        public IntPtr rtHandler;        // Native texture handle (platform-specific)
-        public DateTime timestamp;      // UTC timestamp for synchronization
-        public int width;               // Texture width in pixels
-        public int height;              // Texture height in pixels  
-        public int rowPitch;            // Row pitch in bytes (width * bytesPerPixel)
-        public int bytesPerPixel;       // Bytes per pixel based on format
-        public int totalSize;           // Total texture size in bytes
-		public float chromeKeyR;
-		public float chromeKeyG;
-		public float chromeKeyB;
-		public float chromeRange;
-		public bool useChromeKey;      // Whether to use chroma keying
-
-		public TextureInfo(MemoryMappedViewAccessor accessor)
-        {
-            rtHandler       = (IntPtr)accessor.ReadInt64(0);
-            timestamp       = DateTime.FromBinary(accessor.ReadInt64(8));
-            width           = accessor.ReadInt32(16);
-            height          = accessor.ReadInt32(20);
-            rowPitch        = accessor.ReadInt32(24);
-            bytesPerPixel   = accessor.ReadInt32(28);
-            totalSize       = accessor.ReadInt32(32);
-			chromeKeyR		= accessor.ReadSingle(36);
-			chromeKeyG		= accessor.ReadSingle(40);
-			chromeKeyB		= accessor.ReadSingle(44);
-			chromeRange		= accessor.ReadSingle(48);
-			useChromeKey	= accessor.ReadBoolean(52);
-		}
-
-		public void GetChromeKeyColor(out Int32 r, out Int32 g, out Int32 b, out float range01)
-		{
-			r = (Int32)(chromeKeyR * 255);
-			g = (Int32)(chromeKeyG * 255);
-			b = (Int32)(chromeKeyB * 255);
-			range01 = chromeRange * 255;
-			if (range01 < 0) range01 = 0;
-			if (range01 > 255) range01 = 255;
-		}
-
-		public static DateTime FetchDatetime(MemoryMappedViewAccessor accessor)
-		{
-			return DateTime.FromBinary(accessor.ReadInt64(8));
-		}
-	}
+	
     /// <summary>
     /// Provides functionality to read GPU information from a memory-mapped file.
     /// </summary>
@@ -252,8 +202,6 @@ namespace WinOverlay
                 info = default;
                 return false;
             }
-			int length = -1;
-
 			try
             {
 				// check if 4 bytes are available for length prefix
@@ -264,34 +212,14 @@ namespace WinOverlay
 				}
 
 				// Read the actual data
-				
-
-				// Read length prefix
-				length = accessor.ReadInt32(0);
-				//accessor.ReadArray(0, m_Buffer, 0, 4);
-				//int length = BitConverter.ToInt32(m_Buffer, 0);
-
-				if (length <= 0)
+				accessor.ReadArray(0, m_Buffer, 0, 4);
+				if (!CameraInfo.IsValid(ref m_Buffer))
 				{
 					info = default;
 					return false;
 				}
-				else if (length > MaxLength)
-				{
-					// TODO: try to restart service.
-					Console.WriteLine($"[{m_Name}] CameraInfo length {length} exceeds maximum allowed size.");
-					info = default;
-					return false;
-				}
 
-				if (accessor.Capacity < 4 + length)
-				{
-					// Wait for more data to be written
-					info = default;
-					return false;
-				}
-
-				accessor.ReadArray(4, m_Buffer, 0, length);
+				accessor.ReadArray(4, m_Buffer, 4, CameraInfo.ByteArraySize);
             }
             catch
             {
@@ -301,9 +229,11 @@ namespace WinOverlay
 
 			try
 			{
-				ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(m_Buffer, 0, length);
+				// ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(m_Buffer, 0, length);
 				// Deserialize CameraInfo from bytes
-				info = CameraInfo.Parser.ParseFrom(span);
+				// info = CameraInfo.Parser.ParseFrom(span);
+				info = CameraInfo.FromByteArray(ref m_Buffer);
+
 				return true;
 			}
 			catch (Exception ex)
@@ -314,36 +244,6 @@ namespace WinOverlay
 				info = default;
 				return false;
 			}
-		}
-	}
-
-	/// <summary>Protobuf class for keyboard event data.
-	/// From WinOverlay to KawaiOS</summary>
-	public partial class KeyboardEventP3
-	{
-		public KeyboardEventP3(KeyEventArgs e, bool isKeyUp)
-		{
-			KeyCode = (int)e.KeyCode;
-			Alt = e.Alt;
-			Control = e.Control;
-			Shift = e.Shift;
-			Handled = e.Handled;
-			SuppressKeyPress = e.SuppressKeyPress;
-			IsKeyUp = isKeyUp;
-		}
-	}
-
-	/// <summary>Protobuf class for mouse event data.
-    /// From WinOverlay to KawaiOS</summary>
-	public partial class MouseEventP3
-	{
-		public MouseEventP3(MouseEventArgs e)
-		{
-			Button = (int)e.Button;
-			Clicks = e.Clicks;
-			X = e.X;
-			Y = e.Y;
-			Delta = e.Delta;
 		}
 	}
 
@@ -462,6 +362,7 @@ namespace WinOverlay
 		#endregion Handling Connection State
 
 		#region Handling Keyboard/Mouse Events
+
 		private SemaphoreSlim m_Semaphore = new SemaphoreSlim(1);
 		public void Send(KeyEventArgs e, bool isKeyUp)
 		{

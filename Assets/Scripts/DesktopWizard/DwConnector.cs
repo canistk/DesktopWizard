@@ -222,8 +222,8 @@ namespace DesktopWizard
 
             try
             {
-                string exePath = Path.Combine(Application.streamingAssetsPath, "WinOverlay", "WinOverlay.exe");
-                winOverlayProcess = Process.Start(exePath, "-test");
+                //string exePath = Path.Combine(Application.streamingAssetsPath, "WinOverlay", "WinOverlay.exe");
+                //winOverlayProcess = Process.Start(exePath, "-test");
                 Debug.Log("WinOverlay process started, waiting for startup completion...");
             }
             catch (System.Exception e)
