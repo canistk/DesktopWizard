@@ -255,11 +255,12 @@ namespace WinOverlay
 			if (IsDisposed)
 				return;
 			if (pipeClient == null || !pipeClient.IsConnected)
-                return;
-			
+				return;
 			await _sendSemaphore.WaitAsync();
             try
             {
+			    if (pipeClient == null || !pipeClient.IsConnected)
+                    throw new Exception("Pipe disconnected");
                 var data = Encoding.UTF8.GetBytes(message);
                 await pipeClient.WriteAsync(data, 0, data.Length);
                 await pipeClient.FlushAsync();
