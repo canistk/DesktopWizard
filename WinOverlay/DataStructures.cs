@@ -250,7 +250,7 @@ namespace WinOverlay
 	public class HSM_KeyboardMouse : System.IDisposable
 	{
 		public bool isDisposed { get; private set; }
-        private NamedPipeServerStream m_Pipe;
+        private NamedPipeServerStream m_Pipe = null;
         private CancellationToken m_CancelToken;
         public event Action OnClientConnected;
         public event Action OnClientDisconnected;
@@ -273,7 +273,7 @@ namespace WinOverlay
             if (state != eHSMState.Disconnected)
                 return;
 			this.m_CancelToken = token;
-			Task.Run(() => WaitForConnection(), m_CancelToken);
+			Task.Run(WaitForConnection, m_CancelToken);
 		}
 
 		#region Handling Connection State
@@ -328,19 +328,21 @@ namespace WinOverlay
 		{
 			try
 			{
-				while (!m_CancelToken.IsCancellationRequested)
+				state = eHSMState.WaitingForConnection;
+				int attempts = 0;
+				while (m_Pipe == null && attempts++ < 5)
+					await Task.Delay(100);
+				if (m_Pipe == null)
+					throw new Exception("Pipe is null before WaitForConnectionAsync.");
+				await m_Pipe.WaitForConnectionAsync(m_CancelToken);
+				state = eHSMState.Connected;
+				while (m_Pipe != null &&
+					m_Pipe.IsConnected &&
+					!m_CancelToken.IsCancellationRequested)
 				{
-					state = eHSMState.WaitingForConnection;
-					await m_Pipe.WaitForConnectionAsync(m_CancelToken);
-					state = eHSMState.Connected;
-					while (m_Pipe != null &&
-						m_Pipe.IsConnected &&
-						!m_CancelToken.IsCancellationRequested)
-					{
-						await Task.Delay(100);
-					}
-					state = eHSMState.Disconnected;
+					await Task.Delay(100);
 				}
+				state = eHSMState.Disconnected;
 			}
 			catch (Exception ex)
 			{
@@ -370,9 +372,9 @@ namespace WinOverlay
 			Task.Run(() => SendByte(data), m_CancelToken);
 		}
 
-		public void Send(MouseEventArgs e)
+		public void Send(int state, MouseEventArgs e, CameraInfo cam, bool withinForm)
 		{
-			var data = new MouseEventP3(e).ToByteArray();
+			var data = new MouseEventP3(state, e, cam, withinForm).ToByteArray();
 			Task.Run(() => SendByte(data), m_CancelToken);
 		}
 		private async Task SendByte(byte[] data)
@@ -386,6 +388,7 @@ namespace WinOverlay
 					return;
 				}
 				await m_Pipe.WriteAsync(data, 0, data.Length);
+				m_Pipe.Flush();
 			}
 			finally
 			{

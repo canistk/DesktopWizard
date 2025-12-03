@@ -6,13 +6,14 @@ using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using UnityEngine;
+using UnityEngine.EventSystems;
 namespace Share
 {
-
+	public interface IInputEvent { }
 	/// <summary>Protobuf class for keyboard event data.
 	/// From WinOverlay to KawaiOS</summary>
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public struct KeyboardEventP3
+	public struct KeyboardEventP3 : IInputEvent
 	{
 		public const string LABEL = "KEY_";
 		public static readonly byte[] labelBytes = System.Text.Encoding.UTF8.GetBytes(LABEL);
@@ -73,23 +74,63 @@ namespace Share
 	/// <summary>Protobuf class for mouse event data.
 	/// From WinOverlay to KawaiOS</summary>
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public struct MouseEventP3
+	public struct MouseEventP3 : IInputEvent
 	{
 		public const string LABEL = "MOU_";
 		public static readonly byte[] labelBytes = System.Text.Encoding.UTF8.GetBytes(LABEL);
 		public int Button;
+		public int State; // 0 : down, 1: up, 2: move, 3: wheel
 		public int Clicks;
 		public int X;
 		public int Y;
-		public int Delta;
-		public MouseEventP3(MouseEventArgs e)
+		public int WheelDelta;
+		public float monX;
+		public float monY;
+		public float formX;
+		public float formY;
+		public bool withinForm;
+
+#if !(UNITY_EDITOR || UNITY_STANDALONE)
+		public MouseEventP3(int state, MouseEventArgs e, CameraInfo cam, bool withinForm)
 		{
 			Button = (int)e.Button;
+			State = state;
+			if (state < 0 || state > 3)
+				throw new ArgumentOutOfRangeException("state", "State must be 0 (down), 1 (up), 2 (move), or 3 (wheel).");
 			Clicks = e.Clicks;
 			X = e.X;
 			Y = e.Y;
-			Delta = e.Delta;
+			WheelDelta = e.Delta;
+			var monPos = cam.O2M.MultiplyPoint3x4(new Vec3(X, Y, 0));
+			monX = monPos.X;
+			monY = monPos.Y;
+
+			var formPos = cam.M2F.MultiplyPoint3x4(monPos);
+			formX = formPos.X;
+			formY = formPos.Y;
+
+			this.withinForm = withinForm;
 		}
+#endif
+
+#if UNITY_EDITOR || UNITY_STANDALONE
+		public PointerEventData ConvertToPointerEventData()
+		{
+			//var osPos = new Vector2(X, Y);
+			//var formPos = new Vector2(formX, formY);
+			var monPos = new Vector2(monX, monY);
+			PointerEventData ped = new PointerEventData(EventSystem.current)
+			{
+				button = (PointerEventData.InputButton)Button,
+				position = monPos,
+				pressPosition = State == 0 ? monPos : Vector2.zero,
+				clickCount = Clicks,
+				scrollDelta = new Vector2(0, WheelDelta),
+				// Rest require calculate in system.
+			};
+			return ped;
+		}
+#endif
 
 		public byte[] ToByteArray()
 		{
@@ -105,7 +146,7 @@ namespace Share
 			return arr;
 		}
 
-		public static MouseEventP3 FromByteArray(byte[] arr)
+		public static MouseEventP3 FromByteArray(ref byte[] arr)
 		{
 			if (!IsValid(ref arr))
 				throw new ArgumentException("Byte array does not contain valid MouseEventP3 data.");

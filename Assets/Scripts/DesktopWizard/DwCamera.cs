@@ -10,6 +10,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UIElements;
 using Google.Protobuf;
+using System.IO.Pipes;
+using System.Threading.Tasks;
 
 namespace DesktopWizard
 {
@@ -674,7 +676,7 @@ namespace DesktopWizard
 			return factor;
 		}
 
-		private bool ShouldPerformUpdate()
+		private bool ShouldPerformRenderUpdate()
 		{
 			var factor = GetUpdateFactor();
 			if (Time.realtimeSinceStartup - m_LastRenderTime < factor)
@@ -692,7 +694,7 @@ namespace DesktopWizard
 			UpdateChromaKeyIfNeeded();
 			WinForm_PreUpdate();
 
-			if (ShouldPerformUpdate())
+			if (ShouldPerformRenderUpdate())
 			{
 				PrepareGPU(out var gpu, out var prevSrc);
 
@@ -724,6 +726,7 @@ namespace DesktopWizard
 				ShareMemory_CameraMatrix_Update(gpu);
 			}
 
+			InputPipe_Update();
 			WinForm_PostUpdate();
 
 			HandlerSelectedObjectEvents();
@@ -1233,6 +1236,7 @@ namespace DesktopWizard
 
 			}
 			ShareMemory_Init();
+			InputPipe_Init();
 		}
 
 		private int m_DelayFrame = 0;
@@ -1272,6 +1276,7 @@ namespace DesktopWizard
 			}
 
 			ShareMemory_Dispose();
+			InputPipe_Dispose();
 
 			if (dwForm != null)
             {
@@ -1988,6 +1993,7 @@ namespace DesktopWizard
 		[SerializeField] private int m_CameraId = 0;
 		public int id => m_CameraId;
 
+
 		private void ShareMemory_Init()
 		{
 			var shareName = $"DwCamera_{m_CameraId}_Info";
@@ -1998,11 +2004,12 @@ namespace DesktopWizard
 			mmf = MemoryMappedFile.CreateOrOpen(shareName, bufferSize, MemoryMappedFileAccess.ReadWrite);
 			accessor = mmf.CreateViewAccessor(0, bufferSize, MemoryMappedFileAccess.Write);
 		}
+
 		private void ShareMemory_Dispose()
 		{
 			accessor?.Dispose();
-			mmf?.Dispose();
 			accessor = null;
+			mmf?.Dispose();
 			mmf = null;
 		}
 
@@ -2046,6 +2053,162 @@ namespace DesktopWizard
 		// ShareInfo MMF
 		private MemoryMappedFile mmf = null;
 		private MemoryMappedViewAccessor accessor = null;
+		private NamedPipeClientStream inputPipe = null;
 		#endregion Share Memory - WinOverlayer
+
+		#region Input Pipe Receiver
+
+		private InputPipeReceiver m_InputPipeReceiver = null;
+		private void InputPipe_Init()
+		{
+			m_InputPipeReceiver = new InputPipeReceiver($"DwCamera_{m_CameraId}_InputPipe");
+			m_InputPipeReceiver.EVENT_Mouse += InputPipe_MouseEventHandler;
+			m_InputPipeReceiver.EVENT_Keyboard += InputPipe_KeyboardEventHandler;
+		}
+
+		private void InputPipe_MouseEventHandler(MouseEventP3 evt)
+		{
+			// Convert to PointerEventData
+			if (evt.withinForm)
+			{
+				var p = evt.ConvertToPointerEventData();
+				switch (evt.State)
+				{
+					case 0: // down
+					Debug.Log($"InputPipe_MouseEventHandler - down at {p.position}");
+					Form_MouseDown(dwForm.hWnd, p);
+					break;
+					case 1: // up
+					Debug.Log($"InputPipe_MouseEventHandler - up at {p.position}");
+					Form_MouseUp(dwForm.hWnd, p);
+					break;
+					case 2: // move
+					Debug.Log($"InputPipe_MouseEventHandler - move at {p.position}");
+					Form_MouseMove(dwForm.hWnd, p);
+					break;
+					case 3: // wheel
+					Debug.Log($"InputPipe_MouseEventHandler - wheel at {p.position}, delta={evt.WheelDelta}");
+					Form_MouseWheel(dwForm.hWnd, p);
+					break;
+				}
+			}
+		}
+		private void InputPipe_KeyboardEventHandler(KeyboardEventP3 evt)
+		{
+			// TODO: Convert to KeyUpEvent
+		}
+
+		private void InputPipe_Update()
+		{
+			m_InputPipeReceiver?.MainThread_Update();
+		}
+		private void InputPipe_Dispose()
+		{
+			m_InputPipeReceiver.EVENT_Keyboard -= InputPipe_KeyboardEventHandler;
+			m_InputPipeReceiver.EVENT_Mouse -= InputPipe_MouseEventHandler;
+			m_InputPipeReceiver?.Dispose();
+			m_InputPipeReceiver = null;
+		}
+		#endregion Input Pipe Receiver
+	}
+
+	public class InputPipeReceiver : IDisposable
+	{
+		private NamedPipeClientStream m_Pipe;
+		/// <summary>Mainthread dispatch <see cref="MainThread_Update"/></summary>
+		public event Action<MouseEventP3> EVENT_Mouse;
+		/// <summary>Mainthread dispatch <see cref="MainThread_Update"/></summary>
+		public event Action<KeyboardEventP3> EVENT_Keyboard;
+		public bool IsDisposed { get; private set; } = false;
+		private byte[] m_Buffer = null;
+		private Queue<IInputEvent> m_Events = new Queue<IInputEvent>(64);
+		public InputPipeReceiver(string pipeName, int bufferSize = 1024 * 1024)
+		{
+			m_Buffer = new byte[bufferSize];
+			m_Pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.In, PipeOptions.Asynchronous);
+			Task.Run(ConnectToDwForm);
+		}
+
+		public void MainThread_Update()
+		{
+			while (m_Events.Count > 0)
+			{
+				var evt = m_Events.Dequeue();
+				switch (evt)
+				{
+					case MouseEventP3 me:		EVENT_Mouse?.Invoke(me);	break;
+					case KeyboardEventP3 ke:	EVENT_Keyboard?.Invoke(ke);	break;
+				}
+			}
+		}
+
+		private async Task ConnectToDwForm()
+		{
+			await m_Pipe.ConnectAsync();
+
+			int bytesRead = -1;
+			while (m_Pipe.IsConnected)
+			{
+				try
+				{
+					bytesRead = await m_Pipe.ReadAsync(m_Buffer, 0, m_Buffer.Length);
+					if (bytesRead > 0)
+					{
+						// first 4 bytes into string UTF-8
+						var tag = System.Text.Encoding.UTF8.GetString(m_Buffer, 0, 4);
+						switch (tag)
+						{
+							case KeyboardEventP3.LABEL:
+							var keyEvent = KeyboardEventP3.FromByteArray(ref m_Buffer);
+							m_Events.Enqueue(keyEvent);
+							break;
+
+							case MouseEventP3.LABEL:
+							var mouseEvent = MouseEventP3.FromByteArray(ref m_Buffer);
+							m_Events.Enqueue(mouseEvent);
+							break;
+
+							default:
+							Debug.LogError("Unknown input event tag: " + tag);
+							break;
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Debug.LogError($"Error reading from input pipe: {ex.Message}");
+				}
+			}
+			// End of connection.
+			Dispose();
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!IsDisposed)
+			{
+				IsDisposed = true;
+				if (disposing)
+				{
+					m_Pipe?.Close();
+					m_Pipe?.Dispose();
+				}
+				m_Buffer = null;
+				m_Pipe = null;
+			}
+		}
+
+		~InputPipeReceiver()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: false);
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
 	}
 }

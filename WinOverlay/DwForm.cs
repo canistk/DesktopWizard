@@ -205,7 +205,7 @@ namespace WinOverlay
 				if (m_CameraMatrix != null && m_CameraMatrix.TryRead(out var camInfo))
                 {
 					// Test: offset by form OS position
-					location = new Point(camInfo.FormOSPos.X + 300, camInfo.FormOSPos.Y);
+					location = new Point(camInfo.FormOSPos.X + 100, camInfo.FormOSPos.Y + 100);
                 }
 				BeginInvoke(new Action(() =>
 				{
@@ -250,12 +250,6 @@ namespace WinOverlay
             }
             else
             {
-                // Fallback: draw debug info when no bitmap is available
-                //using (var brush = new SolidBrush(Color.LightBlue))
-                //{
-                //    e.Graphics.FillRectangle(brush, ClientRectangle);
-                //}
-
                 using (var font = new Font("Arial", 16, FontStyle.Bold))
                 using (var textBrush = new SolidBrush(Color.Black))
                 {
@@ -307,23 +301,49 @@ namespace WinOverlay
             m_InputPipe.Start(m_CancelSrc.Token);
 		}
 
-
-		protected override void OnMouseMove(MouseEventArgs e)
+		/// <summary>Check mouse event within form bounds</summary>
+		/// <param name="e"></param>
+		/// <returns></returns>
+		private bool IsMouseWithinForm(MouseEventArgs e)
         {
-            base.OnMouseMove(e);
-            m_InputPipe.Send(e);
+            var formPos = this.PointToScreen(e.Location);
+            var formRect = new Rectangle(this.Location, this.Size);
+            return formRect.Contains(formPos);
 		}
 
-        protected override void OnMouseDown(MouseEventArgs e)
+		protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-			m_InputPipe.Send(e);
+
+			if (!m_CameraMatrix.TryRead(out var camInfo))
+				return;
+			m_InputPipe.Send(0, e, camInfo, IsMouseWithinForm(e));
 		}
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
-			m_InputPipe.Send(e);
+            
+			if (!m_CameraMatrix.TryRead(out var camInfo))
+				return;
+			m_InputPipe.Send(1, e, camInfo, IsMouseWithinForm(e));
+		}
+		protected override void OnMouseMove(MouseEventArgs e)
+		{
+			base.OnMouseMove(e);
+
+			if (!m_CameraMatrix.TryRead(out var camInfo))
+				return;
+			m_InputPipe.Send(2, e, camInfo, IsMouseWithinForm(e));
+		}
+
+		protected override void OnMouseWheel(MouseEventArgs e)
+		{
+            base.OnMouseWheel(e);
+			
+            if (!m_CameraMatrix.TryRead(out var camInfo))
+                return;
+            m_InputPipe.Send(3, e, camInfo, IsMouseWithinForm(e));
 		}
 		#endregion Mouse Events
 
