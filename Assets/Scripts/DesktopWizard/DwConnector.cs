@@ -84,7 +84,7 @@ namespace DesktopWizard
         void OnDisable()
         {
             StopServer();
-			m_CacheIPC?.Clear();
+			m_CacheIPC.Clear();
 		}
 
         private void Update()
@@ -171,14 +171,17 @@ namespace DesktopWizard
             m_CancelSrc?.Cancel();
             m_CancelSrc?.Dispose();
             m_CancelSrc = null;
+            pipeServer?.Close();
 			pipeServer?.Dispose();
 			pipeServer = null;
-            pipeClient?.Dispose();
+            pipeClient?.Close();
+			pipeClient?.Dispose();
             pipeClient = null;
 
 			if (winOverlayProcess != null && !winOverlayProcess.HasExited)
 			{
 				winOverlayProcess.Kill();
+                winOverlayProcess.Dispose();
 				winOverlayProcess = null;
 			}
 		}
@@ -187,7 +190,8 @@ namespace DesktopWizard
         {
             if (s_AppQuit)
                 return;
-            try
+            int step = 0;
+			try
             {
                 if (m_CancelSrc == null)
                 {
@@ -214,43 +218,43 @@ namespace DesktopWizard
                     PipeDirection.In,
                     PipeOptions.Asynchronous
                 );
-			}
-            catch (System.Exception e)
-            {
-                tLogError(e, $"Failed to start server: {e.Message}");
-            }
 
-            try
-            {
-                //string exePath = Path.Combine(Application.streamingAssetsPath, "WinOverlay", "WinOverlay.exe");
-                //winOverlayProcess = Process.Start(exePath, "-test");
-                Debug.Log("WinOverlay process started, waiting for startup completion...");
-            }
-            catch (System.Exception e)
-            {
-				tLogError(e, $"Failed to start WinOverlay: {e.Message}");
-            }
+                tLog($"Dw[{++step}]: Starting server...");
+                using var job0 = pipeServer.WaitForConnectionAsync(m_CancelSrc.Token);
+                using var job1 = pipeClient.ConnectAsync(m_CancelSrc.Token);
+                await Task.Delay(10); // Slight delay to ensure pipes are ready
 
-            try
-            {
-                var job0 = pipeServer.WaitForConnectionAsync(m_CancelSrc.Token);
-                var job1 = pipeClient.ConnectAsync(m_CancelSrc.Token);
+				// Check if WinOverlay is already running
+				if (job1.IsCompletedSuccessfully)
+				{
+					tLog($"Dw[{++step}]: WinOverlay is already running.");
+				}
+				else
+				{
+					// assume WinOverlay is not running, start it
+					// Start WinOverlay process
+					string exePath = Path.Combine(Application.streamingAssetsPath, "WinOverlay", "WinOverlay.exe");
+					winOverlayProcess = Process.Start(exePath, "-test");
+				    tLog($"Dw[{++step}]: WinOverlay process started, waiting for startup completion...");
+				}
                 await Task.WhenAll(job0, job1);
-                tLog("WinOverlay connected...");
-                _ = Task.Run(ListenForMessages);
+
+                tLog($"Dw[{++step}]: WinOverlay connected.");
+				_ = Task.Run(ListenForMessages);
 
                 if (!HandShaked)
-                    throw new Exception("Handshake failed.");
-                tLog("Handshake succeeded.");
+                    throw new Exception($"Dw[{++step}]: Handshake failed.");
+                tLog($"Dw[{++step}]: WinOverlay Handshake succeeded.");
 
                 // Process cached messages
                 FlushCachedIPS();
 			}
             catch (System.Exception ex)
             {
-                tLogError(ex, $"Connection failed:");
+                tLogError(ex, $"Failed to start server: {ex.Message}");
                 StopServer();
                 Invoke(nameof(RestartServer), 2f); // Retry after 2 seconds
+                return;
             }
         }
 

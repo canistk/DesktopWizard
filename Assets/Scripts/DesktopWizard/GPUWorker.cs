@@ -5,7 +5,6 @@ using System.IO.MemoryMappedFiles;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using UnityEngine;
-using GraphicsDeviceType = UnityEngine.Rendering.GraphicsDeviceType;
 namespace DesktopWizard
 {
 	public abstract class GPUWorker : IDisposable

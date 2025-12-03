@@ -87,8 +87,10 @@ namespace WinOverlay
 				Debug.Log("[Unity3DConnector] Waiting for connection...");
 
                 var job0 = pipeClient.WaitForConnectionAsync(m_CancelSrc.Token);
+                await job0;
 				var job1 = pipeServer.ConnectAsync(m_CancelSrc.Token);
-                await Task.WhenAll(job0, job1);
+                await job1;
+				//await Task.WhenAll(job0, job1);
 
 				Debug.Log("[Unity3DConnector] Connection detected, start listen pipe...");
 				_ = Task.Run(ListenForMessages);
