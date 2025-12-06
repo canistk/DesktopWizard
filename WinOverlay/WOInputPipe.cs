@@ -143,7 +143,11 @@ namespace WinOverlay
 		{
 			try
 			{
+				if (m_Semaphore == null)
+					return;
 				await m_Semaphore.WaitAsync();
+				if (m_Semaphore == null)
+					return;
 				if (m_Pipe == null || !m_Pipe.IsConnected)
 				{
 					Console.WriteLine($"[{name}] Pipe is not connected when trying to send data.");
