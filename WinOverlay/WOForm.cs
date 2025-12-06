@@ -7,24 +7,25 @@ using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Share;
 
 namespace WinOverlay
 {
     public class WOForm : Form
 	{
-		private Unity3DConnector u3d => Unity3DConnector.Instance;
+		private WOMessagePipe u3d => WOMessagePipe.Instance;
 		private int cameraId;
         private string prefix;
 		private const int MAX_GPU_WORKER = 4; // Note: same as U3D DwCamera.MAX_GPU_WORKER
 		private HSM_Gpu[] m_GPU;
-        private HSM_CameraMatrix m_CameraMatrix;
+        private WOCameraShare m_CameraMatrix;
 		private System.Windows.Forms.Timer renderTimer;
         private Bitmap currentBitmap;
         private bool isDisposed = false;
         
         // Bitmap converters for dual-buffer system
         private BitmapConverter m_Converter01, m_Converter02;
-		private HSM_KeyboardMouse m_InputPipe;
+		private WOInputPipe m_InputPipe;
 
 		public WOForm(int cameraId)
         {
@@ -106,7 +107,7 @@ namespace WinOverlay
 
         private void InitializeCameraInfo()
         {
-            m_CameraMatrix = new HSM_CameraMatrix($"{prefix}_Info", m_CancelSrc.Token);
+            m_CameraMatrix = new WOCameraShare($"{prefix}_Info", m_CancelSrc.Token);
             Console.WriteLine($"Camera info for camera {cameraId} initialized.");
 		}
 
@@ -296,7 +297,7 @@ namespace WinOverlay
                 m_CancelSrc.Dispose();
                 m_CancelSrc = new CancellationTokenSource();
 			}
-            m_InputPipe = new HSM_KeyboardMouse($"{prefix}_InputPipe");
+            m_InputPipe = new WOInputPipe($"{prefix}_InputPipe");
             m_InputPipe.Start(m_CancelSrc.Token);
 		}
 

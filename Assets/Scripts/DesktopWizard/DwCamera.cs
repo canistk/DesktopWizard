@@ -2033,14 +2033,14 @@ namespace DesktopWizard
 			var v3f		= new Vector3(v2i.x, v2i.y, 0f);
 			var monPos	= o2m.MultiplyPoint3x4(v3f); // correct, Cyan (faster)
 			var formPos	= (m2f * o2m).MultiplyPoint3x4(v3f); // correct, Yellow (faster)
-			var formOSPos = new Share.Vec2Int
+			var formOSPos = new Vec2Int
 			{
 				X = Left,
 				Y = Top,
 			};
 
 			// Serialize the message to bytes and write to the memory-mapped file.
-			var info = new Share.CameraInfo(o2m, m2f, v2i, monPos, formOSPos, formPos);
+			var info = new CameraInfo(o2m, m2f, v2i, monPos, formOSPos, formPos);
 			var bytes = info.ToByteArray();
 			
 			if (accessor != null)

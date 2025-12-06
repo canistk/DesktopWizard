@@ -1,18 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-
-namespace WinOverlay
+using System.Runtime.InteropServices;
+#if UNITY_EDITOR || UNITY_STANDALONE
+using UnityEngine;
+using UnityEngine.EventSystems;
+#else
+using System.Numerics;
+#endif
+namespace Share
 {
-	public struct Vec2Int
-	{
+	[StructLayout(LayoutKind.Sequential)]
+		public struct Vec2Int
+		{
 		public int X, Y;
 		public Vec2Int(int x, int y)
 		{
 			X = x;
 			Y = y;
 		}
-		
+
+#if UNITY_EDITOR || UNITY_STANDALONE
+		public static implicit operator Vector2Int(Vec2Int vec) => new Vector2Int(vec.X, vec.Y);
+		public static implicit operator Vec2Int(Vector2Int vec)
+		{
+			return new Vector2Int
+			{
+				x = vec.x,
+				y = vec.y
+			};
+		}
+#else
+#endif
 		public static implicit operator Point(Vec2Int p)
 		{
 			return new Point(p.X, p.Y);

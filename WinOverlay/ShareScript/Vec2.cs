@@ -1,7 +1,12 @@
 ﻿using System;
 using System.Drawing;
-
-namespace WinOverlay
+#if UNITY_EDITOR || UNITY_STANDALONE
+using UnityEngine;
+using UnityEngine.EventSystems;
+#else
+using System.Numerics;
+#endif
+namespace Share
 {
 	public struct Vec2
 	{
@@ -11,6 +16,24 @@ namespace WinOverlay
 			X = x;
 			Y = y;
 		}
+		public static implicit operator Vector2(Vec2 vec) => new Vector2(vec.X, vec.Y);
+		public static implicit operator Vec2(Vector2 vec)
+		{
+#if UNITY_EDITOR || UNITY_STANDALONE
+			return new Vec2
+			{
+				X = vec.x,
+				Y = vec.y
+			};
+#else
+			return new Vec2
+			{
+				X = vec.X,
+				Y = vec.Y
+			};
+#endif
+		}
+
 		private static void Fix(ref Vec2 v)
 		{
 			v.X = float.IsInfinity(v.X) || float.IsNaN(v.X) ? 0f : v.X;
@@ -120,5 +143,19 @@ namespace WinOverlay
 			Fix(ref normal);
 			return this - 2f * this.Dot(normal) * normal;
 		}
+
+#if UNITY_EDITOR || UNITY_STANDALONE
+		public override bool Equals(object obj)
+		{
+			return obj is Vec2 vec &&
+				   X == vec.X &&
+				   Y == vec.Y;
+		}
+
+		public override int GetHashCode()
+		{
+			return HashCode.Combine(X, Y);
+		}
+#endif
 	}
 }

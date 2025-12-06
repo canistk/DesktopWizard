@@ -11,7 +11,7 @@ namespace WinOverlay
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new OverlayManager());
+            Application.Run(new WOService());
         }
     }
 }

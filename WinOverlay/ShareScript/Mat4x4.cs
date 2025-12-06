@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace WinOverlay
+#if UNITY_EDITOR || UNITY_STANDALONE
+using UnityEngine;
+using UnityEngine.EventSystems;
+#else
+using System.Numerics;
+#endif
+namespace Share
 {
 	// partial class from Protobuf generated code
 	// 16 float values for a 4x4 matrix
@@ -261,5 +265,30 @@ namespace WinOverlay
 				throw new ArgumentException("Mat4x4 requires exactly 16 elements.");
 			this.M = elements;
 		}
+
+#if UNITY_EDITOR || UNITY_STANDALONE
+		public Matrix4x4 ToMatrix4x4()
+		{
+			return new Matrix4x4(
+				new Vector4(M[0], M[1], M[2], M[3]),
+				new Vector4(M[4], M[5], M[6], M[7]),
+				new Vector4(M[8], M[9], M[10], M[11]),
+				new Vector4(M[12], M[13], M[14], M[15])
+			);
+		}
+
+		public static implicit operator Matrix4x4(Mat4x4 mat) => mat.ToMatrix4x4();
+		public static implicit operator Mat4x4(Matrix4x4 mat)
+		{
+			return new Mat4x4(
+				new float[]
+				{
+					mat.m00, mat.m01, mat.m02, mat.m03,
+					mat.m10, mat.m11, mat.m12, mat.m13,
+					mat.m20, mat.m21, mat.m22, mat.m23,
+					mat.m30, mat.m31, mat.m32, mat.m33
+				});
+		}
+#endif
 	}
 }

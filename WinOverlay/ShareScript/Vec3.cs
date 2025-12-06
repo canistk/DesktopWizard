@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-
-namespace WinOverlay
+#if UNITY_EDITOR || UNITY_STANDALONE
+using UnityEngine;
+using UnityEngine.EventSystems;
+#else
+using System.Numerics;
+#endif
+namespace Share
 {
 	public struct Vec3
 	{
@@ -17,6 +22,26 @@ namespace WinOverlay
 
 		public static readonly Vec3 Zero = new Vec3(0f, 0f, 0f);
 		public static readonly Vec3 One = new Vec3(1f, 1f, 1f);
+
+		public static implicit operator Vector3(Vec3 vec) => new Vector3(vec.X, vec.Y, vec.Z);
+		public static implicit operator Vec3(Vector3 vec)
+		{
+#if UNITY_EDITOR || UNITY_STANDALONE
+			return new Vec3
+			{
+				X = vec.x,
+				Y = vec.y,
+				Z = vec.z
+			};
+#else
+			return new Vec3
+			{
+				X = vec.X,
+				Y = vec.Y,
+				Z = vec.Z
+			};
+#endif
+		}
 
 		private static void Fix(ref Vec3 v)
 		{

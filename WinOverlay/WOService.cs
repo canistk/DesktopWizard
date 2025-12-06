@@ -2,27 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using Newtonsoft.Json.Linq;
+using Share;
 namespace WinOverlay
 {
-
-    public class OverlayManager : ApplicationContext
+	/// <summary>
+	/// Provides the main service functionality for managing camera overlays.
+	/// Depends on WOMessagePipe for communication with Unity.
+	/// </summary>
+	public class WOService : ApplicationContext
     {
-        public static class CMD
-        {
-            public const string Action = "action";
-            public const string Ping = "Ping";
-            public const string Pong = "Pong";
-            public const string SlaveError = "SLAVE_ERROR";
-            public const string SlaveWarning = "SLAVE_WARN";
-            public const string SlaveInfo = "SLAVE_INFO";
-            public const string RegisterCamera = "REG_CAM";
-            public const string UnregisterCamera = "UNREG_CAM";
-        }
-        private Unity3DConnector u3d => Unity3DConnector.Instance;
+        private WOMessagePipe u3d => WOMessagePipe.Instance;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
         private Dictionary<string /* prefix */, WOForm> m_ActiveCameras = new Dictionary<string, WOForm>();
 
-        public OverlayManager()
+        public WOService()
         {
             InitializeConnector();
         }
@@ -70,18 +63,13 @@ namespace WinOverlay
             }
         }
 
-
-		private void Log(string message) => System.Diagnostics.Debug.WriteLine(message, "INFO");
-		private void Warn(string message) => System.Diagnostics.Debug.WriteLine(message, "WARNING");
-		private void Error(string message) => System.Diagnostics.Debug.WriteLine(message, "ERROR");
-
 		private void OnConnectionLost()
         {
             // Exit application when connection is lost
-            Error("Connection lost. OverlayManager shutting down.");
+            Debug.Error("Connection lost. OverlayManager shutting down.");
             if (System.Diagnostics.Debugger.IsAttached)
             {
-                Warn("Debugger is attached. Not exiting application.");
+                Debug.Warn("Debugger is attached. Not exiting application.");
                 // Clean up existing state
                 u3d.MessageReceived -= OnMessageReceived;
                 u3d.ConnectionLosted -= OnConnectionLost;

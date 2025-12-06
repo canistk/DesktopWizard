@@ -6,15 +6,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Share;
 
 namespace WinOverlay
 {
-    public class Unity3DConnector : IDisposable
+	/// <summary>
+    /// The unique message pipe between WinOverlay and Unity3D.
+	/// Singleton pattern.
+	/// </summary>
+	public class WOMessagePipe : IDisposable
     {
-        private static Unity3DConnector s_Instance;
+        private static WOMessagePipe s_Instance;
         private static readonly object _lock = new object();
 
-        public static Unity3DConnector Instance
+        public static WOMessagePipe Instance
         {
             get
             {
@@ -24,7 +29,7 @@ namespace WinOverlay
                     {
                         if (s_Instance == null)
                         {
-                            s_Instance = new Unity3DConnector();
+                            s_Instance = new WOMessagePipe();
                         }
                     }
                 }
@@ -37,7 +42,7 @@ namespace WinOverlay
         private static readonly List<string> s_MessageCache = new List<string>();
         private static readonly object s_CacheLock = new object();
         
-        private Unity3DConnector() 
+        private WOMessagePipe() 
         {
             _syncContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         }
@@ -185,7 +190,7 @@ namespace WinOverlay
 		{
 			if (IsDisposed)
 				return;
-			using (var err = new MyAction(OverlayManager.CMD.SlaveError))
+			using (var err = new MyAction(CMD.SlaveError))
             {
                 err.Add("message", message);
                 SendMessage(err);
@@ -196,7 +201,7 @@ namespace WinOverlay
 		{
 			if (IsDisposed)
 				return;
-			using (var warn = new MyAction(OverlayManager.CMD.SlaveWarning))
+			using (var warn = new MyAction(CMD.SlaveWarning))
             {
                 warn.Add("message", message);
                 SendMessage(warn);
@@ -207,7 +212,7 @@ namespace WinOverlay
 		{
 			if (IsDisposed)
 				return;
-			using (var info = new MyAction(OverlayManager.CMD.SlaveInfo))
+			using (var info = new MyAction(CMD.SlaveInfo))
             {
                 info.Add("message", message);
                 SendMessage(info);
@@ -307,7 +312,7 @@ namespace WinOverlay
 			pipeClient = null;
 			s_Instance = null;
 		}
-        ~Unity3DConnector()
+        ~WOMessagePipe()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: false);
