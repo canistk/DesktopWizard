@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace WinOverlay
 {
-    public class DwForm : Form
+    public class WOForm : Form
 	{
 		private Unity3DConnector u3d => Unity3DConnector.Instance;
 		private int cameraId;
@@ -24,10 +24,9 @@ namespace WinOverlay
         
         // Bitmap converters for dual-buffer system
         private BitmapConverter m_Converter01, m_Converter02;
-        //private NamedPipeServerStream m_InputPipe;
 		private HSM_KeyboardMouse m_InputPipe;
 
-		public DwForm(int cameraId)
+		public WOForm(int cameraId)
         {
             this.cameraId = cameraId;
             this.prefix = $"DwCamera_{cameraId}";
