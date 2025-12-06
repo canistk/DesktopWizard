@@ -24,10 +24,10 @@ namespace Share
 		public static implicit operator Vector2Int(Vec2Int vec) => new Vector2Int(vec.X, vec.Y);
 		public static implicit operator Vec2Int(Vector2Int vec)
 		{
-			return new Vector2Int
+			return new Vec2Int
 			{
-				x = vec.x,
-				y = vec.y
+				X = vec.x,
+				Y = vec.y
 			};
 		}
 #else

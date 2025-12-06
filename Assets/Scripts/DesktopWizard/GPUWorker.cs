@@ -136,7 +136,7 @@ namespace DesktopWizard
 			m_TempTexture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
 			RenderTexture.active = null;
 			
-			// 3. Get raw pixel data
+			// 3. Get raw pixel data (GPU overhead)
 			byte[] pixels = m_TempTexture.GetRawTextureData();
 			
 			if (pixels != null && pixels.Length > 0)

@@ -10,19 +10,19 @@ namespace WinOverlay
     /// Converts pixel data from Unity's shared memory to System.Drawing.Bitmap.
     /// Handles RGBA to BGRA format conversion and y-axis flipping.
     /// </summary>
-    public class BitmapConverter : IDisposable
+    public class RenderTextureReader : IDisposable
     {
         private MemoryMappedFile mmfPixels;
         private MemoryMappedViewAccessor accessorPixels;
         private bool isDisposed = false;
         private readonly string pixelsMmfName;
         
-        public BitmapConverter(string cameraPrefix, int subId)
+        public RenderTextureReader(string cameraPrefix, int subId)
         {
             pixelsMmfName = $"{cameraPrefix}_{subId}_Pixels";
 		}
 
-        public BitmapConverter(string pixelsMmfName)
+        public RenderTextureReader(string pixelsMmfName)
         {
             this.pixelsMmfName = pixelsMmfName;
         }
@@ -58,7 +58,7 @@ namespace WinOverlay
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine($"[BitmapConverter] Failed to open pixel MMF '{pixelsMmfName}': {ex.Message}");
+				Console.WriteLine($"[RenderTextureReader] Failed to open pixel MMF '{pixelsMmfName}': {ex.Message}");
 			}
 
 			try
@@ -66,7 +66,7 @@ namespace WinOverlay
                 // Verify MMF has enough capacity
                 if (accessorPixels.Capacity < shareInfo.totalSize)
                 {
-                    Console.WriteLine($"[BitmapConverter] MMF capacity ({accessorPixels.Capacity}) < required size ({shareInfo.totalSize})");
+                    Console.WriteLine($"[RenderTextureReader] MMF capacity ({accessorPixels.Capacity}) < required size ({shareInfo.totalSize})");
                     return false;
                 }
                 
@@ -151,7 +151,7 @@ namespace WinOverlay
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[BitmapConverter] Error converting to bitmap: {ex.Message}");
+                Console.WriteLine($"[RenderTextureReader] Error converting to bitmap: {ex.Message}");
                 bitmap?.Dispose();
                 bitmap = null;
                 return false;

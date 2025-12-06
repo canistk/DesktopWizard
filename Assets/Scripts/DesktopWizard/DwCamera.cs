@@ -2104,8 +2104,11 @@ namespace DesktopWizard
 		}
 		private void InputPipe_Dispose()
 		{
-			m_InputPipeReceiver.EVENT_Keyboard -= InputPipe_KeyboardEventHandler;
-			m_InputPipeReceiver.EVENT_Mouse -= InputPipe_MouseEventHandler;
+			if (m_InputPipeReceiver != null)
+			{
+				m_InputPipeReceiver.EVENT_Keyboard -= InputPipe_KeyboardEventHandler;
+				m_InputPipeReceiver.EVENT_Mouse -= InputPipe_MouseEventHandler;
+			}
 			m_InputPipeReceiver?.Dispose();
 			m_InputPipeReceiver = null;
 		}

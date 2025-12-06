@@ -19,20 +19,20 @@ namespace WinOverlay
     /// <remarks>This class is designed to interact with a memory-mapped file that contains GPU-related data.
     /// It allows reading the shared GPU information in a thread-safe manner and ensures proper resource management by
     /// implementing <see cref="IDisposable"/>.</remarks>
-	public class HSM_Gpu
+	public class WOGpuWorker
     {
         private readonly string m_Name;
-		private BitmapConverter pixelReader;
+		private RenderTextureReader pixelReader;
 
 		// extra information from GPU.
         private MemoryMappedFile mmf;
         private MemoryMappedViewAccessor accessor;
 		private CancellationTokenSource cancel;
 		private bool IsInitialized => mmf != null && accessor != null;
-		public HSM_Gpu(string mmfName)
+		public WOGpuWorker(string mmfName)
         {
             this.m_Name = mmfName;
-			this.pixelReader = new BitmapConverter($"{mmfName}_Pixels");
+			this.pixelReader = new RenderTextureReader($"{mmfName}_Pixels");
 			this.cancel = new CancellationTokenSource();
 			Reinit();
 		}
@@ -106,45 +106,6 @@ namespace WinOverlay
             mmf?.Dispose();
 			mmf = null;
 		}
-	}
-
-	// TODO: move ping-pong logic here
-	public class HSM_PingPongGPU : System.IDisposable
-	{
-		private HSM_Gpu m_GPU01, m_GPU02;
-
-		public HSM_PingPongGPU(string cameraPrefix)
-		{
-			m_GPU01 = new HSM_Gpu($"{cameraPrefix}_1");
-			m_GPU02 = new HSM_Gpu($"{cameraPrefix}_2");
-		}
-
-
-		#region Dispose Pattern
-		public bool IsDisposed { get; private set; }
-		protected virtual void Dispose(bool disposing)
-		{
-			if (!IsDisposed)
-			{
-				if (disposing)
-				{
-					m_GPU01?.Dispose();
-					m_GPU02?.Dispose();
-				}
-
-				m_GPU01 = null;
-				m_GPU02 = null;
-				IsDisposed = true;
-			}
-		}
-		~HSM_PingPongGPU() => Dispose(disposing: false);
-		public void Dispose()
-		{
-			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-			Dispose(disposing: true);
-			GC.SuppressFinalize(this);
-		}
-		#endregion Dispose Pattern
 	}
 	#endregion GPU(s)
 

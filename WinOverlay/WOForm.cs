@@ -17,14 +17,14 @@ namespace WinOverlay
 		private int cameraId;
         private string prefix;
 		private const int MAX_GPU_WORKER = 4; // Note: same as U3D DwCamera.MAX_GPU_WORKER
-		private HSM_Gpu[] m_GPU;
+		private WOGpuWorker[] m_GPU;
         private WOCameraShare m_CameraMatrix;
 		private System.Windows.Forms.Timer renderTimer;
         private Bitmap currentBitmap;
         private bool isDisposed = false;
         
         // Bitmap converters for dual-buffer system
-        private BitmapConverter m_Converter01, m_Converter02;
+        private RenderTextureReader m_Converter01, m_Converter02;
 		private WOInputPipe m_InputPipe;
 
 		public WOForm(int cameraId)
@@ -49,8 +49,8 @@ namespace WinOverlay
 			this.Size = new Size(100, 200);
             
             // Initialize converters
-            m_Converter01 = new BitmapConverter(prefix, 1);
-            m_Converter02 = new BitmapConverter(prefix, 2);
+            m_Converter01 = new RenderTextureReader(prefix, 1);
+            m_Converter02 = new RenderTextureReader(prefix, 2);
             
             InitializeSharedMemory();
             InitializeInputPipe();
@@ -74,10 +74,10 @@ namespace WinOverlay
                 {
                     try
                     {
-                        m_GPU = new HSM_Gpu[MAX_GPU_WORKER];
+                        m_GPU = new WOGpuWorker[MAX_GPU_WORKER];
 						for (int i = 0; i < MAX_GPU_WORKER; ++i)
                         {
-                            m_GPU[i] = new HSM_Gpu($"{prefix}_{i}");
+                            m_GPU[i] = new WOGpuWorker($"{prefix}_{i}");
                         }
                         m_SharedMemoryInitialized = true;
                         break;
@@ -185,7 +185,7 @@ namespace WinOverlay
 			ReadBitmap(m_GPU[anchor.Key], anchor.Value);
 			return;
 
-            void ReadBitmap(HSM_Gpu gpu, TextureInfo data)
+            void ReadBitmap(WOGpuWorker gpu, TextureInfo data)
             {
                 if (gpu.TryReadBitmap(data, ref currentBitmap))
                 {
