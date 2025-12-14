@@ -17,8 +17,9 @@ namespace Share
 	{
 		public const string LABEL = "MOU_";
 		public static readonly byte[] labelBytes = System.Text.Encoding.UTF8.GetBytes(LABEL);
+		public static readonly MouseEventP3 Invalid = default; // since state 0 = Invalid.
 		public int Button;
-		public int State; // 0 : down, 1: up, 2: move, 3: wheel
+		public int State; // 1 : down, 2: up, 3: move, 4: wheel
 		public int Clicks;
 		public int X;
 		public int Y;
@@ -66,8 +67,8 @@ namespace Share
 			}
 
 			State = state;
-			if (state < 0 || state > 3)
-				throw new ArgumentOutOfRangeException("state", "State must be 0 (down), 1 (up), 2 (move), or 3 (wheel).");
+			if (state < 1 || state > 4)
+				throw new ArgumentOutOfRangeException("state", "State must be 1 (down), 2 (up), 3 (move), or 4 (wheel).");
 			Clicks = clickCount;
 			X = x;
 			Y = y;
