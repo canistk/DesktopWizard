@@ -98,6 +98,7 @@ namespace WinOverlay
 					const int bytesPerPixel = 4;
 					int stride = bitmap.BackBufferStride;
 
+#if UNSAFE_ENABLED
 					unsafe
 					{
 						byte* bmpPtr = (byte*)bitmap.BackBuffer;
@@ -124,6 +125,10 @@ namespace WinOverlay
 							}
 						}
 					}
+#else
+					// Safe alternative: Copy with y-axis flipping and RGBA to BGRA conversion
+					CopyPixelsWithFlip(pixels, bitmap.BackBuffer, width, height, stride);
+#endif
 
 					// Mark the entire bitmap as changed
 					bitmap.AddDirtyRect(new Int32Rect(0, 0, width, height));
@@ -139,6 +144,38 @@ namespace WinOverlay
 			{
 				Console.WriteLine($"[{m_Name}] Error converting to bitmap: {ex.Message}");
 				return false;
+			}
+		}
+
+		/// <summary>
+		/// Safe alternative method to copy pixels with y-axis flipping and RGBA to BGRA conversion.
+		/// </summary>
+		private void CopyPixelsWithFlip(byte[] sourcePixels, IntPtr destBuffer, int width, int height, int stride)
+		{
+			const int bytesPerPixel = 4;
+			byte[] rowBuffer = new byte[stride];
+
+			for (int y = 0; y < height; ++y)
+			{
+				// Unity's y-axis is flipped
+				int srcY = height - 1 - y;
+				int srcOffset = srcY * width * bytesPerPixel;
+
+				// Convert RGBA to BGRA for this row
+				for (int x = 0; x < width; ++x)
+				{
+					int srcIdx = srcOffset + (x * bytesPerPixel);
+					int dstIdx = x * bytesPerPixel;
+
+					rowBuffer[dstIdx + 0] = sourcePixels[srcIdx + 2]; // B
+					rowBuffer[dstIdx + 1] = sourcePixels[srcIdx + 1]; // G
+					rowBuffer[dstIdx + 2] = sourcePixels[srcIdx + 0]; // R
+					rowBuffer[dstIdx + 3] = sourcePixels[srcIdx + 3]; // A
+				}
+
+				// Copy row to destination buffer
+				IntPtr destRow = IntPtr.Add(destBuffer, y * stride);
+				Marshal.Copy(rowBuffer, 0, destRow, width * bytesPerPixel);
 			}
 		}
 
