@@ -4,20 +4,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using Google.Protobuf;
 using Share;
 
 namespace WinOverlay
 {
-    public class WoWpfInputPipe : IDisposable
+    public class WoWindowInputPipe : IDisposable
     {
         private readonly string pipeName;
-        private readonly Window window;
+        private readonly WoWindow window;
         private NamedPipeServerStream pipeServer;
         private bool isRunning;
         private CancellationToken cancellationToken;
 
-        public WoWpfInputPipe(string pipeName, Window window)
+        public WoWindowInputPipe(string pipeName, WoWindow window)
         {
             this.pipeName = pipeName;
             this.window = window;
@@ -89,7 +88,8 @@ namespace WinOverlay
             if (!IsMouseWithinWindow(e))
                 return;
 
-            var mouseEvent = CreateMouseEvent(0, e);
+            if (!TryCreateMouseEvent(0, e, out var mouseEvent))
+                return;
             SendMouseEvent(mouseEvent);
         }
 
@@ -98,8 +98,9 @@ namespace WinOverlay
             if (!IsMouseWithinWindow(e))
                 return;
 
-            var mouseEvent = CreateMouseEvent(1, e);
-            SendMouseEvent(mouseEvent);
+			if (!TryCreateMouseEvent(1, e, out var mouseEvent))
+				return;
+			SendMouseEvent(mouseEvent);
         }
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
@@ -107,8 +108,9 @@ namespace WinOverlay
             if (!IsMouseWithinWindow(e))
                 return;
 
-            var mouseEvent = CreateMouseEvent(2, e);
-            SendMouseEvent(mouseEvent);
+			if (!TryCreateMouseEvent(2, e, out var mouseEvent))
+				return;
+			SendMouseEvent(mouseEvent);
         }
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -116,8 +118,9 @@ namespace WinOverlay
             if (!IsMouseWithinWindow(e))
                 return;
 
-            var mouseEvent = CreateMouseEvent(3, e);
-            mouseEvent.WheelDelta = e.Delta;
+			if (!TryCreateMouseEvent(3, e, out var mouseEvent))
+				return;
+			mouseEvent.WheelDelta = e.Delta;
             SendMouseEvent(mouseEvent);
         }
 
@@ -140,46 +143,77 @@ namespace WinOverlay
                    pos.Y >= 0 && pos.Y <= window.ActualHeight;
         }
 
-        private MouseEventP3 CreateMouseEvent(int state, MouseEventArgs e)
+        private bool TryCreateMouseEvent(int state, MouseEventArgs e, out MouseEventP3 mouseEvent)
         {
-            var pos = e.GetPosition(window);
-            var screenPos = window.PointToScreen(pos);
+            mouseEvent = MouseEventP3.Invalid;
 
-            var mouseEvent = new MouseEventP3
+            var point = e.GetPosition(window);
+            var screenPos = window.PointToScreen(point);
+#if false
+            var WinPos = new Vec2(Convert.ToSingle(window.Top), Convert.ToSingle(window.Left));
+            var WinSize = new Vec2(Convert.ToSingle(window.Width), Convert.ToSingle(window.Height));
+            var WinRect = new Rect(
+                WinPos.X,
+                WinPos.Y,
+                WinSize.X,
+                WinSize.Y);
+            WinRect.Contains(point);
+#else
+#endif
+			if (!window.CameraShare.TryRead(out var camInfo))
+				return false;
+
+            var withinForm = window.IsContain(point);
+
+			var OsV3 = new Vec3(Convert.ToSingle(point.X), Convert.ToSingle(point.Y), 0);
+            var monPos = camInfo.O2M.MultiplyPoint3x4(OsV3);
+            var formPos = camInfo.M2F.MultiplyPoint3x4(monPos);
+
+
+			mouseEvent = new MouseEventP3
             {
                 State = state,
                 Button = GetMouseButton(e),
-                X = (float)pos.X,
-                Y = (float)pos.Y,
-                ScreenX = (int)screenPos.X,
-                ScreenY = (int)screenPos.Y,
-                WithinForm = true,
-                Shift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift),
-                Control = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl),
-                Alt = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)
+                X = (int)point.X,
+                Y = (int)point.Y,
+                WheelDelta = 0,
+                monX = monPos.X,
+				monY = monPos.Y,
+                formX = formPos.X,
+                formY = formPos.Y,
+				Clicks = (e is MouseButtonEventArgs mbe) ? mbe.ClickCount : 0,
+                withinForm = withinForm,
+                //Shift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift),
+                //Control = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl),
+                //Alt = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)
             };
 
             if (e is MouseWheelEventArgs wheelArgs)
             {
                 mouseEvent.WheelDelta = wheelArgs.Delta;
             }
-
-            return mouseEvent;
-        }
+            return true;
+		}
 
         private int GetMouseButton(MouseEventArgs e)
         {
             if (e is MouseButtonEventArgs buttonArgs)
             {
-                return buttonArgs.ChangedButton switch
+                switch (buttonArgs.ChangedButton)
                 {
-                    MouseButton.Left => 0,
-                    MouseButton.Right => 1,
-                    MouseButton.Middle => 2,
-                    MouseButton.XButton1 => 3,
-                    MouseButton.XButton2 => 4,
-                    _ => 0
-                };
+                    case MouseButton.Left:
+                        return 0;
+                    case MouseButton.Right:
+                        return 1;
+                    case MouseButton.Middle:
+                        return 2;
+                    case MouseButton.XButton1:
+                        return 3;
+                    case MouseButton.XButton2:
+                        return 4;
+                    default:
+                        return 0;
+				}
             }
             return 0;
         }

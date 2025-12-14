@@ -13,7 +13,7 @@ namespace WinOverlay
     {
         private WOMessagePipe u3d => WOMessagePipe.Instance;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
-        private Dictionary<string /* prefix */, WOForm> m_ActiveCameras = new Dictionary<string, WOForm>();
+        private Dictionary<string /* prefix */, WoWindow> m_ActiveCameras = new Dictionary<string, WoWindow>();
 
         public WOService()
         {
@@ -147,12 +147,12 @@ namespace WinOverlay
             try
             {
                 // Create DwForm for the camera
-                var dwForm = new WOForm(cameraId);
-                m_ActiveCameras.Add(prefix, dwForm);
+                var win = new WoWindow(cameraId);
+                m_ActiveCameras.Add(prefix, win);
                 
                 // Show the form
-                dwForm.Show();
-                dwForm.TopLevel = true;
+                win.Show();
+                win.Topmost = true;
 
 				SendWarning($"Camera {cameraId} registered successfully");
             }
@@ -181,13 +181,13 @@ namespace WinOverlay
             var sm1 = $"{prefix}_1";
             var sm2 = $"{prefix}_2";
             
-            if (m_ActiveCameras.TryGetValue(prefix, out var dwForm))
+            if (m_ActiveCameras.TryGetValue(prefix, out var WoWin))
             {
                 try
                 {
                     // Close and dispose the form
-                    dwForm.Close();
-                    dwForm.Dispose();
+                    WoWin.Close();
+                    WoWin.Dispose();
                     m_ActiveCameras.Remove(prefix);
                     
                     SendWarning($"Camera {cameraId} unregistered successfully");

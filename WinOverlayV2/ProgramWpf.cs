@@ -22,7 +22,7 @@ namespace WinOverlay
             var app = new Application();
             
             // Create and show the WPF window
-            var window = new WoWpf(cameraId);
+            var window = new WoWindow(cameraId);
             window.Show();
 
             // Run the WPF message loop

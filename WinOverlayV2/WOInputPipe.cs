@@ -7,7 +7,7 @@ using Share;
 
 namespace WinOverlay
 {
-
+	[System.Obsolete("Use WoWindowInputPipe instead.", true)]
 	public class WOInputPipe : System.IDisposable
 	{
 		public bool isDisposed { get; private set; }

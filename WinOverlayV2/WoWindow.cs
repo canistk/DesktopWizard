@@ -1,30 +1,34 @@
 using System;
+using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Share;
 
 namespace WinOverlay
 {
-    public class WoWpf : Window
+    public class WoWindow : Window, IDisposable
     {
         private WOMessagePipe u3d => WOMessagePipe.Instance;
         private int cameraId;
         private string prefix;
         private const int MAX_GPU_WORKER = 4; // Note: same as U3D DwCamera.MAX_GPU_WORKER
         private WOGpuWorker[] m_GPU;
-        private WOCameraShare m_CameraMatrix;
+        private WOCameraShare m_CameraShare;
+        public WOCameraShare CameraShare => m_CameraShare;
+
         private System.Windows.Threading.DispatcherTimer renderTimer;
         private WriteableBitmap currentBitmap;
         private bool isDisposed = false;
         
-        private WoWpfInputPipe m_InputPipe;
-        private CancellationTokenSource m_CancelSrc;
+        private WoWindowInputPipe m_InputPipe;
+        public WoWindowInputPipe InputPipe => m_InputPipe;
 
-        public WoWpf(int cameraId)
+		private CancellationTokenSource m_CancelSrc;
+
+        public WoWindow(int cameraId)
         {
             this.cameraId = cameraId;
             this.prefix = $"DwCamera_{cameraId}";
@@ -110,7 +114,7 @@ namespace WinOverlay
         private void InitializeCameraInfo()
         {
             m_CancelSrc = new CancellationTokenSource();
-            m_CameraMatrix = new WOCameraShare($"{prefix}_Info", m_CancelSrc.Token);
+            m_CameraShare = new WOCameraShare($"{prefix}_Info", m_CancelSrc.Token);
             Console.WriteLine($"Camera info for camera {cameraId} initialized.");
         }
 
@@ -145,7 +149,9 @@ namespace WinOverlay
         }
 
         private DateTime m_LastRenderTime = DateTime.MinValue;
-        private void OnRenderTimer(object sender, EventArgs e)
+		private bool disposedValue;
+
+		private void OnRenderTimer(object sender, EventArgs e)
         {
             if (isDisposed || !m_SharedMemoryInitialized)
                 return;
@@ -174,7 +180,7 @@ namespace WinOverlay
 
         private void ReadBitmap(WOGpuWorker gpu, TextureInfo data)
         {
-            if (gpu.TryReadWriteableBitmap(data, ref currentBitmap))
+            if (gpu.TryReadBitmap(data, ref currentBitmap))
             {
                 // Update the Image control
                 if (Content is System.Windows.Controls.Image image)
@@ -192,7 +198,7 @@ namespace WinOverlay
             double left = (SystemParameters.PrimaryScreenWidth - data.width) / 2;
             double top = (SystemParameters.PrimaryScreenHeight - data.height) / 2;
 
-            if (m_CameraMatrix != null && m_CameraMatrix.TryRead(out var camInfo))
+            if (m_CameraShare != null && m_CameraShare.TryRead(out var camInfo))
             {
                 // Test: offset by form OS position
                 left = camInfo.FormOSPos.X + 100;
@@ -221,7 +227,7 @@ namespace WinOverlay
                 m_CancelSrc = new CancellationTokenSource();
             }
             
-            m_InputPipe = new WoWpfInputPipe($"{prefix}_InputPipe", this);
+            m_InputPipe = new WoWindowInputPipe($"{prefix}_InputPipe", this);
             m_InputPipe.Start(m_CancelSrc.Token);
         }
 
@@ -231,34 +237,85 @@ namespace WinOverlay
             Dispose(true);
         }
 
-        protected void Dispose(bool disposing)
+        public bool IsContain(Point point)
+        {
+            return
+                point.X >= Left &&
+                point.X <= Left + Width &&
+                point.Y >= Top &&
+                point.Y <= Top + Height;
+		}
+
+
+        private bool IsClosing()
+        {
+            return !IsVisible || PresentationSource.FromVisual(this) == null;
+        }
+
+		#region Dispose
+		protected void Dispose(bool disposing)
         {
             if (!isDisposed)
             {
                 isDisposed = true;
                 if (disposing)
-                {
+				{
                     renderTimer?.Stop();
-                    renderTimer = null;
-                    currentBitmap = null;
                     
                     for (int i = 0; i < MAX_GPU_WORKER; ++i)
                     {
                         m_GPU[i]?.Dispose();
                         m_GPU[i] = null;
                     }
-                    
+
                     m_InputPipe?.Dispose();
                     m_CancelSrc?.Dispose();
-                    m_CameraMatrix?.Dispose();
-                }
-                
-                m_GPU = null;
+                    // m_CameraShare?.Dispose();
+
+                    try
+                    {
+                        if (Dispatcher.CheckAccess())
+                        {
+                            if (!IsClosing())
+                                Close();
+                        }
+                        else
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (!IsClosing())
+                                    Close();
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        u3d.SendError($"Error disposing WoWindow for camera {cameraId}: {ex.Message}");
+					}
+				}
+
+				renderTimer = null;
+				currentBitmap = null;
+				m_GPU = null;
                 m_InputPipe = null;
                 m_CancelSrc = null;
-                m_CameraMatrix = null;
+                m_CameraShare = null;
                 m_SharedMemoryInitialized = false;
             }
         }
-    }
+
+        ~WoWindow()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
+		#endregion Dispose
+	}
 }

@@ -14,7 +14,7 @@ namespace WinOverlay
 	/// </summary>
 	/// <remarks>This class is designed to interact with a memory-mapped file that contains camera matrix
 	/// data. It allows reading the data in a thread-safe manner and ensures proper resource management.</remarks>
-	public class WOCameraShare
+	public class WOCameraShare // TODO: IDisposable
 	{
 		private MemoryMappedFile mmf;
 		private MemoryMappedViewAccessor accessor;
