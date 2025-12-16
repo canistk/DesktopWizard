@@ -10,16 +10,15 @@ namespace WinOverlay
 {
     public class WoWindowInputPipe : IDisposable
     {
-        private readonly string pipeName;
-        private readonly WoWindow window;
-        private NamedPipeServerStream pipeServer;
-        private bool isRunning;
-        private CancellationToken cancellationToken;
+        private readonly string m_PipeName;
+        private readonly WoWindow m_Window;
+        private NamedPipeServerStream m_PipeServer;
+        private CancellationTokenSource m_Cts;
 
-        public WoWindowInputPipe(string pipeName, WoWindow window)
+		public WoWindowInputPipe(string pipeName, WoWindow window)
         {
-            this.pipeName = pipeName;
-            this.window = window;
+            this.m_PipeName = pipeName;
+            this.m_Window = window;
             
             // Subscribe to window events
             window.MouseDown += Window_MouseDown;
@@ -28,42 +27,40 @@ namespace WinOverlay
             window.MouseWheel += Window_MouseWheel;
             window.KeyDown += Window_KeyDown;
             window.KeyUp += Window_KeyUp;
-        }
-
-        public void Start(CancellationToken token)
-        {
-            this.cancellationToken = token;
-            isRunning = true;
-            Task.Run(() => ListenForMessages(), cancellationToken);
+			this.m_Cts = new CancellationTokenSource();
+            Task.Run(() => ListenForMessages(), m_Cts.Token);
         }
 
         private async Task ListenForMessages()
         {
-            while (isRunning && !cancellationToken.IsCancellationRequested)
+            while (!m_Cts.IsCancellationRequested)
             {
                 try
                 {
-                    pipeServer = new NamedPipeServerStream(
-                        pipeName,
+                    m_PipeServer = new NamedPipeServerStream(
+                        m_PipeName,
                         PipeDirection.InOut,
                         1,
                         PipeTransmissionMode.Byte,
                         PipeOptions.Asynchronous);
 
-                    await pipeServer.WaitForConnectionAsync(cancellationToken);
+                    await m_PipeServer.WaitForConnectionAsync(m_Cts.Token);
+                    if (m_Cts.IsCancellationRequested)
+                        break;
 
-                    // Read messages from Unity
-                    byte[] buffer = new byte[4096];
-                    int bytesRead = await pipeServer.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
-
-                    if (bytesRead > 0)
+					// Read messages from Unity
+					byte[] buffer = new byte[4096];
+                    int bytesRead = await m_PipeServer.ReadAsync(buffer, 0, buffer.Length, m_Cts.Token);
+					if (m_Cts.IsCancellationRequested)
+						break;
+					if (bytesRead > 0)
                     {
                         // Process message from Unity side
                         ProcessUnityMessage(buffer, bytesRead);
                     }
 
-                    pipeServer.Disconnect();
-                    pipeServer.Dispose();
+                    m_PipeServer.Disconnect();
+                    m_PipeServer.Dispose();
                 }
                 catch (OperationCanceledException)
                 {
@@ -138,17 +135,17 @@ namespace WinOverlay
 
         private bool IsMouseWithinWindow(MouseEventArgs e)
         {
-            var pos = e.GetPosition(window);
-            return pos.X >= 0 && pos.X <= window.ActualWidth &&
-                   pos.Y >= 0 && pos.Y <= window.ActualHeight;
+            var pos = e.GetPosition(m_Window);
+            return pos.X >= 0 && pos.X <= m_Window.ActualWidth &&
+                   pos.Y >= 0 && pos.Y <= m_Window.ActualHeight;
         }
 
         private bool TryCreateMouseEvent(int state, MouseEventArgs e, out MouseEventP3 mouseEvent)
         {
             mouseEvent = MouseEventP3.Invalid;
 
-            var point = e.GetPosition(window);
-            var screenPos = window.PointToScreen(point);
+            var point = e.GetPosition(m_Window);
+            var screenPos = m_Window.PointToScreen(point);
 #if false
             var WinPos = new Vec2(Convert.ToSingle(window.Top), Convert.ToSingle(window.Left));
             var WinSize = new Vec2(Convert.ToSingle(window.Width), Convert.ToSingle(window.Height));
@@ -160,10 +157,10 @@ namespace WinOverlay
             WinRect.Contains(point);
 #else
 #endif
-			if (!window.CameraShare.TryRead(out var camInfo))
+			if (!m_Window.CameraShare.TryRead(out var camInfo))
 				return false;
 
-            var withinForm = window.IsContain(point);
+            var withinForm = m_Window.IsContain(point);
 
 			var OsV3 = new Vec3(Convert.ToSingle(point.X), Convert.ToSingle(point.Y), 0);
             var monPos = camInfo.O2M.MultiplyPoint3x4(OsV3);
@@ -236,11 +233,11 @@ namespace WinOverlay
         {
             try
             {
-                if (pipeServer != null && pipeServer.IsConnected)
+                if (m_PipeServer != null && m_PipeServer.IsConnected)
                 {
                     byte[] data = mouseEvent.ToByteArray();
-                    pipeServer.Write(data, 0, data.Length);
-                    pipeServer.Flush();
+                    m_PipeServer.Write(data, 0, data.Length);
+                    m_PipeServer.Flush();
                 }
             }
             catch (Exception ex)
@@ -253,11 +250,11 @@ namespace WinOverlay
         {
             try
             {
-                if (pipeServer != null && pipeServer.IsConnected)
+                if (m_PipeServer != null && m_PipeServer.IsConnected)
                 {
                     byte[] data = keyEvent.ToByteArray();
-                    pipeServer.Write(data, 0, data.Length);
-                    pipeServer.Flush();
+                    m_PipeServer.Write(data, 0, data.Length);
+                    m_PipeServer.Flush();
                 }
             }
             catch (Exception ex)
@@ -266,23 +263,44 @@ namespace WinOverlay
             }
         }
 
-        public void Dispose()
-        {
-            isRunning = false;
-            
-            // Unsubscribe from window events
-            if (window != null)
-            {
-                window.MouseDown -= Window_MouseDown;
-                window.MouseUp -= Window_MouseUp;
-                window.MouseMove -= Window_MouseMove;
-                window.MouseWheel -= Window_MouseWheel;
-                window.KeyDown -= Window_KeyDown;
-                window.KeyUp -= Window_KeyUp;
-            }
+		#region Dispose Pattern
+		public bool isDisposed { get; private set; } = false;
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!isDisposed)
+			{
+				isDisposed = true;
+				if (disposing)
+				{
+					// Unsubscribe from window events
+					if (m_Window != null)
+					{
+						m_Window.MouseDown  -= Window_MouseDown;
+						m_Window.MouseUp    -= Window_MouseUp;
+						m_Window.MouseMove  -= Window_MouseMove;
+						m_Window.MouseWheel -= Window_MouseWheel;
+						m_Window.KeyDown    -= Window_KeyDown;
+						m_Window.KeyUp      -= Window_KeyUp;
+					}
 
-            pipeServer?.Dispose();
-            pipeServer = null;
+					m_PipeServer?.Dispose();
+				}
+                m_PipeServer = null;
+			}
+		}
+
+        ~WoWindowInputPipe()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
         }
-    }
+
+        public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
+		#endregion Dispose Pattern
+	}
 }

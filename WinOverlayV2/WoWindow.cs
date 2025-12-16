@@ -21,12 +21,11 @@ namespace WinOverlay
 
         private System.Windows.Threading.DispatcherTimer renderTimer;
         private WriteableBitmap currentBitmap;
-        private bool isDisposed = false;
         
         private WoWindowInputPipe m_InputPipe;
         public WoWindowInputPipe InputPipe => m_InputPipe;
 
-		private CancellationTokenSource m_CancelSrc;
+		private CancellationTokenSource m_Cts;
 
         public WoWindow(int cameraId)
         {
@@ -56,71 +55,72 @@ namespace WinOverlay
             };
             this.Content = image;
 
-            InitializeSharedMemory();
+            InitializeGpuWorkers();
             InitializeInputPipe();
-            InitializeCameraInfo();
+            InitializeCameraShare();
             StartRenderTimer();
             
             u3d.SendInfo($"WoWpf for camera {cameraId} created.");
         }
 
-        private bool m_SharedMemoryInitialized = false;
-        private void InitializeSharedMemory()
+        private bool m_GpuWorkersInitialized = false;
+        private void InitializeGpuWorkers()
         {
-            m_SharedMemoryInitialized = false;
-            
-            Task.Run(async () =>
-            {
-                int retryCount = 0;
-                const int maxRetries = 30; // Wait up to 30 seconds
-                u3d.SendWarning($"Attempting to connect to shared memory for camera {cameraId}...");
-                
-                while (retryCount < maxRetries && !isDisposed)
-                {
-                    try
-                    {
-                        m_GPU = new WoGpuWorker[MAX_GPU_WORKER];
-                        for (int i = 0; i < MAX_GPU_WORKER; ++i)
-                        {
-                            m_GPU[i] = new WoGpuWorker($"{prefix}_{i}");
-                        }
-                        m_SharedMemoryInitialized = true;
-                        break;
-                    }
-                    catch (System.IO.FileNotFoundException ex)
-                    {
-                        ++retryCount;
-                        u3d.SendError($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})\n{ex.Message}");
-                        await Task.Delay(1000);
-                    }
-                    catch (Exception ex)
-                    {
-                        u3d.SendError($"Error connecting to shared memory for camera {cameraId}: {ex.Message}");
-                        ++retryCount;
-                        await Task.Delay(1000);
-                    }
-                }
-                
-                if (retryCount >= maxRetries)
-                {
-                    u3d.SendError($"Failed to connect to shared memory for camera {cameraId} after multiple attempts.");
-                    Dispatcher.Invoke(() => Close());
-                }
-                
-                u3d.SendWarning($"Connected to shared memory for camera {cameraId}.");
-            });
+            m_GpuWorkersInitialized = false;
+            Task.Run(ConnectGpuWorkers, m_Cts.Token);
         }
-
-        private void InitializeCameraInfo()
+        private async Task ConnectGpuWorkers()
         {
-            m_CancelSrc = new CancellationTokenSource();
+			int retryCount = 0;
+			const int maxRetries = 30; // Wait up to 30 seconds
+			u3d.SendWarning($"Attempting to connect to shared memory for camera {cameraId}...");
+
+			while (retryCount < maxRetries && !isDisposed)
+			{
+				try
+				{
+					m_GPU = new WoGpuWorker[MAX_GPU_WORKER];
+					for (int i = 0; i < MAX_GPU_WORKER; ++i)
+					{
+						m_GPU[i] = new WoGpuWorker($"{prefix}_{i}");
+					}
+					m_GpuWorkersInitialized = true;
+					break;
+				}
+				catch (System.IO.FileNotFoundException ex)
+				{
+					++retryCount;
+					u3d.SendError($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})\n{ex.Message}");
+					await Task.Delay(1000);
+				}
+				catch (Exception ex)
+				{
+					u3d.SendError($"Error connecting to shared memory for camera {cameraId}: {ex.Message}");
+					++retryCount;
+					await Task.Delay(1000);
+				}
+			}
+            if (isDisposed || m_Cts.IsCancellationRequested)
+                return;
+			if (retryCount >= maxRetries)
+			{
+				u3d.SendError($"Failed to connect to shared memory for camera {cameraId} after multiple attempts.");
+				Dispatcher.Invoke(() => Close());
+			}
+
+			u3d.SendWarning($"Connected to shared memory for camera {cameraId}.");
+		}
+
+        private void InitializeCameraShare()
+        {
+            m_Cts = new CancellationTokenSource();
             m_CameraShare = new WoCameraShare($"{prefix}_Info");
             Console.WriteLine($"Camera info for camera {cameraId} initialized.");
         }
 
         private async void StartRenderTimer()
         {
-            while (!m_SharedMemoryInitialized)
+            while (!m_GpuWorkersInitialized)
             {
                 await Task.Delay(100);
             }
@@ -149,11 +149,10 @@ namespace WinOverlay
         }
 
         private DateTime m_LastRenderTime = DateTime.MinValue;
-		private bool disposedValue;
-
+		
 		private void OnRenderTimer(object sender, EventArgs e)
         {
-            if (isDisposed || !m_SharedMemoryInitialized)
+            if (isDisposed || !m_GpuWorkersInitialized)
                 return;
 
             System.Collections.Generic.KeyValuePair<int, TextureInfo> anchor = 
@@ -216,19 +215,18 @@ namespace WinOverlay
 
         private void InitializeInputPipe()
         {
-            if (m_CancelSrc == null)
+            if (m_Cts == null)
             {
-                m_CancelSrc = new CancellationTokenSource();
+                m_Cts = new CancellationTokenSource();
             }
             else
             {
-                m_CancelSrc.Cancel();
-                m_CancelSrc.Dispose();
-                m_CancelSrc = new CancellationTokenSource();
+                m_Cts.Cancel();
+                m_Cts.Dispose();
+                m_Cts = new CancellationTokenSource();
             }
             
             m_InputPipe = new WoWindowInputPipe($"{prefix}_InputPipe", this);
-            m_InputPipe.Start(m_CancelSrc.Token);
         }
 
         protected override void OnClosed(EventArgs e)
@@ -253,6 +251,8 @@ namespace WinOverlay
         }
 
 		#region Dispose
+
+		private bool isDisposed = false;
 		protected void Dispose(bool disposing)
         {
             if (!isDisposed)
@@ -261,15 +261,15 @@ namespace WinOverlay
                 if (disposing)
 				{
                     renderTimer?.Stop();
-                    
-                    for (int i = 0; i < MAX_GPU_WORKER; ++i)
+                    m_InputPipe?.Dispose();
+
+					for (int i = 0; i < MAX_GPU_WORKER; ++i)
                     {
                         m_GPU[i]?.Dispose();
                         m_GPU[i] = null;
                     }
 
-                    m_InputPipe?.Dispose();
-                    m_CancelSrc?.Dispose();
+                    m_Cts?.Dispose();
                     m_CameraShare?.Dispose();
 
                     try
@@ -296,11 +296,11 @@ namespace WinOverlay
 
 				renderTimer = null;
 				currentBitmap = null;
-				m_GPU = null;
+                m_Cts = null;
                 m_InputPipe = null;
-                m_CancelSrc = null;
                 m_CameraShare = null;
-                m_SharedMemoryInitialized = false;
+				m_GPU = null;
+                m_GpuWorkersInitialized = false;
             }
         }
 
