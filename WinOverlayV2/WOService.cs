@@ -9,13 +9,13 @@ namespace WinOverlay
 	/// Provides the main service functionality for managing camera overlays.
 	/// Depends on WOMessagePipe for communication with Unity.
 	/// </summary>
-	public class WOService : IDisposable
+	public class WoService : IDisposable
     {
-        private WOMessagePipe u3d => WOMessagePipe.Instance;
+        private WoMessagePipe u3d => WoMessagePipe.Instance;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
         private Dictionary<string /* prefix */, WoWindow> m_ActiveCameras = new Dictionary<string, WoWindow>();
 
-        public WOService()
+        public WoService()
         {
             InitializeConnector();
         }

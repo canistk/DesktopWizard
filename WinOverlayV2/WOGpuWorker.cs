@@ -14,7 +14,7 @@ namespace WinOverlay
     /// <remarks>This class is designed to interact with a memory-mapped file that contains GPU-related data.
     /// It allows reading the shared GPU information in a thread-safe manner and ensures proper resource management by
     /// implementing <see cref="IDisposable"/>.</remarks>
-	public class WOGpuWorker
+	public class WoGpuWorker
     {
         private readonly string m_Name;
 		private RenderTextureReader pixelReader;
@@ -24,7 +24,7 @@ namespace WinOverlay
         private MemoryMappedViewAccessor accessor;
 		private CancellationTokenSource cancel;
 		private bool IsInitialized => mmf != null && accessor != null;
-		public WOGpuWorker(string mmfName)
+		public WoGpuWorker(string mmfName)
         {
             this.m_Name = mmfName;
 			this.pixelReader = new RenderTextureReader($"{mmfName}_Pixels");

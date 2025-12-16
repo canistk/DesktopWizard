@@ -15,13 +15,13 @@ namespace WinOverlayV2
 	/// </summary>
 	public partial class App : Application
 	{
-		private WOService woService;
+		private WoService woService;
 		private SystemTrayManager trayManager;
 
 		private void OnStartup(object sender, StartupEventArgs e)
 		{
 			// Initialize WOService (background service)
-			woService = new WOService();
+			woService = new WoService();
 
 			// Initialize system tray
 			trayManager = new SystemTrayManager(woService);

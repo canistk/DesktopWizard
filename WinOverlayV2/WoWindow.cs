@@ -11,13 +11,13 @@ namespace WinOverlay
 {
     public class WoWindow : Window, IDisposable
     {
-        private WOMessagePipe u3d => WOMessagePipe.Instance;
+        private WoMessagePipe u3d => WoMessagePipe.Instance;
         private int cameraId;
         private string prefix;
         private const int MAX_GPU_WORKER = 4; // Note: same as U3D DwCamera.MAX_GPU_WORKER
-        private WOGpuWorker[] m_GPU;
-        private WOCameraShare m_CameraShare;
-        public WOCameraShare CameraShare => m_CameraShare;
+        private WoGpuWorker[] m_GPU;
+        private WoCameraShare m_CameraShare;
+        public WoCameraShare CameraShare => m_CameraShare;
 
         private System.Windows.Threading.DispatcherTimer renderTimer;
         private WriteableBitmap currentBitmap;
@@ -79,10 +79,10 @@ namespace WinOverlay
                 {
                     try
                     {
-                        m_GPU = new WOGpuWorker[MAX_GPU_WORKER];
+                        m_GPU = new WoGpuWorker[MAX_GPU_WORKER];
                         for (int i = 0; i < MAX_GPU_WORKER; ++i)
                         {
-                            m_GPU[i] = new WOGpuWorker($"{prefix}_{i}");
+                            m_GPU[i] = new WoGpuWorker($"{prefix}_{i}");
                         }
                         m_SharedMemoryInitialized = true;
                         break;
@@ -114,7 +114,7 @@ namespace WinOverlay
         private void InitializeCameraInfo()
         {
             m_CancelSrc = new CancellationTokenSource();
-            m_CameraShare = new WOCameraShare($"{prefix}_Info", m_CancelSrc.Token);
+            m_CameraShare = new WoCameraShare($"{prefix}_Info");
             Console.WriteLine($"Camera info for camera {cameraId} initialized.");
         }
 
@@ -178,7 +178,7 @@ namespace WinOverlay
             ReadBitmap(m_GPU[anchor.Key], anchor.Value);
         }
 
-        private void ReadBitmap(WOGpuWorker gpu, TextureInfo data)
+        private void ReadBitmap(WoGpuWorker gpu, TextureInfo data)
         {
             if (gpu.TryReadBitmap(data, ref currentBitmap))
             {
@@ -270,7 +270,7 @@ namespace WinOverlay
 
                     m_InputPipe?.Dispose();
                     m_CancelSrc?.Dispose();
-                    // m_CameraShare?.Dispose();
+                    m_CameraShare?.Dispose();
 
                     try
                     {

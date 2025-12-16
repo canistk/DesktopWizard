@@ -13,10 +13,10 @@ namespace WinOverlayV2
 	public class SystemTrayManager : IDisposable
 	{
 		private TaskbarIcon taskbarIcon;
-		private WOService service;
+		private WoService service;
 		private bool isDisposed = false;
 
-		public SystemTrayManager(WOService service)
+		public SystemTrayManager(WoService service)
 		{
 			this.service = service ?? throw new ArgumentNullException(nameof(service));
 			InitializeTrayIcon();

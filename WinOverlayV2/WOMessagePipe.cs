@@ -13,12 +13,12 @@ namespace WinOverlay
     /// The unique message pipe between WinOverlay and Unity3D.
 	/// Singleton pattern.
 	/// </summary>
-	public class WOMessagePipe : IDisposable
+	public class WoMessagePipe : IDisposable
     {
-        private static WOMessagePipe s_Instance;
+        private static WoMessagePipe s_Instance;
         private static readonly object _lock = new object();
 
-        public static WOMessagePipe Instance
+        public static WoMessagePipe Instance
         {
             get
             {
@@ -28,7 +28,7 @@ namespace WinOverlay
                     {
                         if (s_Instance == null)
                         {
-                            s_Instance = new WOMessagePipe();
+                            s_Instance = new WoMessagePipe();
                         }
                     }
                 }
@@ -41,7 +41,7 @@ namespace WinOverlay
         private static readonly List<string> s_MessageCache = new List<string>();
         private static readonly object s_CacheLock = new object();
         
-        private WOMessagePipe() 
+        private WoMessagePipe() 
         {
             // For WPF, use default synchronization context
             _syncContext = SynchronizationContext.Current ?? new SynchronizationContext();
@@ -312,7 +312,7 @@ namespace WinOverlay
 			pipeClient = null;
 			s_Instance = null;
 		}
-        ~WOMessagePipe()
+        ~WoMessagePipe()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: false);

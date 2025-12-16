@@ -1,40 +1,42 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO.MemoryMappedFiles;
-using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 using Share;
 
 namespace WinOverlay
 {
-
 	/// <summary>
 	/// Provides functionality to access and read camera matrix information from a memory-mapped file.
 	/// </summary>
 	/// <remarks>This class is designed to interact with a memory-mapped file that contains camera matrix
 	/// data. It allows reading the data in a thread-safe manner and ensures proper resource management.</remarks>
-	public class WOCameraShare // TODO: IDisposable
+	public class WoCameraShare : IDisposable
 	{
-		private MemoryMappedFile mmf;
-		private MemoryMappedViewAccessor accessor;
+		private MemoryMappedFile m_Mmf;
+		private MemoryMappedViewAccessor m_Accessor;
+		private CancellationTokenSource m_Cts;
 		private readonly string m_Name;
-		private bool IsInitialized => mmf != null && accessor != null;
-		public WOCameraShare(string mmfName, CancellationToken token)
+		private const int MaxLength = 1024 * 1024; // 1 MB limit for safety
+		private byte[] m_Buffer = new byte[MaxLength];
+
+		private bool IsInitialized => m_Mmf != null && m_Accessor != null;
+		public WoCameraShare(string mmfName)
 		{
 			this.m_Name = mmfName;
-			Task.Run(() => WaitForInit(token));
+			this.m_Cts = new CancellationTokenSource();
+			Task.Run(() => WaitForInit(m_Cts.Token));
 		}
 		private async void WaitForInit(CancellationToken token)
 		{
-			mmf?.Dispose();
-			accessor?.Dispose();
-			while (mmf == null &&
+			m_Mmf?.Dispose();
+			m_Accessor?.Dispose();
+			while (m_Mmf == null &&
 				!token.IsCancellationRequested)
 			{
 				try
 				{
-					mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.ReadWrite);
+					m_Mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.ReadWrite);
 				}
 				catch (System.IO.FileNotFoundException)
 				{
@@ -48,14 +50,11 @@ namespace WinOverlay
 				}
 			}
 
-			if (mmf != null)
+			if (m_Mmf != null)
 			{
-				accessor = mmf.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+				m_Accessor = m_Mmf.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
 			}
 		}
-
-		const int MaxLength = 1024 * 1024; // 1 MB limit for safety
-		byte[] m_Buffer = new byte[MaxLength];
 
 		public bool TryRead(out CameraInfo info)
 		{
@@ -67,21 +66,21 @@ namespace WinOverlay
 			try
 			{
 				// check if 4 bytes are available for length prefix
-				if (accessor.Capacity < 4)
+				if (m_Accessor.Capacity < 4)
 				{
 					info = default;
 					return false;
 				}
 
 				// Read the actual data
-				accessor.ReadArray(0, m_Buffer, 0, 4);
+				m_Accessor.ReadArray(0, m_Buffer, 0, 4);
 				if (!CameraInfo.IsValid(ref m_Buffer))
 				{
 					info = default;
 					return false;
 				}
 
-				accessor.ReadArray(4, m_Buffer, 4, CameraInfo.ByteArraySize);
+				m_Accessor.ReadArray(4, m_Buffer, 4, CameraInfo.ByteArraySize);
 			}
 			catch
 			{
@@ -107,6 +106,41 @@ namespace WinOverlay
 				return false;
 			}
 		}
+
+		#region Dispose pattern
+		public bool isDisposed { get; private set; } = false;
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!isDisposed)
+			{
+				isDisposed = true;
+				if (disposing)
+				{
+					m_Cts?.Cancel();
+					m_Cts?.Dispose();
+					m_Accessor?.Dispose();
+					m_Mmf?.Dispose();
+				}
+				m_Cts = null;
+				m_Accessor = null;
+				m_Mmf = null;
+				m_Buffer = null;
+			}
+		}
+
+		~WoCameraShare()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: false);
+		}
+
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
+		#endregion Dispose pattern
 	}
 
 }

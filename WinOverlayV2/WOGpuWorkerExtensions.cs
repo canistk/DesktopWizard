@@ -6,7 +6,7 @@ using Share;
 
 namespace WinOverlay
 {
-    public static class WOGpuWorkerExtensions
+    public static class WoGpuWorkerExtensions
     {
         /// <summary>
         /// Reads bitmap data from shared memory and updates a WriteableBitmap for WPF.
@@ -16,7 +16,7 @@ namespace WinOverlay
         /// <param name="info">Texture information</param>
         /// <param name="bitmap">The WriteableBitmap to update (will be created if null or size mismatch)</param>
         /// <returns>True if bitmap was successfully updated</returns>
-        public static bool TryReadWriteableBitmap(this WOGpuWorker worker, TextureInfo info, ref WriteableBitmap bitmap)
+        public static bool TryReadWriteableBitmap(this WoGpuWorker worker, TextureInfo info, ref WriteableBitmap bitmap)
         {
             try
             {
@@ -90,7 +90,7 @@ namespace WinOverlay
         /// Reads raw pixel data from the GPU worker's shared memory.
         /// This method reads directly from the WOGpuWorker's pixel MMF accessor.
         /// </summary>
-        private static byte[] ReadPixelData(this WOGpuWorker worker, TextureInfo info)
+        private static byte[] ReadPixelData(this WoGpuWorker worker, TextureInfo info)
         {
             try
             {
@@ -99,7 +99,7 @@ namespace WinOverlay
                 
                 // Read from the pixels memory-mapped file using reflection
                 // Get the private accessorPixels field from WOGpuWorker
-                var accessorField = typeof(WOGpuWorker).GetField("m_AccessorPixels", 
+                var accessorField = typeof(WoGpuWorker).GetField("m_AccessorPixels", 
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 
                 if (accessorField != null)
