@@ -37,7 +37,7 @@ namespace WinOverlay
         }
 
 		private readonly SemaphoreSlim m_SendSemaphore = new SemaphoreSlim(1, 1);
-        private SynchronizationContext m_SyncContext;
+        private readonly SynchronizationContext m_SyncContext;
 		private CancellationTokenSource m_Cts;
         
         private static readonly List<string> s_MessageCache = new List<string>();
@@ -103,7 +103,7 @@ namespace WinOverlay
 
                 }
 				await FlushCachedMessages();
-                SendWarning("WinOverlay started.");
+                Debug.Warning("WinOverlay started.");
 
                 m_SyncContext.Post(_ => ConnectionEstablished?.Invoke(), null);
                 Console.WriteLine("[Unity3DConnector] connection established.");
@@ -154,7 +154,8 @@ namespace WinOverlay
         private void OnConnectionLosted()
         {
             Debug.Error("[Unity3DConnector] Connection losted !!!!");
-            m_Cts?.Cancel();
+            if (m_Cts != null && !m_Cts.IsCancellationRequested)
+                m_Cts.Cancel();
 			m_Cts?.Dispose();
             m_Cts = null;
 			m_SyncContext.Post(_ => ConnectionLosted?.Invoke(), null);
@@ -182,37 +183,32 @@ namespace WinOverlay
             _ = Task.Run(() => InternalSentAsync(message), m_Cts.Token);
         }
 
+        [System.Obsolete("Use Debug.Error/Warning/Log instead.",true)]
         public void SendError(string message)
 		{
 			if (IsDisposed)
 				return;
-			using (var err = new MyAction(CMD.SlaveError))
-            {
-                err.Add("message", message);
-                SendMessage(err);
-            }
+            using var err = new MyAction(CMD.SlaveError);
+            err.Add("message", message);
+            SendMessage(err);
         }
-        
-        public void SendWarning(string message)
+		[System.Obsolete("Use Debug.Error/Warning/Log instead.", true)]
+		public void SendWarning(string message)
 		{
 			if (IsDisposed)
 				return;
-			using (var warn = new MyAction(CMD.SlaveWarning))
-            {
-                warn.Add("message", message);
-                SendMessage(warn);
-            }
+            using var warn = new MyAction(CMD.SlaveWarning);
+            warn.Add("message", message);
+            SendMessage(warn);
         }
-
-        public void SendInfo(string message)
+		[System.Obsolete("Use Debug.Error/Warning/Log instead.", true)]
+		public void SendInfo(string message)
 		{
 			if (IsDisposed)
 				return;
-			using (var info = new MyAction(CMD.SlaveInfo))
-            {
-                info.Add("message", message);
-                SendMessage(info);
-            }
+			using var info = new MyAction(CMD.SlaveInfo);
+            info.Add("message", message);
+            SendMessage(info);
         }
 
         private async Task FlushCachedMessages()
@@ -298,12 +294,12 @@ namespace WinOverlay
 					}
 					lock (s_Lock)
 					{
-                        if (m_Cts != null && !m_Cts.IsCancellationRequested)
-                            m_Cts.Cancel();
                         if (m_PipeServer != null && m_PipeServer.IsConnected)
                             m_PipeServer.Close();
                         if (m_PipeClient != null && m_PipeClient.IsConnected)
                             m_PipeClient.Close();
+                        if (m_Cts != null && !m_Cts.IsCancellationRequested)
+                            m_Cts.Cancel();
 						m_Cts?.Dispose();
 						m_PipeServer?.Dispose();
 						m_PipeClient?.Dispose();

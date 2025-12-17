@@ -11,7 +11,7 @@ namespace WinOverlay
 	/// </summary>
 	public class WoService : IDisposable
     {
-        private WoMessagePipe u3d => WoMessagePipe.Instance;
+        private static WoMessagePipe u3d => WoMessagePipe.Instance;
         private const StringComparison IGNORE = StringComparison.OrdinalIgnoreCase;
         private Dictionary<string /* prefix */, WoWindow> m_ActiveCameras = new Dictionary<string, WoWindow>();
 
@@ -71,7 +71,7 @@ namespace WinOverlay
                 UnregisterCamera(jObj);
                 break;
                 default:
-                SendError("SLAVE: Unknown action received: " + action);
+                Debug.Error("SLAVE: Unknown action received: " + action);
                 break;
             }
         }
@@ -82,7 +82,7 @@ namespace WinOverlay
             Debug.Error("Connection lost. OverlayManager shutting down.");
             if (System.Diagnostics.Debugger.IsAttached)
             {
-                Debug.Warn("Debugger is attached. Not exiting application.");
+                Debug.Warning("Debugger is attached. Not exiting application.");
                 // Clean up existing state
                 u3d.MessageReceived -= OnMessageReceived;
                 u3d.ConnectionLosted -= OnConnectionLost;
@@ -98,39 +98,12 @@ namespace WinOverlay
             }
 		}
 
-        public void SendError(string message)
-        {
-            
-            using (var err = new MyAction(CMD.SlaveError))
-            {
-                err.Add("message", message);
-                u3d.SendMessage(err);
-            }
-        }
-        public void SendWarning(string message)
-        {
-            using (var warn = new MyAction(CMD.SlaveWarning))
-            {
-                warn.Add("message", message);
-                u3d.SendMessage(warn);
-            }
-        }
-
-        public void SendInfo(string message)
-        {
-            using (var info = new MyAction(CMD.SlaveInfo))
-            {
-                info.Add("message", message);
-                u3d.SendMessage(info);
-            }
-		}
-
 		private void RegisterCamera(JObject jObj)
         {
             if (!jObj.TryGetValue("cameraId", IGNORE,
                 out var camIdToken))
             {
-                SendError("RegisterCamera missing cameraId");
+                Debug.Error("RegisterCamera missing cameraId");
                 return;
             }
 
@@ -140,7 +113,7 @@ namespace WinOverlay
             // Check if camera is already registered
             if (m_ActiveCameras.ContainsKey(prefix))
             {
-                SendError($"Camera {cameraId} is already registered");
+                Debug.Error($"Camera {cameraId} is already registered");
                 return;
             }
             
@@ -153,12 +126,11 @@ namespace WinOverlay
                 // Show the form
                 win.Show();
                 win.Topmost = true;
-
-				SendWarning($"Camera {cameraId} registered successfully");
+                Debug.Warning($"Camera {cameraId} registered successfully");
             }
             catch (Exception ex)
             {
-                SendError($"Failed to register camera {cameraId}: {ex.Message}");
+                Debug.Error($"Failed to register camera {cameraId}: {ex.Message}");
             }
         }
 
@@ -167,7 +139,7 @@ namespace WinOverlay
             if (!jObj.TryGetValue("cameraId", IGNORE,
                 out var camIdToken))
             {
-                SendError("UnregisterCamera missing cameraId");
+                Debug.Error("UnregisterCamera missing cameraId");
                 return;
             }
             var cameraId = camIdToken.Value<int>();
@@ -178,9 +150,6 @@ namespace WinOverlay
         private void UnregisterCamera(int cameraId)
         {
             var prefix = $"DwCamera_{cameraId}";
-            var sm1 = $"{prefix}_1";
-            var sm2 = $"{prefix}_2";
-            
             if (m_ActiveCameras.TryGetValue(prefix, out var WoWin))
             {
                 try
@@ -189,17 +158,16 @@ namespace WinOverlay
                     WoWin.Close();
                     WoWin.Dispose();
                     m_ActiveCameras.Remove(prefix);
-                    
-                    SendWarning($"Camera {cameraId} unregistered successfully");
+                    Debug.Warning($"Camera {cameraId} unregistered successfully");
                 }
                 catch (Exception ex)
                 {
-                    SendError($"Failed to unregister camera {cameraId}: {ex.Message}");
+                    Debug.Error($"Failed to unregister camera {cameraId}: {ex.Message}");
                 }
             }
             else
             {
-                SendWarning($"Camera {cameraId} was not registered");
+                Debug.Warning($"Camera {cameraId} was not registered");
             }
         }
 

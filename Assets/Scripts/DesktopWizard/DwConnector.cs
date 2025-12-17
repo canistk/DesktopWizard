@@ -47,7 +47,7 @@ namespace DesktopWizard
 
         private NamedPipeServerStream pipeServer;
         private NamedPipeClientStream pipeClient;
-		private CancellationTokenSource m_CancelSrc = null;
+		private CancellationTokenSource m_Cts = null;
 		private bool isConnected => pipeServer?.IsConnected == true;
         private System.Diagnostics.Process winOverlayProcess;
 
@@ -168,9 +168,10 @@ namespace DesktopWizard
 		}
 		private void StopServer()
 		{
-            m_CancelSrc?.Cancel();
-            m_CancelSrc?.Dispose();
-            m_CancelSrc = null;
+            if (m_Cts != null || !m_Cts.IsCancellationRequested)
+                m_Cts.Cancel();
+            m_Cts?.Dispose();
+            m_Cts = null;
             pipeServer?.Close();
 			pipeServer?.Dispose();
 			pipeServer = null;
@@ -194,17 +195,17 @@ namespace DesktopWizard
             CancellationToken token;
 			try
             {
-                if (m_CancelSrc == null)
+                if (m_Cts == null)
                 {
-                    m_CancelSrc = new CancellationTokenSource();
+                    m_Cts = new CancellationTokenSource();
                 }
                 else
                 {
-                    m_CancelSrc.Cancel();
-                    m_CancelSrc.Dispose();
-                    m_CancelSrc = new CancellationTokenSource();
+                    m_Cts.Cancel();
+                    m_Cts.Dispose();
+                    m_Cts = new CancellationTokenSource();
 				}
-                token = m_CancelSrc.Token;
+                token = m_Cts.Token;
 				pipeServer?.Dispose();
 				pipeServer = new NamedPipeServerStream(
                     "Unity3DServer",
@@ -265,7 +266,7 @@ namespace DesktopWizard
             CancellationToken token;
             try
             {
-                token = m_CancelSrc?.Token ?? default;
+                token = m_Cts?.Token ?? default;
             }
             catch (ObjectDisposedException)
             {
@@ -358,24 +359,29 @@ namespace DesktopWizard
                 }
 				return;
             }
+            if (m_Cts == null || m_Cts.IsCancellationRequested)
+                throw new OperationCanceledException("Cannot send message, connector is stopping.");
+			var token = m_Cts.Token;
             Task.Run(async () =>
             {
-                await m_SendSemaphore.WaitAsync();
+                await m_SendSemaphore.WaitAsync(token);
                 try
                 {
+                    if (token.IsCancellationRequested)
+                        return;
                     var data = Encoding.UTF8.GetBytes(message);
-                    pipeServer.Write(data, 0, data.Length);
-                    pipeServer.Flush();
+                    await pipeServer.WriteAsync(data, 0, data.Length, token);
+                    await pipeServer.FlushAsync(token);
                 }
                 catch (Exception ex)
                 {
-					tLogError(ex, "Failed to send message: " + message);
-				}
-				finally
+                    tLogError(ex, "Failed to send message: " + message);
+                }
+                finally
                 {
                     m_SendSemaphore.Release();
-				}
-            });
+                }
+            }, token);
         }
         private void FlushCachedIPS()
         {
@@ -390,20 +396,16 @@ namespace DesktopWizard
 		}
         public void Register(DwCamera camera)
         {
-            using (var data = new MTAction(CMD.RegisterCamera))
-            {
-                data.Add("cameraId", camera.id);
-                SendMessage(data);
-            }
+            using var data = new MTAction(CMD.RegisterCamera);
+            data.Add("cameraId", camera.id);
+            SendMessage(data);
         }
 
         public void Unregister(DwCamera camera)
         {
-            using (var data = new MTAction(CMD.UnregisterCamera))
-            {
-                data.Add("cameraId", camera.id);
-                SendMessage(data);
-            }
+            using var data = new MTAction(CMD.UnregisterCamera);
+            data.Add("cameraId", camera.id);
+            SendMessage(data);
 		}
     }
 

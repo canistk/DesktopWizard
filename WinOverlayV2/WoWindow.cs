@@ -61,7 +61,7 @@ namespace WinOverlay
             InitializeCameraShare();
             StartRenderTimer();
             
-            u3d.SendInfo($"WoWpf for camera {cameraId} created.");
+            Debug.Log($"{GetType().Name} for camera {cameraId} created.");
         }
 
         private bool m_GpuWorkersInitialized = false;
@@ -70,52 +70,63 @@ namespace WinOverlay
             m_GpuWorkersInitialized = false;
             Task.Run(ConnectGpuWorkers, m_Cts.Token);
         }
-        private async Task ConnectGpuWorkers()
-        {
-			int retryCount = 0;
-			const int maxRetries = 30; // Wait up to 30 seconds
-			u3d.SendWarning($"Attempting to connect to shared memory for camera {cameraId}...");
-            var token = m_Cts.Token;
-			while (retryCount < maxRetries && !isDisposed)
+		private async Task ConnectGpuWorkers()
+		{
+			try
 			{
-				try
+				int retryCount = 0;
+				const int maxRetries = 30; // Wait up to 30 seconds
+				Debug.Warning($"Attempting to connect to shared memory for camera {cameraId}...");
+				var token = m_Cts.Token;
+				while (retryCount < maxRetries && !isDisposed)
 				{
-					m_GPU = new WoGpuWorker[MAX_GPU_WORKER];
-					for (int i = 0; i < MAX_GPU_WORKER; ++i)
+					try
 					{
-						m_GPU[i] = new WoGpuWorker($"{prefix}_{i}");
+						m_GPU = new WoGpuWorker[MAX_GPU_WORKER];
+						for (int i = 0; i < MAX_GPU_WORKER; ++i)
+						{
+							m_GPU[i] = new WoGpuWorker($"{prefix}_{i}");
+						}
+						m_GpuWorkersInitialized = true;
+						break;
 					}
-					m_GpuWorkersInitialized = true;
-					break;
+					catch (System.IO.FileNotFoundException ex)
+					{
+						++retryCount;
+						Debug.Error($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})\n{ex.Message}");
+						await Task.Delay(1000, token);
+					}
+					catch (Exception ex)
+					{
+						Debug.Error($"Error connecting to shared memory for camera {cameraId}: {ex.Message}");
+						++retryCount;
+						await Task.Delay(1000, token);
+					}
 				}
-				catch (System.IO.FileNotFoundException ex)
+				if (isDisposed || token.IsCancellationRequested)
+					return;
+				if (retryCount >= maxRetries)
 				{
-					++retryCount;
-					u3d.SendError($"Shared memory for camera {cameraId} not found. Retrying... ({retryCount}/{maxRetries})\n{ex.Message}");
-					await Task.Delay(1000);
+					Debug.Error($"Failed to connect to shared memory for camera {cameraId} after multiple attempts.");
+					Dispatcher.Invoke(() => Close());
 				}
-				catch (Exception ex)
-				{
-					u3d.SendError($"Error connecting to shared memory for camera {cameraId}: {ex.Message}");
-					++retryCount;
-					await Task.Delay(1000);
-				}
-			}
-            if (isDisposed || token.IsCancellationRequested)
-                return;
-			if (retryCount >= maxRetries)
-			{
-				u3d.SendError($"Failed to connect to shared memory for camera {cameraId} after multiple attempts.");
-				Dispatcher.Invoke(() => Close());
-			}
 
-			u3d.SendWarning($"Connected to shared memory for camera {cameraId}.");
+				Debug.Warning($"Connected to shared memory for camera {cameraId}.");
+			}
+			catch (OperationCanceledException)
+			{
+				// Expected when disposing, ignore
+			}
+			catch (Exception ex)
+			{
+				Debug.Error($"Unexpected error in ConnectGpuWorkers for camera {cameraId}: {ex.Message}");
+			}
 		}
 
         private void InitializeCameraShare()
         {
             m_CameraShare = new WoCameraShare($"{prefix}_Info");
-            Console.WriteLine($"Camera info for camera {cameraId} initialized.");
+            Debug.Log($"Camera info for camera {cameraId} initialized.");
         }
 
         private async void StartRenderTimer()
@@ -258,8 +269,8 @@ namespace WinOverlay
                         m_GPU[i] = null;
                     }
 
-                    m_Cts?.Dispose();
                     m_CameraShare?.Dispose();
+                    m_Cts?.Dispose();
 
                     try
                     {
@@ -279,7 +290,7 @@ namespace WinOverlay
                     }
                     catch (Exception ex)
                     {
-                        u3d.SendError($"Error disposing WoWindow for camera {cameraId}: {ex.Message}");
+                        Debug.Error($"Error disposing WoWindow for camera {cameraId}: {ex.Message}");
 					}
 				}
 

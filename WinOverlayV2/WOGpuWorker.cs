@@ -39,29 +39,43 @@ namespace WinOverlay
 
 		private async void WaitForInit(CancellationToken token)
         {
-            m_Mmf?.Dispose();
-			m_Accessor?.Dispose();
-			while (m_Mmf == null &&
-				!token.IsCancellationRequested)
+			try
 			{
-				try
+				m_Mmf?.Dispose();
+				m_Accessor?.Dispose();
+				while (m_Mmf == null &&
+					!token.IsCancellationRequested)
 				{
-					m_Mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.Read);
+					try
+					{
+						m_Mmf = MemoryMappedFile.OpenExisting(m_Name, MemoryMappedFileRights.Read);
+					}
+					catch (System.IO.FileNotFoundException)
+					{
+						continue;
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine($"[{m_Name}] Error opening memory-mapped file. {ex.Message}");
+						Reinit();
+						return;
+					}
+					await Task.Delay(100, token);
 				}
-				catch (System.IO.FileNotFoundException)
-				{
-					continue;
-				}
-				catch (Exception ex)
-				{
-					Console.WriteLine($"[{m_Name}] Error opening memory-mapped file. {ex.Message}");
-					Reinit();
-					return;
-				}
-				await Task.Delay(100, token);
-			}
 
-            m_Accessor = m_Mmf.CreateViewAccessor(0, Marshal.SizeOf<TextureInfo>(), MemoryMappedFileAccess.Read);
+				if (m_Mmf != null && !token.IsCancellationRequested)
+				{
+					m_Accessor = m_Mmf.CreateViewAccessor(0, Marshal.SizeOf<TextureInfo>(), MemoryMappedFileAccess.Read);
+				}
+			}
+			catch (OperationCanceledException)
+			{
+				// Expected when disposing, ignore
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[{m_Name}] Unexpected error in WaitForInit: {ex.Message}");
+			}
 		}
 
 		public DateTime GetTimestamp()
