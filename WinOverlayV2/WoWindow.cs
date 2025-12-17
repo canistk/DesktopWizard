@@ -54,8 +54,9 @@ namespace WinOverlay
                 VerticalAlignment = VerticalAlignment.Top
             };
             this.Content = image;
+            this.m_Cts = new CancellationTokenSource();
 
-            InitializeGpuWorkers();
+			InitializeGpuWorkers();
             InitializeInputPipe();
             InitializeCameraShare();
             StartRenderTimer();
@@ -74,7 +75,7 @@ namespace WinOverlay
 			int retryCount = 0;
 			const int maxRetries = 30; // Wait up to 30 seconds
 			u3d.SendWarning($"Attempting to connect to shared memory for camera {cameraId}...");
-
+            var token = m_Cts.Token;
 			while (retryCount < maxRetries && !isDisposed)
 			{
 				try
@@ -100,7 +101,7 @@ namespace WinOverlay
 					await Task.Delay(1000);
 				}
 			}
-            if (isDisposed || m_Cts.IsCancellationRequested)
+            if (isDisposed || token.IsCancellationRequested)
                 return;
 			if (retryCount >= maxRetries)
 			{
@@ -113,7 +114,6 @@ namespace WinOverlay
 
         private void InitializeCameraShare()
         {
-            m_Cts = new CancellationTokenSource();
             m_CameraShare = new WoCameraShare($"{prefix}_Info");
             Console.WriteLine($"Camera info for camera {cameraId} initialized.");
         }
@@ -215,17 +215,6 @@ namespace WinOverlay
 
         private void InitializeInputPipe()
         {
-            if (m_Cts == null)
-            {
-                m_Cts = new CancellationTokenSource();
-            }
-            else
-            {
-                m_Cts.Cancel();
-                m_Cts.Dispose();
-                m_Cts = new CancellationTokenSource();
-            }
-            
             m_InputPipe = new WoWindowInputPipe($"{prefix}_InputPipe", this);
         }
 

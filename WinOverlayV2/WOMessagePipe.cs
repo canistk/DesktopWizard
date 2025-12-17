@@ -16,7 +16,7 @@ namespace WinOverlay
 	public class WoMessagePipe : IDisposable
     {
         private static WoMessagePipe s_Instance;
-        private static readonly object _lock = new object();
+        private static readonly object s_Lock = new object();
 
         public static WoMessagePipe Instance
         {
@@ -24,7 +24,7 @@ namespace WinOverlay
             {
                 if (s_Instance == null)
                 {
-                    lock (_lock)
+                    lock (s_Lock)
                     {
                         if (s_Instance == null)
                         {
@@ -36,69 +36,62 @@ namespace WinOverlay
             }
         }
 
-        private SynchronizationContext _syncContext;
+		private readonly SemaphoreSlim m_SendSemaphore = new SemaphoreSlim(1, 1);
+        private SynchronizationContext m_SyncContext;
+		private CancellationTokenSource m_Cts;
         
         private static readonly List<string> s_MessageCache = new List<string>();
         private static readonly object s_CacheLock = new object();
         
         private WoMessagePipe() 
         {
-            // For WPF, use default synchronization context
-            _syncContext = SynchronizationContext.Current ?? new SynchronizationContext();
+			// For WPF, use default synchronization context
+			m_SyncContext = SynchronizationContext.Current ?? new SynchronizationContext();
         }
 
-        private NamedPipeServerStream pipeClient;
-        private NamedPipeClientStream pipeServer;
+        private NamedPipeServerStream m_PipeClient;
+        private NamedPipeClientStream m_PipeServer;
         public event Action<string> MessageReceived;
         public event Action ConnectionEstablished;
         public event Action ConnectionLosted;
 
-        private bool HandShaked => pipeClient?.IsConnected == true && pipeServer?.IsConnected == true;
-
-        private CancellationTokenSource m_CancelSrc = null;
+        private bool HandShaked => m_PipeClient?.IsConnected == true && m_PipeServer?.IsConnected == true;
 
         public void Connect()
-        {
-            Task.Run(ConnectAsync);
+		{
+            if (m_Cts != null)
+                return; // already connecting or connected
+			m_Cts = new CancellationTokenSource();
+			Task.Run(ConnectAsync, m_Cts.Token);
 		}
 		private async Task ConnectAsync()
         {
-            try
+            var token = m_Cts.Token;
+			try
             {
-                if (m_CancelSrc == null)
-                {
-                    m_CancelSrc = new CancellationTokenSource();
-                }
-                else
-                {
-                    m_CancelSrc.Cancel();
-                    m_CancelSrc.Dispose();
-                    m_CancelSrc = new CancellationTokenSource();
-                }
-
-				pipeClient?.Dispose();
-                pipeClient = new NamedPipeServerStream(
+				m_PipeClient?.Dispose();
+                m_PipeClient = new NamedPipeServerStream(
                     "WinOverlay",
                     PipeDirection.Out,
                     1,
                     PipeTransmissionMode.Byte,
                     PipeOptions.Asynchronous);
-                pipeServer?.Dispose();
-                pipeServer = new NamedPipeClientStream(
+                m_PipeServer?.Dispose();
+                m_PipeServer = new NamedPipeClientStream(
                     ".",
 					"Unity3DServer",
                     PipeDirection.In,
                     PipeOptions.Asynchronous);
 				Debug.Log("[Unity3DConnector] Waiting for connection...");
 
-                var job0 = pipeClient.WaitForConnectionAsync(m_CancelSrc.Token);
+                var job0 = m_PipeClient.WaitForConnectionAsync(token);
                 await job0;
-				var job1 = pipeServer.ConnectAsync(m_CancelSrc.Token);
+				var job1 = m_PipeServer.ConnectAsync(token);
                 await job1;
 				//await Task.WhenAll(job0, job1);
 
 				Debug.Log("[Unity3DConnector] Connection detected, start listen pipe...");
-				_ = Task.Run(ListenForMessages);
+				_ = Task.Run(ListenForMessages, token);
 
                 if (HandShaked)
                 {
@@ -112,7 +105,7 @@ namespace WinOverlay
 				await FlushCachedMessages();
                 SendWarning("WinOverlay started.");
 
-                _syncContext.Post(_ => ConnectionEstablished?.Invoke(), null);
+                m_SyncContext.Post(_ => ConnectionEstablished?.Invoke(), null);
                 Console.WriteLine("[Unity3DConnector] connection established.");
             }
             catch
@@ -124,14 +117,15 @@ namespace WinOverlay
         private async void ListenForMessages()
         {
             var buffer = new byte[1024];
-            
-            while (pipeServer?.IsConnected == true)
+            var token = m_Cts.Token;
+			while (m_PipeServer?.IsConnected == true)
             {
 				try
                 {
-					int bytesRead = await pipeServer.ReadAsync(buffer, 0, buffer.Length);
-
-                    if (bytesRead > 0)
+					int bytesRead = await m_PipeServer.ReadAsync(buffer, 0, buffer.Length, token);
+                    if (token.IsCancellationRequested)
+                        break;
+					if (bytesRead > 0)
                     {
                         var msg = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                         OnMessageReceived(msg);
@@ -154,15 +148,16 @@ namespace WinOverlay
                 message.Length == 0)
                 return;
 
-            _syncContext.Post(_ => MessageReceived?.Invoke(message), null);
+            m_SyncContext.Post(_ => MessageReceived?.Invoke(message), null);
         }
 
         private void OnConnectionLosted()
         {
-            Debug.Error("[Unity3DConnector] Connection losted !!!!, self disposing...");
-            m_CancelSrc?.Cancel();
-            m_CancelSrc?.Dispose();
-			_syncContext.Post(_ => ConnectionLosted?.Invoke(), null);
+            Debug.Error("[Unity3DConnector] Connection losted !!!!");
+            m_Cts?.Cancel();
+			m_Cts?.Dispose();
+            m_Cts = null;
+			m_SyncContext.Post(_ => ConnectionLosted?.Invoke(), null);
         }
 
 		#region Send Message
@@ -173,9 +168,10 @@ namespace WinOverlay
         {
             if (IsDisposed)
                 return;
-            if (!(pipeClient?.IsConnected == true))
+			if (!(m_PipeClient?.IsConnected == true))
             {
-                lock (s_CacheLock)
+				// Not connected, cache the message
+				lock (s_CacheLock)
                 {
                     s_MessageCache.Add(message);
                     Debug.Log($"[Unity3DConnector] Message cached (total: {s_MessageCache.Count}): {message.Substring(0, Math.Min(50, message.Length))}...");
@@ -183,7 +179,7 @@ namespace WinOverlay
                 return;
             }
             
-            _ = Task.Run(() => InternalSentAsync(message));
+            _ = Task.Run(() => InternalSentAsync(message), m_Cts.Token);
         }
 
         public void SendError(string message)
@@ -242,7 +238,7 @@ namespace WinOverlay
                     Debug.Log($"[Unity3DConnector] Cached message sent: {message.Substring(0, Math.Min(50, message.Length))}...");
                     
                     // 添加小延遲，避免消息發送過快
-                    await Task.Delay(10);
+                    await Task.Delay(10, m_Cts.Token);
                 }
                 catch (Exception ex)
                 {
@@ -253,22 +249,24 @@ namespace WinOverlay
             Debug.Log($"[Unity3DConnector] All cached messages flushed.");
         }
 
-        private readonly SemaphoreSlim _sendSemaphore = new SemaphoreSlim(1, 1);
         
         private async Task InternalSentAsync(string message)
 		{
 			if (IsDisposed)
 				return;
-			if (pipeClient == null || !pipeClient.IsConnected)
+			if (m_PipeClient == null || !m_PipeClient.IsConnected)
 				return;
-			await _sendSemaphore.WaitAsync();
-            try
+            var token = m_Cts.Token;
+			await m_SendSemaphore.WaitAsync(token);
+			try
             {
-			    if (pipeClient == null || !pipeClient.IsConnected)
+                if (token.IsCancellationRequested)
+                    return;
+			    if (m_PipeClient == null || !m_PipeClient.IsConnected)
                     throw new Exception("Pipe disconnected");
                 var data = Encoding.UTF8.GetBytes(message);
-                await pipeClient.WriteAsync(data, 0, data.Length);
-                await pipeClient.FlushAsync();
+                await m_PipeClient.WriteAsync(data, 0, data.Length, token);
+                await m_PipeClient.FlushAsync(token);
             }
             catch (Exception ex)
             {
@@ -276,7 +274,7 @@ namespace WinOverlay
             }
             finally
             {
-                _sendSemaphore.Release();
+                m_SendSemaphore.Release();
             }
         }
 		#endregion Send Message
@@ -298,18 +296,24 @@ namespace WinOverlay
 							s_MessageCache.Clear();
 						}
 					}
-					lock (_lock)
+					lock (s_Lock)
 					{
-						m_CancelSrc?.Dispose();
-						pipeServer?.Dispose();
-						pipeClient?.Dispose();
+                        if (m_Cts != null && !m_Cts.IsCancellationRequested)
+                            m_Cts.Cancel();
+                        if (m_PipeServer != null && m_PipeServer.IsConnected)
+                            m_PipeServer.Close();
+                        if (m_PipeClient != null && m_PipeClient.IsConnected)
+                            m_PipeClient.Close();
+						m_Cts?.Dispose();
+						m_PipeServer?.Dispose();
+						m_PipeClient?.Dispose();
 					}
                     s_Instance?.Dispose();
 				}
 			}
-            m_CancelSrc = null;
-			pipeServer = null;
-			pipeClient = null;
+            m_Cts = null;
+			m_PipeServer = null;
+			m_PipeClient = null;
 			s_Instance = null;
 		}
         ~WoMessagePipe()

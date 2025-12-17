@@ -86,9 +86,9 @@ namespace WinOverlayV2
 			if (!isDisposed)
 			{
 				isDisposed = true;
-				
 				if (taskbarIcon != null)
 				{
+					service?.Dispose();
 					taskbarIcon.Dispose();
 					taskbarIcon = null;
 				}

@@ -181,7 +181,8 @@ namespace WinOverlay
 
 		public void Dispose()
 		{
-			cancel?.Cancel();
+			if (cancel != null && !cancel.IsCancellationRequested)
+				cancel?.Cancel();
 			cancel?.Dispose();
 			cancel = null;
 

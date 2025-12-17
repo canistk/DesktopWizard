@@ -191,6 +191,7 @@ namespace DesktopWizard
             if (s_AppQuit)
                 return;
             int step = 0;
+            CancellationToken token;
 			try
             {
                 if (m_CancelSrc == null)
@@ -203,6 +204,7 @@ namespace DesktopWizard
                     m_CancelSrc.Dispose();
                     m_CancelSrc = new CancellationTokenSource();
 				}
+                token = m_CancelSrc.Token;
 				pipeServer?.Dispose();
 				pipeServer = new NamedPipeServerStream(
                     "Unity3DServer",
@@ -220,9 +222,9 @@ namespace DesktopWizard
                 );
 
                 tLog($"Dw[{++step}]: Starting server...");
-                using var job0 = pipeServer.WaitForConnectionAsync(m_CancelSrc.Token);
-                using var job1 = pipeClient.ConnectAsync(m_CancelSrc.Token);
-                await Task.Delay(10); // Slight delay to ensure pipes are ready
+                var job0 = pipeServer.WaitForConnectionAsync(token);
+                var job1 = pipeClient.ConnectAsync(token);
+                await Task.Delay(10, token); // Slight delay to ensure pipes are ready
 
 				// Check if WinOverlay is already running
 				if (job1.IsCompletedSuccessfully)
@@ -260,9 +262,17 @@ namespace DesktopWizard
 
         private async void ListenForMessages()
         {
-            while (pipeClient?.IsConnected == true &&
-                m_CancelSrc != null &&
-                m_CancelSrc?.IsCancellationRequested == false)
+            CancellationToken token;
+            try
+            {
+                token = m_CancelSrc?.Token ?? default;
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+
+            while (pipeClient?.IsConnected == true && !token.IsCancellationRequested)
             {
                 if (s_AppQuit)
                     return;
@@ -287,8 +297,7 @@ namespace DesktopWizard
             }
 
             // Reconnection logic + restart WinOverlay
-            if (m_CancelSrc != null &&
-                !m_CancelSrc.IsCancellationRequested &&
+            if (!token.IsCancellationRequested &&
                 this.isActiveAndEnabled &&
                 !s_AppQuit)
             {

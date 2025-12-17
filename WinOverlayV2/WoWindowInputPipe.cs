@@ -33,7 +33,8 @@ namespace WinOverlay
 
         private async Task ListenForMessages()
         {
-            while (!m_Cts.IsCancellationRequested)
+            var token = m_Cts.Token;
+			while (!token.IsCancellationRequested)
             {
                 try
                 {
@@ -44,14 +45,14 @@ namespace WinOverlay
                         PipeTransmissionMode.Byte,
                         PipeOptions.Asynchronous);
 
-                    await m_PipeServer.WaitForConnectionAsync(m_Cts.Token);
-                    if (m_Cts.IsCancellationRequested)
+                    await m_PipeServer.WaitForConnectionAsync(token);
+                    if (token.IsCancellationRequested)
                         break;
 
 					// Read messages from Unity
 					byte[] buffer = new byte[4096];
-                    int bytesRead = await m_PipeServer.ReadAsync(buffer, 0, buffer.Length, m_Cts.Token);
-					if (m_Cts.IsCancellationRequested)
+                    int bytesRead = await m_PipeServer.ReadAsync(buffer, 0, buffer.Length, token);
+					if (token.IsCancellationRequested)
 						break;
 					if (bytesRead > 0)
                     {
@@ -272,6 +273,9 @@ namespace WinOverlay
 				isDisposed = true;
 				if (disposing)
 				{
+                    if (m_Cts != null && !m_Cts.IsCancellationRequested)
+                        m_Cts?.Cancel();
+                    m_Cts?.Dispose();
 					// Unsubscribe from window events
 					if (m_Window != null)
 					{
@@ -285,6 +289,7 @@ namespace WinOverlay
 
 					m_PipeServer?.Dispose();
 				}
+                m_Cts = null;
                 m_PipeServer = null;
 			}
 		}
