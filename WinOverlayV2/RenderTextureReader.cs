@@ -95,10 +95,10 @@ namespace WinOverlay
 				try
 				{
 					// Copy pixels to bitmap (RGBA to BGRA conversion)
-					const int bytesPerPixel = 4;
 					int stride = bitmap.BackBufferStride;
 
 #if UNSAFE_ENABLED
+					const int bytesPerPixel = 4;
 					unsafe
 					{
 						byte* bmpPtr = (byte*)bitmap.BackBuffer;
