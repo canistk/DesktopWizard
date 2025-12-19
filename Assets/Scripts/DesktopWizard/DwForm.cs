@@ -185,7 +185,7 @@ namespace DesktopWizard
         private Queue<EventPacket> m_Events = new Queue<EventPacket>();
 
 		/// <summary>Dispatch all events by order.</summary>
-		internal void ProcessEvents()
+		public void ProcessEvents()
         {
             bool hadMouse = false;
             while (m_Events.Count > 0)

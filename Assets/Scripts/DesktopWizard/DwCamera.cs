@@ -134,30 +134,23 @@ namespace DesktopWizard
 
 		public string Title
         {
-            get => dwForm == null ? string.Empty : dwForm.Text;
-            set
-            {
-                if (dwForm != null)
-                    dwForm.Text = value;
-            }
+            get => dwWrapper.Title;
+            set => dwWrapper.Title = value;
         }
 
         public int Left
         {
             get
             {
-                if (dwForm == null)
+                if (!dwWrapper.IsFormValid)
                     return setting.StartPos.x;
 
-                return dwForm.Left;
+                return dwWrapper.Left;
             }
             set
             {
 				setting.StartPos = new Vector2Int(value, Top);
-				if (dwForm != null)
-				{
-					dwForm.Left = value;
-				}
+				dwWrapper.Left = value;
             }
         }
 
@@ -170,34 +163,30 @@ namespace DesktopWizard
         {
             get
             {
-                if (dwForm == null)
+                if (!dwWrapper.IsFormValid)
                     return setting.StartPos.y;
 
-                return dwForm.Top;
+                return dwWrapper.Top;
             }
             set
             {
                 setting.StartPos = new Vector2Int(Left, value);
-                if (dwForm != null)
-                {
-					dwForm.Top = value;
-                }
+                dwWrapper.Top = value;
             }
         }
 
 		public Vector2Int GetOsPos()
 		{
-			if (dwForm == null)
+			if (!dwWrapper.IsFormValid)
 			{
 				return setting.StartPos;
 			}
-			return new Vector2Int(dwForm.Left, dwForm.Top);
+			return dwWrapper.GetOsPos();
 		}
 		public void SetOsPos(Vector2Int pos)
 		{
 			setting.StartPos = pos;
-			if (dwForm != null)
-				dwForm.SetBounds(pos.x, pos.y, Width, Height);
+			dwWrapper.SetOsPos(pos, Width, Height);
 		}
 
 		public Vector2 GetMonitorPos()
@@ -214,25 +203,21 @@ namespace DesktopWizard
 			var top = (int)os.y;
 			var v2i = new Vector2Int(left, top);
 			setting.StartPos = v2i;
-			if (dwForm != null)
-				dwForm.SetBounds(left, top, Width, Height);
+			dwWrapper.SetOsPos(v2i, Width, Height);
 		}
 
 		public int Width
         {
             get
             {
-                if (dwForm == null)
+                if (!dwWrapper.IsFormValid)
                     return setting.Size.x;
-                return dwForm.Width; // sync after update
+                return dwWrapper.Width; // sync after update
             } 
             set
 			{
 				setting.Size.x = value;
-				if (dwForm != null)
-				{
-					dwForm.Width = value;
-				}
+				dwWrapper.Width = value;
 			}
         }
 
@@ -240,17 +225,14 @@ namespace DesktopWizard
         {
             get
             {
-                if (dwForm == null)
+                if (!dwWrapper.IsFormValid)
                     return setting.Size.y;
-                return dwForm.Height; // sync after update
+                return dwWrapper.Height; // sync after update
             }
 			set
 			{
 				setting.Size.y = value;
-				if (dwForm != null)
-				{
-					dwForm.Height = value;
-				}
+				dwWrapper.Height = value;
 			}
         }
 
@@ -262,8 +244,7 @@ namespace DesktopWizard
 		public void SetOsSize(Vector2Int size)
 		{
 			setting.Size = size;
-			if (dwForm != null)
-				dwForm.SetBounds(Left, Top, size.x, size.y);
+			dwWrapper.SetOsSize(size, Left, Top);
 		}
 
 		public Vector2 GetMonitorSize()
@@ -279,8 +260,7 @@ namespace DesktopWizard
 			var os = m2o.MultiplyVector((Vector3)size);
 			var v2i = new Vector2Int((int)os.x, (int)os.y);
 			setting.Size = v2i;
-			if (dwForm != null)
-				dwForm.SetBounds(Left, Top, v2i.x, v2i.y);
+			dwWrapper.SetOsSize(v2i, Left, Top);
 		}
 
 		/// <summary>
@@ -292,15 +272,7 @@ namespace DesktopWizard
 		/// <returns></returns>
 		public bool TryGetWindowInfo(out WindowInfo windowInfo)
 		{
-			if (dwForm == null)
-			{
-				windowInfo = default;
-				return false;
-			}
-
-            // An System.IntPtr that contains the window handle (HWND) of the control.
-            var id = (uint)dwForm.Handle; // IntPtr -> Int
-			return DwCore.TryGetWindowById(id, out windowInfo);
+			return dwWrapper.TryGetWindowInfo(out windowInfo);
 		}
 
 		public OSRect rect
@@ -318,33 +290,11 @@ namespace DesktopWizard
             }
         }
 
-        public int ScreenWidth => dwForm == null ? -1 : System.Windows.Forms.Screen.GetBounds(dwForm).Width;
-        public int ScreenHeight => dwForm == null ? -1 : System.Windows.Forms.Screen.GetBounds(dwForm).Height;
+        public int ScreenWidth => dwWrapper.ScreenWidth;
+        public int ScreenHeight => dwWrapper.ScreenHeight;
 
-        // For Drag Move
-        private class DragDwFormInfo
-        {
-            public bool isDragging { get; private set; }
-            public int offsetX;
-            public int offsetY;
-            public void StartDrag(DwForm from)
-            {
-                isDragging = true;
-
-                var point = DwCore.GetOSCursorPos();
-                offsetX = from.Left - point.x;
-                offsetY = from.Top - point.y;
-            }
-            public void Reset()
-            {
-                isDragging = false;
-                offsetX = 0;
-                offsetY = 0;
-            }
-        }
         /// <summary>Drag control form <see cref="DwForm"/></summary>
-        private DragDwFormInfo m_DragFormInfo = new DragDwFormInfo();
-        public bool IsFormDragging => m_DragFormInfo?.isDragging ?? false;
+        public bool IsFormDragging => dwWrapper?.IsFormDragging ?? false;
 
         [SerializeField] private FormSetting m_Setting;
         public FormSetting setting
@@ -375,8 +325,17 @@ namespace DesktopWizard
 
         // Rendering
         private Texture2D m_Texture;
-		private DwForm _Form;
-        public DwForm dwForm => _Form;
+		private DwWinWrapper m_Wrapper;
+        public DwWinWrapper dwWrapper
+        {
+            get
+            {
+                if (m_Wrapper == null)
+                    m_Wrapper = new DwWinWrapper(this);
+                return m_Wrapper;
+            }
+        }
+        public DwForm dwForm => dwWrapper?.dwForm;
 
         private Camera m_LinkCamera = null;
         public Camera linkCamera
@@ -710,7 +669,7 @@ namespace DesktopWizard
 					{
 						DwUtils.DumpTexture(prevSrc.renderTexture, m_Texture, Mat_Chromakey.color);
 						DwUtils.DumpTexture(m_Texture, ref m_Bitmap);
-						dwForm.Repaint(m_Bitmap, (byte)(Opacity * 255));
+						dwWrapper.Repaint(m_Bitmap, (byte)(Opacity * 255));
 					}
 #if TRY_CATCH
 					catch (Exception ex)
@@ -757,68 +716,66 @@ namespace DesktopWizard
 
 		private void WinForm_PreUpdate()
 		{
-			if (dwForm == null || !dwForm.Visible)
+			if (!dwWrapper.IsFormValid || !dwWrapper.Visible)
 				return;
 
 			if (m_FormSizePre != setting.Size)
 			{
 				var size = m_FormSizePre = setting.Size;
 				m_Texture.Reinitialize(size.x, size.y, TextureFormat.ARGB32, false);
-				dwForm.Size = new Size(size.x, size.y);
+				dwWrapper.Size = new Size(size.x, size.y);
 			}
 
-			if (setting.TopMost != dwForm.TopMost)
+			if (setting.TopMost != dwWrapper.TopMost)
 			{
-				Debug.Log($"Form.TopMost changed: from {dwForm.TopMost} -> {setting.TopMost}");
-				dwForm.TopMost = setting.TopMost;
+				Debug.Log($"Form.TopMost changed: from {dwWrapper.TopMost} -> {setting.TopMost}");
+				dwWrapper.TopMost = setting.TopMost;
 			}
 		}
 
 		private void WinForm_PostUpdate()
 		{
-			if (dwForm == null || !dwForm.Visible)
+			if (!dwWrapper.IsFormValid || !dwWrapper.Visible)
 				return;
 
 			var allowDrag = setting == null ? false : setting.dragMethod != eDragMethod.None;
-			if (allowDrag && m_DragFormInfo.isDragging)
+			if (allowDrag && dwWrapper.IsFormDragging)
 			{
-				var cursor = DwCore.GetOSCursorPos();
-				dwForm.Left = cursor.x + m_DragFormInfo.offsetX;
-				dwForm.Top = cursor.y + m_DragFormInfo.offsetY;
+				dwWrapper.UpdateDragPosition();
 			}
 
 			// update form event within main thread.
 			/// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L544
 			// read events from WinForm queues.
-			dwForm.ProcessEvents();
+			dwWrapper.ProcessEvents();
 		}
 		#endregion Window Widget
 
 		#region Mouse Events
-		private void AddEvents(DwForm f)
+		private void AddWrapperEvents()
         {
-            f.Event_MouseDown	+= Form_MouseDown;
-            f.Event_MouseUp		+= Form_MouseUp;
-            f.Event_MouseMove	+= Form_MouseMove;
-            f.Event_MouseWheel	+= Form_MouseWheel;
-            f.Event_KeyDown		+= Form_KeyDown;
-            f.Event_KeyUp		+= Form_KeyUp;
-            f.Event_GotFocus	+= Form_GotFocus;
-            f.Event_LostFocus	+= Form_LostFocus;
-			f.FormClosing       += Form_Closing;
+            dwWrapper.EVENT_MouseDown	+= Form_MouseDown;
+            dwWrapper.EVENT_MouseUp		+= Form_MouseUp;
+            dwWrapper.EVENT_MouseMove	+= Form_MouseMove;
+            dwWrapper.EVENT_MouseWheel	+= Form_MouseWheel;
+            dwWrapper.EVENT_KeyDown		+= Form_KeyDown;
+            dwWrapper.EVENT_KeyUp		+= Form_KeyUp;
+            dwWrapper.EVENT_GotFocus	+= Form_GotFocus;
+            dwWrapper.EVENT_LostFocus	+= Form_LostFocus;
+			dwWrapper.EVENT_FormClosing += Form_Closing;
         }
 
-        private void RemoveEvents(DwForm f)
+        private void RemoveWrapperEvents()
         {
-            f.Event_MouseDown	-= Form_MouseDown;
-            f.Event_MouseUp		-= Form_MouseUp;
-            f.Event_MouseMove	-= Form_MouseMove;
-            f.Event_MouseWheel	-= Form_MouseWheel;
-            f.Event_KeyDown		-= Form_KeyDown;
-            f.Event_KeyUp		-= Form_KeyUp;
-            f.Event_GotFocus	-= Form_GotFocus;
-            f.Event_LostFocus	-= Form_LostFocus;
-			f.FormClosing       -= Form_Closing;
+            dwWrapper.EVENT_MouseDown	-= Form_MouseDown;
+            dwWrapper.EVENT_MouseUp		-= Form_MouseUp;
+            dwWrapper.EVENT_MouseMove	-= Form_MouseMove;
+            dwWrapper.EVENT_MouseWheel	-= Form_MouseWheel;
+            dwWrapper.EVENT_KeyDown		-= Form_KeyDown;
+            dwWrapper.EVENT_KeyUp		-= Form_KeyUp;
+            dwWrapper.EVENT_GotFocus	-= Form_GotFocus;
+            dwWrapper.EVENT_LostFocus	-= Form_LostFocus;
+			dwWrapper.EVENT_FormClosing -= Form_Closing;
         }
 
         public delegate void PointerEventDelegate(PointerEventData evt);
@@ -828,7 +785,7 @@ namespace DesktopWizard
 
         private bool IsMyForm(uint hWnd)
         {
-			return dwForm == null ? false : hWnd == dwForm.hWnd;
+			return dwWrapper.IsFormValid ? hWnd == dwWrapper.hWnd : false;
 		}
 
         private void Form_MouseDown(uint hWnd, PointerEventData pointerEvent)
@@ -911,13 +868,13 @@ namespace DesktopWizard
                 case InputButton.Right:
                 {
                     if (dragMethod == eDragMethod.HoldMouseRightBtn)
-                        m_DragFormInfo.StartDrag(dwForm);
+                        dwWrapper.StartDrag();
                 }
                 break;
                 case InputButton.Middle:
                 {
 					if (dragMethod == eDragMethod.HoldMouseMiddleBtn)
-						m_DragFormInfo.StartDrag(dwForm);
+						dwWrapper.StartDrag();
                 }
                 break;
             }
@@ -966,13 +923,13 @@ namespace DesktopWizard
                 case InputButton.Middle:
                 {
 					if (dragMethod == eDragMethod.HoldMouseMiddleBtn)
-						m_DragFormInfo.Reset();
+						dwWrapper.ResetDrag();
 				}
 				break;
                 case InputButton.Right:
 				{
 					if (dragMethod == eDragMethod.HoldMouseRightBtn)
-                        m_DragFormInfo.Reset();
+                        dwWrapper.ResetDrag();
                 }
                 break;
 			}
@@ -1209,14 +1166,14 @@ namespace DesktopWizard
 				ReleaseMouse(m_InputPointerEvent, m_InputPointerEvent.pointerCurrentRaycast.gameObject);
 			}
 			m_InputPointerEvent = null;
-			if (m_DragFormInfo.isDragging)
-				m_DragFormInfo.Reset();
+			if (dwWrapper.IsFormDragging)
+				dwWrapper.ResetDrag();
 		}
 		#endregion Focus
 
 		#region DwForm state handle
 		public event System.Action EVENT_Closed;
-		private void Form_Closing(object sender, EventArgs e)
+		private void Form_Closing()
         {
             this.gameObject.SetActive(false);
 			InternalFormDestory();
@@ -1226,13 +1183,12 @@ namespace DesktopWizard
         {
 			using (new DwLogScope($"DwForm {gameObject.name} FormCreate", this))
 			{
-				if (dwForm != null)
+				if (dwWrapper.IsFormValid)
 					throw new System.Exception("Form duplicate.");
-				_Form = new DwForm(this);
+				dwWrapper.CreateForm(setting);
 
 				Debug.Log($"Form created: {gameObject.name}, add events.", this);
-				AddEvents(dwForm);
-				dwForm.Show();
+				AddWrapperEvents();
 
 			}
 			ShareMemory_Init();
@@ -1278,14 +1234,13 @@ namespace DesktopWizard
 			ShareMemory_Dispose();
 			InputPipe_Dispose();
 
-			if (dwForm != null)
+			if (dwWrapper.IsFormValid)
             {
 				EVENT_Closed.TryCatchDispatchEventError(o => o?.Invoke());
 				CancelAllDragging();
-				RemoveEvents(dwForm);
-                dwForm.Close();
+				RemoveWrapperEvents();
+                dwWrapper.DestroyForm();
             }
-			_Form = null;
 
         }
         #endregion DwForm state handle
@@ -1323,7 +1278,9 @@ namespace DesktopWizard
             window = default;
             if (!DwCore.instance.TryGetOS(out var os))
                 return false;
-            var id = (uint)dwForm.Handle;
+            var id = dwWrapper.hWnd;
+            if (id == 0u)
+                return false;
             return os.TryGetWindowById(id, out window);
         }
 
@@ -1340,9 +1297,9 @@ namespace DesktopWizard
 		public Matrix4x4 MatrixOSToMonitor()        => s_QuickOSToMonitor;
 		public Matrix4x4 MatrixMonitorToOS()        => s_QuickOSToMonitor.inverse;
 
-        public Matrix4x4 MatrixMonitorToForm()      => dwForm?.MatrixMonitorToForm() ?? Matrix4x4.Translate(new Vector3(-Left, + Top + Height, 0));
+        public Matrix4x4 MatrixMonitorToForm()      => dwWrapper.MatrixMonitorToForm();
 
-		public Matrix4x4 MatrixFormToMonitor()      => dwForm?.MatrixFormToMonitor() ?? MatrixMonitorToForm().inverse;
+		public Matrix4x4 MatrixFormToMonitor()      => dwWrapper.MatrixFormToMonitor();
 
 		public Matrix4x4 MatrixOSToForm()           => MatrixMonitorToForm() * MatrixOSToMonitor(); // order matter.
         public Matrix4x4 MatrixFormToOS()           => MatrixOSToForm().inverse;
@@ -1464,7 +1421,7 @@ namespace DesktopWizard
 		// https://github.com/Unity-Technologies/uGUI/blob/5ab4c0fee7cd5b3267672d877ec4051da525913c/UnityEngine.UI/EventSystem/InputModules/StandaloneInputModule.cs#L277
 		private void HandlerSelectedObjectEvents()
 		{
-			if (dwForm == null || !dwForm.Focused)
+			if (!dwWrapper.IsFormValid || !dwWrapper.Focused)
 				return;
 
 			// not sure if this is needed, since we already set the selected object in Form_MouseDown.
